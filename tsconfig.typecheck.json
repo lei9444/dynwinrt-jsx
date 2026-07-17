@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "dynwinrt-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "dynwinrt-jsx": [
+        "./src/index.ts"
+      ],
+      "dynwinrt-jsx/jsx-runtime": [
+        "./src/jsx-runtime.ts"
+      ],
+      "dynwinrt-jsx/jsx-dev-runtime": [
+        "./src/jsx-dev-runtime.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.tsx"
+  ]
+}

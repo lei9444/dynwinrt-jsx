@@ -1,0 +1,68 @@
+{
+  "name": "dynwinrt-jsx-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native WinUI 3 app built with dynwinrt-jsx.",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "setup": "winapp restore",
+    "generate": "winapp node generate-bindings",
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node main.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@microsoft/dynwinrt": "0.1.0",
+    "dynwinrt-jsx": "1.0.0"
+  },
+  "devDependencies": {
+    "@microsoft/dynwinrt-codegen": "0.1.0",
+    "@microsoft/winappcli": "1.0.0",
+    "typescript": "5.9.2"
+  },
+  "winapp": {
+    "jsBindings": {
+      "additionalWinmds": [
+        {
+          "namespace": "Windows.Foundation",
+          "classes": [
+            "PropertyValue"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Windowing",
+          "classes": [
+            "AppWindow"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml",
+          "classes": [
+            "Application",
+            "Window"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Controls",
+          "classes": [
+            "Button",
+            "Grid",
+            "ScrollViewer",
+            "StackPanel",
+            "TextBlock",
+            "ToggleSwitch"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Media",
+          "classes": [
+            "MicaBackdrop"
+          ]
+        }
+      ]
+    }
+  }
+}
