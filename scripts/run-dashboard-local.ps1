@@ -286,6 +286,28 @@ function Wait-ForReplaceableDirectory([string]$Path) {
     }
 }
 
+$mutexHash = [Convert]::ToHexString(
+    [Security.Cryptography.SHA256]::HashData(
+        [Text.Encoding]::UTF8.GetBytes($dashboardRoot)
+    )
+).Substring(0, 16)
+$mutex = [Threading.Mutex]::new(
+    $false,
+    "Local\dynwinrt-jsx-dashboard-lifecycle-$mutexHash"
+)
+$ownsMutex = $false
+
+try {
+    try {
+        $ownsMutex = $mutex.WaitOne(0)
+    }
+    catch [Threading.AbandonedMutexException] {
+        $ownsMutex = $true
+    }
+    if (-not $ownsMutex) {
+        throw "Another dashboard lifecycle operation is already active."
+    }
+
 Require-Path $dynwinrtRoot "dynwinrt repository"
 Require-Path $winappCliRoot "winappCli repository"
 Require-Path $dashboardRoot "dashboard example"
@@ -423,6 +445,10 @@ while ([DateTime]::UtcNow -lt $deadline) {
         ((Read-SharedText $stdoutPath) -match "dashboard is ready")
     ) {
         Write-Host "Dashboard is ready (PID $($process.Id))." -ForegroundColor Green
+        if ($ownsMutex) {
+            $mutex.ReleaseMutex()
+            $ownsMutex = $false
+        }
         if ($Wait) {
             Wait-Process -Id $process.Id
             $process.Refresh()
@@ -438,3 +464,10 @@ while ([DateTime]::UtcNow -lt $deadline) {
 }
 
 throw "Dashboard did not report readiness within 30 seconds. See $stderrPath."
+}
+finally {
+    if ($ownsMutex) {
+        $mutex.ReleaseMutex()
+    }
+    $mutex.Dispose()
+}

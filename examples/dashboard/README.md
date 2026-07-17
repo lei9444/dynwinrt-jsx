@@ -33,10 +33,20 @@ from sibling source repositories without npm:
   -TypeScriptPath C:\path\to\typescript\bin\tsc
 
 .\scripts\smoke-dashboard-ui.ps1
+
+.\scripts\repeat-dashboard-smoke.ps1 `
+  -Cycles 5 `
+  -SkipRestore `
+  -DotNetPath C:\path\to\dotnet.exe `
+  -TypeScriptPath C:\path\to\typescript\bin\tsc
 ```
 
 The UI smoke run discovers semantic UIA selectors, then verifies theme
 switching, focus mode, task entry, screenshots, normal window close, and zero
 active renderer records after disposal.
+
+The repeated lifecycle smoke prepares once, launches a fresh process for each
+cycle, and records exit codes, renderer counts, logs, UI inspection, and
+screenshots in a timestamped `.winapp\lifecycle-smoke\run-*` directory.
 
 The Windows App SDK is bootstrapped in `main.js`. A revisioned state bridge connects the main thread to the UI Worker. `src\winui-worker.tsx` owns the UI STA, calls `Application.start()`, renders the TSX tree, and exits when the native window closes.

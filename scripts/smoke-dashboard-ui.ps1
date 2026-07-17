@@ -5,6 +5,7 @@ param(
     [string]$WorkRoot,
     [string]$WinAppPath,
     [string]$App = "DynWinRT JSX Workspace",
+    [int]$ExpectedProcessId,
     [string]$OutputDirectory,
     [int]$TimeoutMilliseconds = 10000,
     [switch]$KeepOpen
@@ -43,7 +44,7 @@ function Invoke-WinApp([string[]]$Arguments, [switch]$Capture) {
 function Get-ToggleState([string]$Selector) {
     $json = Invoke-WinApp @(
         "ui", "inspect", $Selector,
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--json"
     ) -Capture
     $result = $json | ConvertFrom-Json
@@ -105,17 +106,50 @@ function Wait-ForProcessExit([int]$ProcessId) {
     throw "Dashboard process $ProcessId did not exit within $TimeoutMilliseconds ms."
 }
 
+$mutexHash = [Convert]::ToHexString(
+    [Security.Cryptography.SHA256]::HashData(
+        [Text.Encoding]::UTF8.GetBytes($dashboardRoot)
+    )
+).Substring(0, 16)
+$mutex = [Threading.Mutex]::new(
+    $false,
+    "Local\dynwinrt-jsx-dashboard-lifecycle-$mutexHash"
+)
+$ownsMutex = $false
+
+try {
+    try {
+        $ownsMutex = $mutex.WaitOne(0)
+    }
+    catch [Threading.AbandonedMutexException] {
+        $ownsMutex = $true
+    }
+    if (-not $ownsMutex) {
+        throw "Another dashboard lifecycle operation is already active."
+    }
+
 if (-not (Test-Path $WinAppPath)) {
     throw "winapp.exe was not found at $WinAppPath."
 }
 
 $pidPath = Join-Path $dashboardRoot ".winapp\dashboard.pid"
+$Target = if ($ExpectedProcessId) {
+    "$ExpectedProcessId"
+}
+else {
+    $App
+}
 $statusJson = Invoke-WinApp @(
     "ui", "status",
-    "-a", $App,
+    "-a", $Target,
     "--json"
 ) -Capture
-$dashboardPid = [int](($statusJson | ConvertFrom-Json).processId)
+$status = $statusJson | ConvertFrom-Json
+$dashboardPid = [int]$status.processId
+$WindowHandle = [long]$status.hwnd
+if ($ExpectedProcessId -and $dashboardPid -ne $ExpectedProcessId) {
+    throw "Expected dashboard PID $ExpectedProcessId, but UIA resolved PID $dashboardPid."
+}
 if (-not (Get-Process -Id $dashboardPid -ErrorAction SilentlyContinue)) {
     throw "Dashboard process $dashboardPid is not running."
 }
@@ -136,13 +170,13 @@ $cleanupError = $null
 try {
     Invoke-WinApp @(
         "ui", "wait-for", "FocusModeButton",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
 
     $inspection = Invoke-WinApp @(
         "ui", "inspect",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--interactive",
         "--json"
     ) -Capture
@@ -155,54 +189,54 @@ try {
 
     Invoke-WinApp @(
         "ui", "screenshot",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--output", $initialScreenshot
     )
 
     $initialTheme = Get-ToggleState $themeSelector
-    Invoke-WinApp @("ui", "invoke", $themeSelector, "-a", $App)
+    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
     $updatedTheme = Get-ToggleState $themeSelector
     if ($updatedTheme -eq $initialTheme) {
         throw "The theme toggle did not change state."
     }
-    Invoke-WinApp @("ui", "invoke", $themeSelector, "-a", $App)
+    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
     if ((Get-ToggleState $themeSelector) -ne $initialTheme) {
         throw "The theme toggle did not return to its initial state."
     }
 
-    Invoke-WinApp @("ui", "invoke", $focusSelector, "-a", $App)
+    Invoke-WinApp @("ui", "invoke", $focusSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", $focusSelector,
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--property", "Name",
         "--value", "Exit focus",
         "--timeout", "$TimeoutMilliseconds"
     )
     Invoke-WinApp @(
         "ui", "screenshot",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--output", $focusScreenshot
     )
 
-    Invoke-WinApp @("ui", "invoke", $focusSelector, "-a", $App)
+    Invoke-WinApp @("ui", "invoke", $focusSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", $inputSelector,
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
     Invoke-WinApp @(
         "ui", "set-value", $inputSelector, "UI automation task",
-        "-a", $App
+        "-w", "$WindowHandle"
     )
-    Invoke-WinApp @("ui", "invoke", $addTaskSelector, "-a", $App)
+    Invoke-WinApp @("ui", "invoke", $addTaskSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "UI automation task",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
     Invoke-WinApp @(
         "ui", "screenshot",
-        "-a", $App,
+        "-w", "$WindowHandle",
         "--output", $taskScreenshot
     )
 }
@@ -212,7 +246,7 @@ finally {
         (Get-Process -Id $dashboardPid -ErrorAction SilentlyContinue)
     ) {
         try {
-            Invoke-WinApp @("ui", "invoke", "Close", "-a", $App)
+            Invoke-WinApp @("ui", "invoke", "Close", "-w", "$WindowHandle")
             Wait-ForProcessExit $dashboardPid
         }
         catch {
@@ -252,5 +286,17 @@ if (-not [string]::IsNullOrWhiteSpace($stderr)) {
     throw "Dashboard wrote errors during the smoke run: $stderr"
 }
 
-Remove-Item $pidPath -Force -ErrorAction SilentlyContinue
+if (Test-Path $pidPath) {
+    $recordedPid = [int]([IO.File]::ReadAllText($pidPath).Trim())
+    if ($recordedPid -eq $dashboardPid) {
+        Remove-Item $pidPath -Force
+    }
+}
 Write-Host "Dashboard UI smoke completed successfully." -ForegroundColor Green
+}
+finally {
+    if ($ownsMutex) {
+        $mutex.ReleaseMutex()
+    }
+    $mutex.Dispose()
+}

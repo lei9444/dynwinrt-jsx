@@ -324,6 +324,12 @@ repositories without installing npm packages:
   -TypeScriptPath C:\path\to\typescript\bin\tsc
 
 .\scripts\smoke-dashboard-ui.ps1
+
+.\scripts\repeat-dashboard-smoke.ps1 `
+  -Cycles 5 `
+  -SkipRestore `
+  -DotNetPath C:\path\to\dotnet.exe `
+  -TypeScriptPath C:\path\to\typescript\bin\tsc
 ```
 
 The preparation script builds the local dynwinrt runtime and code generator,
@@ -336,6 +342,11 @@ Use `-NoLaunch` to prepare only, `-SkipRestore` to reuse existing generated
 bindings, and `-Wait` when an automation host must keep the launch process
 alive. The smoke script uses `winapp ui` to exercise the native window and
 writes screenshots under `examples\dashboard\.winapp\smoke`.
+
+The repeat script prepares the dashboard once, then runs multiple independent
+launch, interaction, screenshot, close, and process-exit cycles. Each run writes
+a machine-readable `summary.json` with per-cycle renderer diagnostics under
+`examples\dashboard\.winapp\lifecycle-smoke`.
 
 The repository includes a project-level Copilot Agent Skill at
 `.github/skills/dynwinrt-jsx/SKILL.md`. Reload project skills with

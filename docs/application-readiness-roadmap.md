@@ -155,6 +155,12 @@ sibling repositories without npm installation. `scripts\smoke-dashboard-ui.ps1`
 uses the local winapp UI Automation commands to verify interaction,
 screenshots, normal close, and renderer disposal.
 
+`scripts\repeat-dashboard-smoke.ps1` repeats the complete application lifecycle
+in fresh processes and records per-cycle exit codes, logs, screenshots, and
+renderer diagnostics in `summary.json`. This provides the initial local x64
+evidence for repeated startup, theme transitions, close, and restart behavior;
+CI and broader machine coverage remain open.
+
 ## Phase 1: Build the pilot application
 
 **Estimate:** 3-5 days
