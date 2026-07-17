@@ -199,6 +199,19 @@ Application.start(() => {
             })
             renderHandle?.dispose()
             renderHandle = undefined
+            const diagnostics = renderer.diagnostics
+            if (
+              diagnostics.activeNative !== 0 ||
+              diagnostics.activeComponents !== 0
+            ) {
+              throw new Error(
+                `Renderer disposal left active records: ${JSON.stringify(diagnostics)}`,
+              )
+            }
+            parentPort.postMessage({
+              type: 'diagnostics',
+              value: diagnostics,
+            })
             closeSubscription?.()
             closeSubscription = undefined
           } finally {

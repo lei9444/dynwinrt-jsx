@@ -54,6 +54,12 @@
           ]
         },
         {
+          "namespace": "Microsoft.UI.Xaml.Automation",
+          "classes": [
+            "AutomationProperties"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml.Controls",
           "classes": [
             "Border",

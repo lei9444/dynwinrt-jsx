@@ -24,4 +24,19 @@ npm start
 
 Use `npm run generate` after changing the `winapp.jsBindings` roots without changing SDK versions.
 
+From the `dynwinrt-jsx` repository root, the same application can be prepared
+from sibling source repositories without npm:
+
+```powershell
+.\scripts\run-dashboard-local.ps1 `
+  -DotNetPath C:\path\to\dotnet.exe `
+  -TypeScriptPath C:\path\to\typescript\bin\tsc
+
+.\scripts\smoke-dashboard-ui.ps1
+```
+
+The UI smoke run discovers semantic UIA selectors, then verifies theme
+switching, focus mode, task entry, screenshots, normal window close, and zero
+active renderer records after disposal.
+
 The Windows App SDK is bootstrapped in `main.js`. A revisioned state bridge connects the main thread to the UI Worker. `src\winui-worker.tsx` owns the UI STA, calls `Application.start()`, renders the TSX tree, and exits when the native window closes.

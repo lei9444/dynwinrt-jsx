@@ -133,6 +133,28 @@ The selected source repository is
 and rebuild the generated application without relying on an unpublished or
 floating dependency.
 
+### Verified local x64 baseline
+
+The current source-workspace path has been exercised with:
+
+| Component | Verified version |
+|---|---|
+| Architecture | Windows x64 |
+| Node.js | 24.12.0 x64 |
+| TypeScript | 5.9.2 |
+| Rust | 1.95.0, `x86_64-pc-windows-msvc` |
+| .NET SDK | 10.0.302 |
+| Windows App SDK | 2.2.0 |
+| Windows SDK CPP | 10.0.28000.2270 |
+| dynwinrt runtime/codegen | local `0.1.0` source |
+| winapp CLI | local `1.0.0` source |
+| dynwinrt-jsx | local `1.0.0` source |
+
+`scripts\run-dashboard-local.ps1` builds and launches the dashboard from the
+sibling repositories without npm installation. `scripts\smoke-dashboard-ui.ps1`
+uses the local winapp UI Automation commands to verify interaction,
+screenshots, normal close, and renderer disposal.
+
 ## Phase 1: Build the pilot application
 
 **Estimate:** 3-5 days
@@ -341,7 +363,7 @@ Keep each slice usable and independently reviewable:
 ### Phase 0: Reproducible baseline
 
 - [x] Select `lei9444/dynwinrt-jsx` as the source repository.
-- [ ] Document the Windows, architecture, Node.js, and Windows App SDK matrix.
+- [x] Document the Windows, architecture, Node.js, and Windows App SDK matrix.
 - [ ] Pin compatible dynwinrt, codegen, winapp CLI, and JSX artifacts.
 - [ ] Select a tarball, local `file:`, or internal-feed distribution path.
 - [ ] Add automated build, type-contract, runtime, and package-content jobs.

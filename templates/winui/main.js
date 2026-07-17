@@ -69,6 +69,10 @@ worker.on('message', (message) => {
   if (message?.type === 'error') {
     console.error(message.message)
     process.exitCode = 1
+  } else if (message?.type === 'diagnostics') {
+    console.log(
+      `dynwinrt-jsx renderer disposed cleanly: ${JSON.stringify(message.value)}`,
+    )
   }
 })
 worker.on('error', (error) => {

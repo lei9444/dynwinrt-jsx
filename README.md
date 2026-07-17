@@ -313,6 +313,30 @@ npm pack
 
 Runtime tests use fake native controls; strict TSX contracts are compiled separately. The suite covers deterministic scheduling, lifecycle, Context, boundaries, portals, virtualization, bindings, Worker transport, hot updates, 1,000-item keyed movement, disposal, and scaffolding.
 
+### Local x64 source workflow
+
+The dashboard can be built from the sibling `dynwinrt` and `winappCli`
+repositories without installing npm packages:
+
+```powershell
+.\scripts\run-dashboard-local.ps1 `
+  -DotNetPath C:\path\to\dotnet.exe `
+  -TypeScriptPath C:\path\to\typescript\bin\tsc
+
+.\scripts\smoke-dashboard-ui.ps1
+```
+
+The preparation script builds the local dynwinrt runtime and code generator,
+publishes the x64 winapp CLI, uses winapp's normal restore/codegen pipeline,
+links the local JSX package, compiles the dashboard, and launches it. It
+requires Rust, an x64 Node.js 20+ executable, .NET SDK 10.x, a local TypeScript
+compiler, and the sibling repositories under the same work directory.
+
+Use `-NoLaunch` to prepare only, `-SkipRestore` to reuse existing generated
+bindings, and `-Wait` when an automation host must keep the launch process
+alive. The smoke script uses `winapp ui` to exercise the native window and
+writes screenshots under `examples\dashboard\.winapp\smoke`.
+
 The repository includes a project-level Copilot Agent Skill at
 `.github/skills/dynwinrt-jsx/SKILL.md`. Reload project skills with
 `/skills reload` after adding the repository to a Copilot CLI session.

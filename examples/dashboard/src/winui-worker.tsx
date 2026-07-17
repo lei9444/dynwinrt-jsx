@@ -24,6 +24,7 @@ import {
 import {
   Application,
   ApplicationTheme,
+  AutomationProperties,
   Border,
   Button,
   CheckBox,
@@ -119,6 +120,7 @@ const UI = createControls({
 
 const renderer = createWinUIRenderer({
   Application,
+  AutomationProperties,
   Grid,
   IMap_Object_Object,
   IReference_Boolean,
@@ -458,6 +460,7 @@ function Dashboard(props: { window: Window }) {
           </UI.StackPanel>
           <UI.ToggleSwitch
             ref={themeToggleRef}
+            automationId="ThemeToggle"
             header="Dark theme"
             isOn={darkTheme}
             onToggled={() => {
@@ -475,6 +478,7 @@ function Dashboard(props: { window: Window }) {
             }}
           />
           <UI.Button
+            automationId="FocusModeButton"
             style={resource('AccentButtonStyle', undefined, darkTheme)}
             onClick={() => {
               focusMode.value = !focusMode.value
@@ -485,7 +489,6 @@ function Dashboard(props: { window: Window }) {
             )}
           </UI.Button>
         </UI.StackPanel>
-
         <UI.StackPanel
           orientation={Orientation.Horizontal}
           spacing={12}
@@ -535,10 +538,12 @@ function Dashboard(props: { window: Window }) {
                   >
                     <UI.TextBox
                       ref={inputRef}
+                      automationId="TaskInput"
                       width={630}
                       placeholderText="Add a task"
                     />
                     <UI.Button
+                      automationId="AddTaskButton"
                       style={resource(
                         'AccentButtonStyle',
                         undefined,
@@ -699,6 +704,19 @@ Application.start(() => {
             })
             renderHandle?.dispose()
             renderHandle = undefined
+            const diagnostics = renderer.diagnostics
+            if (
+              diagnostics.activeNative !== 0 ||
+              diagnostics.activeComponents !== 0
+            ) {
+              throw new Error(
+                `Renderer disposal left active records: ${JSON.stringify(diagnostics)}`,
+              )
+            }
+            parentPort.postMessage({
+              type: 'diagnostics',
+              value: diagnostics,
+            })
             closeSubscription?.()
             closeSubscription = undefined
           } finally {
