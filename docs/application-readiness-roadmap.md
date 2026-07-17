@@ -161,6 +161,13 @@ renderer diagnostics in `summary.json`. This provides the initial local x64
 evidence for repeated startup, theme transitions, close, and restart behavior;
 CI and broader machine coverage remain open.
 
+`scripts\smoke-generated-app-local.ps1` also creates a fresh template
+application outside the repository, connects only sibling source artifacts,
+restores and generates bindings, compiles, launches, interacts through UIA, and
+closes with zero active renderer records. Its `compatibility.json` captures the
+exact source working-tree state, toolchain, SDK pins, UI evidence, and process
+result. Clean-machine execution remains a separate release gate.
+
 ## Phase 1: Build the pilot application
 
 **Estimate:** 3-5 days
