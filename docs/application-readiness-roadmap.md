@@ -400,7 +400,7 @@ Keep each slice usable and independently reviewable:
 - [ ] Preserve direct generated-property assignment for ordinary controls.
 - [ ] Classify controlled properties by synchronous, deferred, coercing, or
       collection-valued behavior.
-- [ ] Add declarative Grid row and column definitions.
+- [x] Add declarative Grid row and column definitions.
 - [ ] Add adapters for common collection-valued properties.
 - [ ] Add named-content slots beyond `children`, `child`, `content`, and `items`.
 - [ ] Add common brush, icon, image, font, nullable, and URI helpers.

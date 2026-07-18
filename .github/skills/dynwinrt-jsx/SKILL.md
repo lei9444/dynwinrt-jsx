@@ -78,6 +78,7 @@ adoption map.
 | Native control typing and factories | `src/native.ts` |
 | Mounting, updates, child adapters, disposal | `src/renderer.ts` |
 | WinUI resources, converters, attached props | `src/winui.ts` |
+| Grid definitions and track helpers | `src/grid.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
 | Context | `src/context.ts` |
 | One-way and two-way props | `src/binding.ts` |
@@ -167,6 +168,7 @@ control appear to work by imperatively mutating it only in an example.
 The built-in WinUI layer currently provides:
 
 - Grid row, column, and span attached setters.
+- Typed Grid row and column definitions through `createGridControl()`.
 - Canvas left and top attached setters.
 - Automation ID and name attached setters when those bindings are supplied.
 - Primitive `content` and `header` conversion to native `TextBlock`.

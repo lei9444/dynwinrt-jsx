@@ -8,10 +8,12 @@ import {
   cornerRadius,
   createContext,
   createControls,
+  createGridControl,
   createMessageTransport,
   createStateBridge,
   createWinUIRenderer,
   effect,
+  gridLength,
   resource,
   signal,
   thickness,
@@ -28,6 +30,7 @@ import {
   Border,
   Button,
   CheckBox,
+  ColumnDefinition,
   ElementTheme,
   Grid,
   HorizontalAlignment,
@@ -38,6 +41,7 @@ import {
   Orientation,
   ProgressBar,
   PropertyValue,
+  RowDefinition,
   ScrollBarVisibility,
   ScrollViewer,
   SolidColorBrush,
@@ -117,6 +121,11 @@ const UI = createControls({
   TextBox,
   ToggleSwitch,
 })
+const LayoutGrid = createGridControl({
+  Grid,
+  RowDefinition,
+  ColumnDefinition,
+})
 
 const renderer = createWinUIRenderer({
   Application,
@@ -143,6 +152,7 @@ interface Task {
 interface CardProps {
   readonly children: Child
   readonly width?: number
+  readonly gridColumn?: number
 }
 
 interface MetricCardProps {
@@ -150,6 +160,7 @@ interface MetricCardProps {
   readonly value: string | ReturnType<typeof computed<string>>
   readonly detail: string | ReturnType<typeof computed<string>>
   readonly accent: SolidColorBrush
+  readonly gridColumn: number
 }
 
 interface TaskRowProps {
@@ -195,6 +206,9 @@ function contextualSecondaryForeground() {
 function Card(props: CardProps) {
   return (
     <UI.Border
+      {...(props.gridColumn === undefined
+        ? {}
+        : { gridColumn: props.gridColumn })}
       width={props.width ?? Number.NaN}
       padding={thickness(18)}
       cornerRadius={cornerRadius(12)}
@@ -236,7 +250,7 @@ function SectionTitle(props: { title: string; subtitle?: string }) {
 
 function MetricCard(props: MetricCardProps) {
   return (
-    <Card width={218}>
+    <Card width={218} gridColumn={props.gridColumn}>
       <UI.StackPanel spacing={6}>
         <UI.StackPanel
           orientation={Orientation.Horizontal}
@@ -489,44 +503,58 @@ function Dashboard(props: { window: Window }) {
             )}
           </UI.Button>
         </UI.StackPanel>
-        <UI.StackPanel
-          orientation={Orientation.Horizontal}
-          spacing={12}
+        <LayoutGrid
+          rowDefinitions={[gridLength.auto()]}
+          columnDefinitions={[
+            gridLength.star(),
+            gridLength.star(),
+            gridLength.star(),
+            gridLength.star(),
+          ]}
+          columnSpacing={12}
         >
           <MetricCard
+            gridColumn={0}
             label="Tasks"
             value={computed(() => String(tasks.value.length))}
             detail={taskSummary}
             accent={colors.blue}
           />
           <MetricCard
+            gridColumn={1}
             label="Complete"
             value={computed(() => `${completion.value}%`)}
             detail="Reactive progress"
             accent={colors.green}
           />
           <MetricCard
+            gridColumn={2}
             label="Runtime"
             value="Native"
             detail="No Chromium process"
             accent={colors.purple}
           />
           <MetricCard
+            gridColumn={3}
             label="Build"
             value={buildStatus}
             detail="TypeScript + dynwinrt"
             accent={colors.orange}
           />
-        </UI.StackPanel>
+        </LayoutGrid>
 
         <Show
           when={focusMode}
           fallback={
-            <UI.StackPanel
-              orientation={Orientation.Horizontal}
-              spacing={14}
+            <LayoutGrid
+              rowDefinitions={[gridLength.auto()]}
+              columnDefinitions={[
+                gridLength.star(),
+                gridLength.pixel(320),
+              ]}
+              columnSpacing={14}
             >
-              <Card width={820}>
+              <Card gridColumn={0}>
                 <UI.StackPanel spacing={14}>
                   <SectionTitle
                     title="Sprint tasks"
@@ -582,7 +610,7 @@ function Dashboard(props: { window: Window }) {
                 </UI.StackPanel>
               </Card>
 
-              <Card width={320}>
+              <Card gridColumn={1} width={320}>
                 <UI.StackPanel spacing={16}>
                   <SectionTitle
                     title="Runtime health"
@@ -628,7 +656,7 @@ function Dashboard(props: { window: Window }) {
                   </UI.Border>
                 </UI.StackPanel>
               </Card>
-            </UI.StackPanel>
+            </LayoutGrid>
           }
         >
           <Card>

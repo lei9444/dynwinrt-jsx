@@ -95,6 +95,28 @@ function Require-AutomationSelector(
     return $selector
 }
 
+function Find-UniqueElement(
+    $Inspection,
+    [string]$Type,
+    [string]$Name
+) {
+    $elements = @(
+        $Inspection.windows |
+            ForEach-Object { Get-FlattenedElements $_.elements }
+    )
+    $matches = @(
+        $elements |
+            Where-Object {
+                (Get-ObjectProperty $_ "type") -eq $Type -and
+                (Get-ObjectProperty $_ "name") -eq $Name
+            }
+    )
+    if ($matches.Count -ne 1) {
+        throw "Expected one $Type named '$Name', found $($matches.Count)."
+    }
+    return $matches[0]
+}
+
 function Wait-ForProcessExit([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
     while ([DateTime]::UtcNow -lt $deadline) {
@@ -156,11 +178,13 @@ if (-not (Get-Process -Id $dashboardPid -ErrorAction SilentlyContinue)) {
 
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $inspectionPath = Join-Path $OutputDirectory "interactive-elements.json"
+$layoutEvidencePath = Join-Path $OutputDirectory "grid-layout.json"
 $initialScreenshot = Join-Path $OutputDirectory "dashboard-initial.png"
 $focusScreenshot = Join-Path $OutputDirectory "dashboard-focus.png"
 $taskScreenshot = Join-Path $OutputDirectory "dashboard-task-added.png"
 Remove-Item @(
     $inspectionPath,
+    $layoutEvidencePath,
     $initialScreenshot,
     $focusScreenshot,
     $taskScreenshot
@@ -186,6 +210,57 @@ try {
     $focusSelector = Require-AutomationSelector $inspectionObject "FocusModeButton"
     $inputSelector = Require-AutomationSelector $inspectionObject "TaskInput"
     $addTaskSelector = Require-AutomationSelector $inspectionObject "AddTaskButton"
+    $fullInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--depth", "10",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $metricNames = @("TASKS", "COMPLETE", "RUNTIME", "BUILD")
+    $metrics = @(
+        $metricNames |
+            ForEach-Object {
+                Find-UniqueElement $fullInspection "Text" $_
+            }
+    )
+    for ($index = 1; $index -lt $metrics.Count; $index += 1) {
+        if ($metrics[$index].x -le $metrics[$index - 1].x) {
+            throw "Metric Grid columns are not ordered left to right."
+        }
+        if ([Math]::Abs($metrics[$index].y - $metrics[0].y) -gt 8) {
+            throw "Metric Grid items are not aligned in the same row."
+        }
+    }
+    $tasksTitle = Find-UniqueElement $fullInspection "Text" "Sprint tasks"
+    $healthTitle = Find-UniqueElement $fullInspection "Text" "Runtime health"
+    if ($healthTitle.x -le $tasksTitle.x) {
+        throw "Dashboard detail Grid columns are not ordered left to right."
+    }
+    if ([Math]::Abs($healthTitle.y - $tasksTitle.y) -gt 8) {
+        throw "Dashboard detail Grid items are not aligned in the same row."
+    }
+    [IO.File]::WriteAllText(
+        $layoutEvidencePath,
+        "$([ordered]@{
+            metrics = $metrics | ForEach-Object {
+                [ordered]@{
+                    name = $_.name
+                    x = $_.x
+                    y = $_.y
+                    width = $_.width
+                    height = $_.height
+                }
+            }
+            tasks = [ordered]@{
+                x = $tasksTitle.x
+                y = $tasksTitle.y
+            }
+            health = [ordered]@{
+                x = $healthTitle.x
+                y = $healthTitle.y
+            }
+        } | ConvertTo-Json -Depth 5)`n"
+    )
 
     Invoke-WinApp @(
         "ui", "screenshot",

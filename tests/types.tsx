@@ -10,10 +10,13 @@ import {
   cornerRadius,
   createContext,
   createControls,
+  createGridControl,
+  gridLength,
   resource,
   signal,
   thickness,
   useContext,
+  type WinUIGridLength,
 } from 'dynwinrt-jsx'
 
 class TypeVector {
@@ -28,6 +31,23 @@ class TypeVector {
 class TypePanel {
   readonly children = new TypeVector()
   spacing = 0
+}
+
+class TypeGrid extends TypePanel {
+  readonly rowDefinitions = new TypeVector()
+  readonly columnDefinitions = new TypeVector()
+}
+
+class TypeRowDefinition {
+  height = gridLength.star()
+  minHeight = 0
+  maxHeight = Number.POSITIVE_INFINITY
+}
+
+class TypeColumnDefinition {
+  width = gridLength.star()
+  minWidth = 0
+  maxWidth = Number.POSITIVE_INFINITY
 }
 
 class TypeTextBlock {
@@ -72,6 +92,11 @@ const UI = createControls({
   TextBlock: TypeTextBlock,
   TextBox: TypeTextBox,
 })
+const LayoutGrid = createGridControl({
+  Grid: TypeGrid,
+  RowDefinition: TypeRowDefinition,
+  ColumnDefinition: TypeColumnDefinition,
+})
 
 const count = signal(0)
 const enabled = signal(true)
@@ -87,6 +112,12 @@ const items = signal([
 const windowStart = signal(0)
 const portalTarget = signal<object | null>(new TypePanel())
 const Locale = createContext('en-US')
+const invalidGridLength: WinUIGridLength = {
+  value: 1,
+  // @ts-expect-error GridUnitType only accepts Auto, Pixel, or Star.
+  gridUnitType: 3,
+}
+void invalidGridLength
 
 const name = signal('name')
 const oneWayBinding = bind.oneWay(name, 'text')
@@ -107,6 +138,20 @@ function LocaleLabel() {
 
 export const typeCheckedTree = (
   <UI.Panel spacing={12}>
+    <LayoutGrid
+      rowDefinitions={[
+        gridLength.auto(),
+        { size: gridLength.star(2), min: 32 },
+        new TypeRowDefinition(),
+      ]}
+      columnDefinitions={[
+        gridLength.pixel(240),
+        gridLength.star(),
+      ]}
+    >
+      <UI.TextBlock gridRow={1} gridColumn={1} text="Grid child" />
+    </LayoutGrid>
+
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}
       fontSize={resource('BodyStrongFontSize', 24, enabled)}

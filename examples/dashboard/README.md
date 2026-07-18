@@ -2,6 +2,10 @@
 
 This example renders a native WinUI 3 workspace dashboard from TSX. It exercises components, deterministic signals, refs, signal-backed events, Fluent resources, `Show`, stable keyed `For`, ErrorBoundary, automatic WinRT value conversion, theme switching, and native window lifecycle.
 
+Its metric and task surfaces use `createGridControl()` with typed
+`gridLength.auto()`, `gridLength.pixel()`, and `gridLength.star()` definitions.
+The UI smoke records Grid column positions in `.winapp\smoke\grid-layout.json`.
+
 ## Prerequisites
 
 - Windows 10 or newer

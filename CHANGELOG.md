@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added typed, signal-backed declarative Grid row and column definitions.
+- Added transactional native definition collection replacement with rollback.
+
 ## 1.0.0
 
 - Added depth-ordered deterministic scheduling, explicit roots, mount lifecycle, and scoped Context.

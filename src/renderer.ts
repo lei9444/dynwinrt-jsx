@@ -1158,7 +1158,7 @@ export class Renderer {
 
   private mountNative(
     vnode: VNode,
-    component: NativeComponent<object>,
+    component: NativeComponent<object, object>,
     onNodesChanged: (nodes: readonly unknown[]) => void,
     parentScope: ReactiveScope,
   ): MountedRecord {

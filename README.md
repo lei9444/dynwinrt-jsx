@@ -117,6 +117,43 @@ Primitive children become native `TextBlock` instances. Primitive `content` and 
 
 Use `thickness()`, `cornerRadius()`, and `color()` for common WinUI value structs.
 
+### Grid definitions
+
+Create a specialized Grid component when an application needs declarative row
+or column definitions:
+
+```tsx
+const LayoutGrid = createGridControl({
+  Grid: bindings.Grid,
+  RowDefinition: bindings.RowDefinition,
+  ColumnDefinition: bindings.ColumnDefinition,
+})
+
+<LayoutGrid
+  rowDefinitions={[
+    gridLength.auto(),
+    { size: gridLength.star(), min: 120 },
+  ]}
+  columnDefinitions={[
+    gridLength.pixel(240),
+    gridLength.star(2),
+  ]}
+  columnSpacing={12}
+>
+  <UI.TextBlock gridRow={1} gridColumn={1} text="Workspace" />
+</LayoutGrid>
+```
+
+Add `RowDefinition` and `ColumnDefinition` from
+`Microsoft.UI.Xaml.Controls` to the application's
+`winapp.jsBindings.additionalWinmds`. Use a codegen/runtime pair that supports
+parameterized collection interfaces.
+
+Definition arrays may be signals. A changed array reference validates and
+creates the complete new definition set before transactionally replacing the
+native collections. Native `RowDefinition` and `ColumnDefinition` instances are
+accepted as escape hatches. Grid track strings are intentionally not parsed.
+
 Pass a refresh signal as the third `resource()` argument when a runtime theme change should resolve the resource again:
 
 ```tsx

@@ -25,6 +25,7 @@ export {
   native,
   type NativeCommonProps,
   type NativeComponent,
+  type NativeComponentProps,
   type NativeComponentOptions,
   type NativeComponents,
   type NativeConstructor,
@@ -36,6 +37,17 @@ export {
   type Ref,
   type RefObject,
 } from './native'
+
+export {
+  createGridControl,
+  gridLength,
+  type GridControlBindings,
+  type GridDefinitionInput,
+  type GridLayoutProps,
+  type WinUIGridLength,
+  type WinUIGridTrack,
+  type WinUIGridUnitType,
+} from './grid'
 
 export {
   createRenderer,

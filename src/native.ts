@@ -86,6 +86,11 @@ export type NativeProps<Value> =
   & NativeEventProps<Value>
   & NativeCommonProps<Value>
 
+export type NativeComponentProps<
+  Value,
+  ExtraProps extends object = {},
+> = NativeProps<Value> & ExtraProps
+
 export interface NativeComponentOptions<Instance> {
   displayName?: string
   create?: () => Instance
@@ -103,8 +108,11 @@ interface NativeComponentMetadata<Instance> {
 
 const nativeComponentBrand = Symbol.for('dynwinrt-jsx.native-component')
 
-export interface NativeComponent<Instance extends object> {
-  (props: NativeProps<Instance>): VNode
+export interface NativeComponent<
+  Instance extends object,
+  ExtraProps extends object = {},
+> {
+  (props: NativeComponentProps<Instance, ExtraProps>): VNode
   readonly [nativeComponentBrand]: NativeComponentMetadata<Instance>
   readonly displayName: string
 }
@@ -112,19 +120,25 @@ export interface NativeComponent<Instance extends object> {
 export type NativeComponents<
   Constructors extends Record<string, NativeConstructor>,
 > = {
-  [Name in keyof Constructors]: NativeComponent<InstanceType<Constructors[Name]>>
+  [Name in keyof Constructors]: NativeComponent<
+    InstanceType<Constructors[Name]>
+  >
 }
 
-export function native<Instance extends object>(
+export function native<
+  Instance extends object,
+  ExtraProps extends object = {},
+>(
   constructorType: NativeConstructor<Instance>,
   options: NativeComponentOptions<Instance> = {},
-): NativeComponent<Instance> {
-  const component = ((props: NativeProps<Instance>) =>
+): NativeComponent<Instance, ExtraProps> {
+  const component = ((props: NativeComponentProps<Instance, ExtraProps>) =>
     createVNode(
       component,
-      props as NativeProps<Instance> & Record<string, unknown>,
+      props as NativeComponentProps<Instance, ExtraProps> &
+        Record<string, unknown>,
       props.key ?? null,
-    )) as unknown as NativeComponent<Instance>
+    )) as unknown as NativeComponent<Instance, ExtraProps>
 
   Object.defineProperty(component, nativeComponentBrand, {
     value: {
@@ -156,7 +170,7 @@ export function createControls<
 
 export function isNativeComponent(
   value: unknown,
-): value is NativeComponent<object> {
+): value is NativeComponent<object, object> {
   return (
     typeof value === 'function' &&
     nativeComponentBrand in value
@@ -164,7 +178,7 @@ export function isNativeComponent(
 }
 
 export function getNativeComponentMetadata(
-  component: NativeComponent<object>,
+  component: NativeComponent<object, object>,
 ): NativeComponentMetadata<object> {
   return component[nativeComponentBrand]
 }
