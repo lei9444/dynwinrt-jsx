@@ -6,6 +6,8 @@ param(
     [string]$NodePath,
     [string]$WinAppPath,
     [string]$OutputDirectory,
+    [ValidateRange(1, 50)]
+    [int]$ReloadCycles = 3,
     [int]$TimeoutMilliseconds = 15000
 )
 
@@ -139,50 +141,81 @@ try {
         "ui", "set-value", "TaskInput", "Hot reload retained state",
         "-w", "$windowHandle"
     )
+    Start-Sleep -Milliseconds 500
     Invoke-WinApp @("ui", "invoke", "AddTaskButton", "-w", "$windowHandle")
     Invoke-WinApp @(
-        "ui", "wait-for", "Hot reload retained state",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-
-    $appModule = Join-Path $dashboardRoot "dist\dashboard-app.js"
-    (Get-Item $appModule).LastWriteTime = Get-Date
-    Wait-ForText $stdoutPath "hot reload applied \(version 1\)"
-    $afterReload = Invoke-WinApp @(
-        "ui", "status",
-        "-a", "$($process.Id)",
-        "--json"
-    ) -Capture | ConvertFrom-Json
-    if ([long]$afterReload.hwnd -ne $windowHandle) {
-        throw "Hot reload replaced the native Window handle."
-    }
-    Invoke-WinApp @(
-        "ui", "wait-for", "Hot reload retained state",
+        "ui", "wait-for", "TaskCheck4",
         "-w", "$windowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
 
     $hotStatePath = Join-Path $env:TEMP "dynwinrt-jsx-hot-$($process.Id).json"
-    Write-HotMessage $hotStatePath 2 "hot-build-error" "Synthetic hot build error"
-    Invoke-WinApp @(
-        "ui", "wait-for", "HotReloadError",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Write-HotMessage $hotStatePath 3 "hot-reload"
-    Wait-ForText $stdoutPath "hot reload applied \(version 3\)"
-    Invoke-WinApp @(
-        "ui", "wait-for", "TasksPageHeading",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp @(
-        "ui", "wait-for", "Hot reload retained state",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
+    $appModule = Join-Path $dashboardRoot "dist\dashboard-app.js"
+    $version = 0
+    for ($cycle = 1; $cycle -le $ReloadCycles; $cycle += 1) {
+        $version += 1
+        if ($cycle -eq 1) {
+            (Get-Item $appModule).LastWriteTime = (Get-Date).AddSeconds($cycle)
+        }
+        else {
+            Write-HotMessage $hotStatePath $version "hot-reload"
+        }
+        Wait-ForText $stdoutPath "hot reload applied \(version $version\)"
+        $afterReload = Invoke-WinApp @(
+            "ui", "status",
+            "-a", "$($process.Id)",
+            "--json"
+        ) -Capture | ConvertFrom-Json
+        if ([long]$afterReload.hwnd -ne $windowHandle) {
+            throw "Hot reload cycle $cycle replaced the native Window handle."
+        }
+        Invoke-WinApp @(
+            "ui", "wait-for", "TaskCheck4",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
 
+        $version += 1
+        Write-HotMessage `
+            $hotStatePath `
+            $version `
+            "hot-build-error" `
+            "Synthetic hot build error cycle $cycle"
+        Invoke-WinApp @(
+            "ui", "wait-for", "HotReloadError",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+
+        $version += 1
+        Write-HotMessage $hotStatePath $version "hot-reload"
+        Wait-ForText $stdoutPath "hot reload applied \(version $version\)"
+        Invoke-WinApp @(
+            "ui", "wait-for", "TasksPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "TaskCheck4",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+    }
+
+    Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$windowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "SettingsPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $version += 1
+    Write-HotMessage $hotStatePath $version "hot-reload"
+    Wait-ForText $stdoutPath "hot reload applied \(version $version\)"
+    Invoke-WinApp @(
+        "ui", "wait-for", "SettingsPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
     Invoke-WinApp @("ui", "invoke", "Close", "-w", "$windowHandle")
     Wait-Process -Id $process.Id -Timeout 15
     Wait-ForText $stdoutPath "renderer disposed cleanly"

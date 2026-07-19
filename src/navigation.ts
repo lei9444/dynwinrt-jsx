@@ -78,6 +78,8 @@ interface TextInstance {
 interface AutomationPropertiesBinding {
   setAutomationId(target: object, value: string): void
   setName(target: object, value: string): void
+  setPositionInSet?(target: object, value: number): void
+  setSizeOfSet?(target: object, value: number): void
 }
 
 export interface NavigationItemBindings<
@@ -96,6 +98,8 @@ export interface NavigationItemOptions<Icon = unknown> {
   readonly selectsOnInvoked?: boolean
   readonly automationId?: string
   readonly automationName?: string
+  readonly automationPositionInSet?: number
+  readonly automationSizeOfSet?: number
 }
 
 export function createNavigationItem<
@@ -132,6 +136,28 @@ export function createNavigationItem<
       )
     }
     bindings.AutomationProperties.setName(item, options.automationName)
+  }
+  if (options.automationPositionInSet !== undefined) {
+    if (!bindings.AutomationProperties?.setPositionInSet) {
+      throw new Error(
+        'Navigation item automationPositionInSet requires AutomationProperties bindings.',
+      )
+    }
+    bindings.AutomationProperties.setPositionInSet(
+      item,
+      options.automationPositionInSet,
+    )
+  }
+  if (options.automationSizeOfSet !== undefined) {
+    if (!bindings.AutomationProperties?.setSizeOfSet) {
+      throw new Error(
+        'Navigation item automationSizeOfSet requires AutomationProperties bindings.',
+      )
+    }
+    bindings.AutomationProperties.setSizeOfSet(
+      item,
+      options.automationSizeOfSet,
+    )
   }
   return item
 }

@@ -6,32 +6,53 @@ export interface ContentDialogLike<Root, Result> {
   showAsync(): Promise<Result>
 }
 
+export interface ContentDialogOptions<Result> {
+  onClosed?: (result: Result) => void
+  restoreFocus?: (result: Result) => void
+}
+
 export async function showContentDialog<Root, Result>(
   renderer: Renderer,
   dialog: ContentDialogLike<Root, Result> & object,
   xamlRoot: Root,
   content: Child,
+  options: ContentDialogOptions<Result> = {},
 ): Promise<Result> {
   dialog.xamlRoot = xamlRoot
   const handle = renderer.render(content, dialog)
   let disposed = false
   let closeSubscription: (() => void) | undefined
-  const disposeContent = () => {
+  let closedResult: Result | undefined
+  const disposeContent = (result?: Result) => {
     if (disposed) {
       return
     }
     disposed = true
+    closedResult = result
     closeSubscription?.()
     closeSubscription = undefined
     handle.dispose()
+    if (closedResult !== undefined) {
+      options.onClosed?.(closedResult)
+      options.restoreFocus?.(closedResult)
+    }
   }
   closeSubscription = (
     dialog as unknown as {
-      onClosed?: (callback: () => void) => () => void
+      onClosed?: (
+        callback: (
+          sender: unknown,
+          args: { readonly result: Result },
+        ) => void,
+      ) => () => void
     }
-  ).onClosed?.(disposeContent)
+  ).onClosed?.((_sender, args) => {
+    disposeContent(args.result)
+  })
   try {
-    return await dialog.showAsync()
+    const result = await dialog.showAsync()
+    disposeContent(result)
+    return result
   } finally {
     disposeContent()
   }

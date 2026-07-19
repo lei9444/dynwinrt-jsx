@@ -379,7 +379,7 @@ Keep each slice usable and independently reviewable:
 - [x] Document the Windows, architecture, Node.js, and Windows App SDK matrix.
 - [ ] Pin compatible dynwinrt, codegen, winapp CLI, and JSX artifacts.
 - [ ] Select a tarball, local `file:`, or internal-feed distribution path.
-- [ ] Add automated build, type-contract, runtime, and package-content jobs.
+- [x] Add automated build, type-contract, runtime, and package-content jobs.
 - [ ] Complete creation and launch from an empty directory on a clean machine.
 
 ### Phase 1: Pilot application
@@ -431,15 +431,15 @@ Keep each slice usable and independently reviewable:
 - [x] Add a cross-process UI Automation E2E tier.
 - [ ] Exercise every supported x64 and ARM64 configuration.
 - [ ] Exercise every supported Node.js and Windows configuration.
-- [ ] Cover repeated startup, close, restart, and theme transitions.
+- [x] Cover repeated startup, close, restart, and theme transitions.
 - [ ] Cover large keyed reorders, dialogs, flyouts, and Worker failures.
 - [ ] Measure native memory and COM object growth across repeated cycles.
 - [ ] Verify property, event, effect, startup, and Worker error propagation.
-- [ ] Make Automation IDs, names, roles, and relationships usable from TSX.
+- [x] Make Automation IDs, names, roles, and relationships usable from TSX.
 - [ ] Add reactive automation and focus reference relationships.
 - [ ] Verify keyboard navigation and focus order.
 - [ ] Verify text scaling, High Contrast, screen readers, and reduced motion.
-- [ ] Add actionable application startup and failure logging.
+- [x] Add actionable application startup and failure logging.
 
 ### Phase 5: Packaging and servicing
 

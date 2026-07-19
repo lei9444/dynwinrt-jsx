@@ -8,6 +8,8 @@
 - Added scoped ContentDialog rendering, focus targets, and renderer diagnostic helpers.
 - Added versioned Worker-side TSX hot reload with state preservation and error recovery.
 - Updated the dashboard and generated application template with a pilot-ready app shell.
+- Added Automation relationship metadata, deterministic dialog focus restoration, and accessibility UIA assertions.
+- Added structured diagnostic records, multi-cycle hot reload/lifecycle soak tests, resource trend reporting, and Windows source/package CI.
 
 ## 1.0.0
 

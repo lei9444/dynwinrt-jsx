@@ -51,6 +51,43 @@ function Get-ToggleState([string]$Selector) {
     return $result.windows[0].elements[0].toggleState
 }
 
+function Get-FocusedElement {
+    $json = Invoke-WinApp @(
+        "ui", "get-focused",
+        "-w", "$WindowHandle",
+        "--json"
+    ) -Capture
+    return Get-ObjectProperty ($json | ConvertFrom-Json) "element"
+}
+
+function Wait-ForFocusedElement(
+    [string]$AutomationId = "",
+    [string]$Name = ""
+) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(3)
+    $focused = $null
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $focused = Get-FocusedElement
+        if (
+            $focused -and
+            (
+                (
+                    $AutomationId -and
+                    (Get-ObjectProperty $focused "automationId") -eq $AutomationId
+                ) -or
+                (
+                    $Name -and
+                    (Get-ObjectProperty $focused "name") -eq $Name
+                )
+            )
+        ) {
+            return $focused
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "Focus did not reach AutomationId '$AutomationId' or Name '$Name'."
+}
+
 function Get-ObjectProperty($Object, [string]$Name) {
     $property = $Object.PSObject.Properties[$Name]
     if ($property) {
@@ -135,6 +172,42 @@ function Find-UniqueAutomationElement(
         throw "Expected one element with AutomationId '$AutomationId', found $($matches.Count)."
     }
     return $matches[0]
+}
+
+function Assert-AccessibleInteractiveElements($Inspection) {
+    $elements = @(
+        $Inspection.windows |
+            ForEach-Object { Get-FlattenedElements $_.elements }
+    )
+    $unnamed = @(
+        $elements |
+            Where-Object {
+                (Get-ObjectProperty $_ "type") -in @(
+                    "Button",
+                    "CheckBox",
+                    "Edit",
+                    "ListItem"
+                ) -and
+                [string]::IsNullOrWhiteSpace(
+                    [string](Get-ObjectProperty $_ "name")
+                )
+            }
+    )
+    if ($unnamed.Count -gt 0) {
+        throw "Interactive UIA elements are missing accessible names."
+    }
+    $duplicateIds = @(
+        $elements |
+            ForEach-Object {
+                Get-ObjectProperty $_ "automationId"
+            } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Group-Object |
+            Where-Object { $_.Count -gt 1 }
+    )
+    if ($duplicateIds.Count -gt 0) {
+        throw "Duplicate AutomationIds: $($duplicateIds.Name -join ', ')."
+    }
 }
 
 function Wait-ForProcessExit([int]$ProcessId) {
@@ -228,9 +301,14 @@ try {
     ) -Capture
     [IO.File]::WriteAllText($inspectionPath, "$inspection`n")
     $inspectionObject = $inspection | ConvertFrom-Json
+    Assert-AccessibleInteractiveElements $inspectionObject
     $dashboardSelector = Require-AutomationSelector $inspectionObject "DashboardNavItem"
     $tasksSelector = Require-AutomationSelector $inspectionObject "TasksNavItem"
     $diagnosticsSelector = Require-AutomationSelector $inspectionObject "DiagnosticsNavItem"
+    Invoke-WinApp @(
+        "ui", "focus", $dashboardSelector,
+        "-w", "$WindowHandle"
+    )
     $fullInspection = Invoke-WinApp @(
         "ui", "inspect",
         "-w", "$WindowHandle",
@@ -306,15 +384,21 @@ try {
         "--interactive",
         "--json"
     ) -Capture | ConvertFrom-Json
+    Assert-AccessibleInteractiveElements $taskInspection
     $inputSelector = Require-AutomationSelector $taskInspection "TaskInput"
     $addTaskSelector = Require-AutomationSelector $taskInspection "AddTaskButton"
+    $inputElement = Find-UniqueAutomationElement $taskInspection "TaskInput"
+    if ((Get-ObjectProperty $inputElement "name") -ne "New task") {
+        throw "TaskInput did not expose its labeled accessible name."
+    }
     Invoke-WinApp @(
         "ui", "set-value", $inputSelector, "UI automation task",
         "-w", "$WindowHandle"
     )
+    Start-Sleep -Milliseconds 500
     Invoke-WinApp @("ui", "invoke", $addTaskSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
-        "ui", "wait-for", "UI automation task",
+        "ui", "wait-for", "TaskCheck4",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
@@ -338,6 +422,45 @@ try {
         "--output", $dialogScreenshot
     )
     Invoke-WinApp @("ui", "invoke", "Cancel", "-w", "$WindowHandle")
+    Wait-ForFocusedElement -Name "Remove UI automation task" | Out-Null
+    Invoke-WinApp @(
+        "ui", "invoke", "Remove UI automation task",
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "RemoveTaskDialog",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $confirmInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $primaryButton = Find-UniqueElement $confirmInspection "Button" "Remove"
+    Invoke-WinApp @(
+        "ui", "invoke", (Get-ObjectProperty $primaryButton "selector"),
+        "-w", "$WindowHandle"
+    )
+    Start-Sleep -Milliseconds 150
+    $afterRemoveInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $removedTask = @(
+        $afterRemoveInspection.windows |
+            ForEach-Object { Get-FlattenedElements $_.elements } |
+            Where-Object {
+                (Get-ObjectProperty $_ "automationId") -eq "TaskCheck4"
+            }
+    )
+    if ($removedTask.Count -ne 0) {
+        throw "Confirmed task removal left TaskCheck4 in the UIA tree."
+    }
+    Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
 
     Invoke-WinApp @("ui", "invoke", $diagnosticsSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
@@ -350,6 +473,13 @@ try {
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $diagnosticsInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    Assert-AccessibleInteractiveElements $diagnosticsInspection
 
     Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$WindowHandle")
     Invoke-WinApp @(
@@ -363,6 +493,7 @@ try {
         "--interactive",
         "--json"
     ) -Capture | ConvertFrom-Json
+    Assert-AccessibleInteractiveElements $settingsInspection
     $themeSelector = Require-AutomationSelector $settingsInspection "ThemeToggle"
     $initialTheme = Get-ToggleState $themeSelector
     Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")

@@ -44,6 +44,7 @@ export interface DashboardColors {
 }
 
 export interface DashboardModel {
+  readonly status: Signal<DashboardState['status']>
   readonly route: Signal<DashboardRoute>
   readonly darkTheme: Signal<boolean>
   readonly focusMode: Signal<boolean>
@@ -83,6 +84,7 @@ export function createDashboardModel(
 ): DashboardModel {
   return createRoot((dispose: Cleanup) => {
     const route = signal<DashboardRoute>('dashboard')
+    const status = signal<DashboardState['status']>('starting')
     const darkTheme = signal(true)
     const focusMode = signal(false)
     const nextTaskId = signal(4)
@@ -136,13 +138,14 @@ export function createDashboardModel(
 
     effect(() => {
       bridge.set({
-        status: 'running',
+        status: status.value,
         taskCount: tasks.value.length,
         completedCount: completedCount.value,
       })
     })
 
     return {
+      status,
       route,
       darkTheme,
       focusMode,

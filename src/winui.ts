@@ -97,6 +97,54 @@ function createPropertySetters(
     bindings.AutomationProperties,
     'setName',
   )
+  addStaticSetter(
+    setters,
+    'automationHelpText',
+    bindings.AutomationProperties,
+    'setHelpText',
+  )
+  addStaticSetter(
+    setters,
+    'automationLabeledBy',
+    bindings.AutomationProperties,
+    'setLabeledBy',
+  )
+  addStaticSetter(
+    setters,
+    'automationHeadingLevel',
+    bindings.AutomationProperties,
+    'setHeadingLevel',
+  )
+  addStaticSetter(
+    setters,
+    'automationPositionInSet',
+    bindings.AutomationProperties,
+    'setPositionInSet',
+  )
+  addStaticSetter(
+    setters,
+    'automationSizeOfSet',
+    bindings.AutomationProperties,
+    'setSizeOfSet',
+  )
+  addStaticSetter(
+    setters,
+    'automationLiveSetting',
+    bindings.AutomationProperties,
+    'setLiveSetting',
+  )
+  addStaticSetter(
+    setters,
+    'automationIsDialog',
+    bindings.AutomationProperties,
+    'setIsDialog',
+  )
+  addStaticSetter(
+    setters,
+    'automationControlType',
+    bindings.AutomationProperties,
+    'setAutomationControlType',
+  )
 
   return setters
 }

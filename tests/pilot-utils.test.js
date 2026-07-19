@@ -6,11 +6,13 @@ const test = require('node:test')
 const {
   assertRendererIdle,
   createControls,
+  createDiagnosticRecord,
   createFocusTarget,
   createFontIcon,
   createHotReloadSession,
   createRenderer,
   createSymbolIcon,
+  formatDiagnosticRecord,
   formatRendererDiagnostics,
   hasActiveRendererRecords,
   showContentDialog,
@@ -54,7 +56,7 @@ class TestDialog {
   async showAsync() {
     assert.notEqual(this.content, null)
     for (const callback of this.closed) {
-      callback()
+      callback(this, { result: this.result })
     }
     return this.result
   }
@@ -81,16 +83,24 @@ test('dialog content is scoped to the asynchronous show operation', async () => 
   const UI = createControls({ Panel: TestPanel })
   const dialog = new TestDialog()
   const root = { id: 'xaml-root' }
+  let focusRestored = 0
   const result = await showContentDialog(
     nativeRenderer,
     dialog,
     root,
     UI.Panel({}),
+    {
+      restoreFocus(result) {
+        assert.equal(result, 1)
+        focusRestored += 1
+      },
+    },
   )
 
   assert.equal(result, 1)
   assert.equal(dialog.xamlRoot, root)
   assert.equal(dialog.content, null)
+  assert.equal(focusRestored, 1)
 })
 
 test('focus targets retain refs and invoke native focus', () => {
@@ -183,5 +193,19 @@ test('renderer diagnostic helpers report and reject active records', () => {
   assert.throws(
     () => assertRendererIdle({ ...idle, activeNative: 1 }),
     /left active records/,
+  )
+})
+
+test('structured diagnostic records are JSON serializable', () => {
+  const record = createDiagnosticRecord(
+    'dashboard-host',
+    'hot-reload.applied',
+    { version: 3 },
+  )
+  assert.equal(record.source, 'dashboard-host')
+  assert.equal(record.level, 'info')
+  assert.deepEqual(
+    JSON.parse(formatDiagnosticRecord(record)).details,
+    { version: 3 },
   )
 })

@@ -49,7 +49,7 @@ from sibling source repositories without npm:
 .\scripts\repeat-dashboard-smoke.ps1 `
   -Cycles 5 `
   -SkipRestore `
-  -DotNetPath C:\path\to\dotnet.exe `
+  -UseExistingWinAppCli `
   -TypeScriptPath C:\path\to\typescript\bin\tsc
 ```
 
@@ -60,7 +60,8 @@ PID/HWND identity, retained model state, build-error fallback, recovery, and
 clean disposal.
 
 The repeated lifecycle smoke prepares once, launches a fresh process for each
-cycle, and records exit codes, renderer counts, logs, UI inspection, and
-screenshots in a timestamped `.winapp\lifecycle-smoke\run-*` directory.
+cycle, and records exit codes, renderer counts, process memory, handles, threads,
+logs, UI inspection, and screenshots in a timestamped
+`.winapp\lifecycle-smoke\run-*` directory.
 
 The Windows App SDK is bootstrapped in `main.js`. A revisioned state bridge connects the main thread to the UI Worker. `src\winui-worker.tsx` owns the UI STA and stable model, while `src\dashboard-app.tsx` is the reloadable application module.

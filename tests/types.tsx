@@ -231,6 +231,9 @@ export const typeCheckedTree = (
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}
       fontSize={resource('BodyStrongFontSize', 24, enabled)}
+      automationHeadingLevel={1}
+      automationPositionInSet={1}
+      automationSizeOfSet={3}
     />
 
     <UI.Button

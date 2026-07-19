@@ -10,6 +10,8 @@ const {
 const {
   createMessageTransport,
   createStateBridge,
+  createDiagnosticRecord,
+  formatDiagnosticRecord,
 } = require('dynwinrt-jsx')
 
 const architecture = {
@@ -122,20 +124,45 @@ bridge.state.subscribe((state) => {
   if (state.status === 'running' && !announcedReady) {
     announcedReady = true
     console.log('WinUI app is ready.')
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-host',
+      'application.ready',
+      { count: state.count },
+    )))
   }
 })
 worker.on('message', (message) => {
   if (message?.type === 'error') {
     console.error(message.message)
+    console.error(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-worker',
+      'worker.error',
+      { message: message.message },
+      'error',
+    )))
     process.exitCode = 1
   } else if (message?.type === 'diagnostics') {
     console.log(
       `dynwinrt-jsx renderer disposed cleanly: ${JSON.stringify(message.value)}`,
     )
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-worker',
+      'renderer.disposed',
+      message.value,
+    )))
   } else if (message?.type === 'hot-reload') {
     console.log(
       `dynwinrt-jsx hot reload ${message.status} (version ${message.version}).`,
     )
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-worker',
+      `hot-reload.${message.status}`,
+      {
+        version: message.version,
+        message: message.message ?? null,
+      },
+      message.status === 'error' ? 'error' : 'info',
+    )))
     if (message.message) {
       console.error(message.message)
     }

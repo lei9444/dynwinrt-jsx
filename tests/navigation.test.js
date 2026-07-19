@@ -163,6 +163,12 @@ test('navigation item factory creates typed native content and metadata', () => 
         setName(target, value) {
           automation.push(['name', target, value])
         },
+        setPositionInSet(target, value) {
+          automation.push(['position', target, value])
+        },
+        setSizeOfSet(target, value) {
+          automation.push(['size', target, value])
+        },
       },
     },
     {
@@ -171,6 +177,8 @@ test('navigation item factory creates typed native content and metadata', () => 
       icon,
       automationId: 'TasksNavItem',
       automationName: 'Tasks page',
+      automationPositionInSet: 2,
+      automationSizeOfSet: 3,
     },
   )
 
@@ -182,6 +190,25 @@ test('navigation item factory creates typed native content and metadata', () => 
     [
       ['id', 'TasksNavItem'],
       ['name', 'Tasks page'],
+      ['position', 2],
+      ['size', 3],
     ],
+  )
+})
+
+test('navigation item metadata never fails silently', () => {
+  assert.throws(
+    () => createNavigationItem(
+      {
+        NavigationViewItem: TestNavigationItem,
+        TextBlock: TestTextBlock,
+      },
+      {
+        name: 'tasks',
+        label: 'Tasks',
+        automationPositionInSet: 1,
+      },
+    ),
+    /requires AutomationProperties bindings/,
   )
 })

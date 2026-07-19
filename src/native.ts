@@ -79,6 +79,14 @@ export interface NativeCommonProps<Value> {
   canvasTop?: MaybeSignal<number>
   automationId?: MaybeSignal<string>
   automationName?: MaybeSignal<string>
+  automationHelpText?: MaybeSignal<string>
+  automationLabeledBy?: MaybeSignal<object | null>
+  automationHeadingLevel?: MaybeSignal<number>
+  automationPositionInSet?: MaybeSignal<number>
+  automationSizeOfSet?: MaybeSignal<number>
+  automationLiveSetting?: MaybeSignal<number>
+  automationIsDialog?: MaybeSignal<boolean>
+  automationControlType?: MaybeSignal<number>
 }
 
 export type NativeProps<Value> =

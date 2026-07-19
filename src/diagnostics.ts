@@ -1,5 +1,36 @@
 import type { RendererDiagnostics } from './renderer'
 
+export type DiagnosticLevel = 'info' | 'warning' | 'error'
+
+export interface DiagnosticRecord {
+  readonly timestamp: string
+  readonly source: string
+  readonly event: string
+  readonly level: DiagnosticLevel
+  readonly details: Readonly<Record<string, unknown>>
+}
+
+export function createDiagnosticRecord(
+  source: string,
+  event: string,
+  details: Readonly<Record<string, unknown>> = {},
+  level: DiagnosticLevel = 'info',
+): DiagnosticRecord {
+  return {
+    timestamp: new Date().toISOString(),
+    source,
+    event,
+    level,
+    details,
+  }
+}
+
+export function formatDiagnosticRecord(
+  record: DiagnosticRecord,
+): string {
+  return JSON.stringify(record)
+}
+
 export function hasActiveRendererRecords(
   diagnostics: RendererDiagnostics,
 ): boolean {

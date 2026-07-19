@@ -16,6 +16,7 @@ import {
   gridLength,
   resource,
   showContentDialog,
+  signal,
   thickness,
   useContext,
   type Child,
@@ -86,6 +87,7 @@ const AppNavigation = createNavigationViewControl<
 })
 
 type StackPanelInstance = InstanceType<typeof StackPanel>
+type ButtonInstance = InstanceType<typeof Button>
 type TextBlockInstance = InstanceType<typeof TextBlock>
 type TextBoxInstance = InstanceType<typeof TextBox>
 type ToggleSwitchInstance = InstanceType<typeof ToggleSwitch>
@@ -103,11 +105,13 @@ interface PageProps {
   readonly subtitle: string
   readonly automationId: string
   readonly children: Child
+  readonly onLoaded?: () => void
 }
 
 interface TaskRowProps {
   readonly context: DashboardAppContext
   readonly task: DashboardTask
+  readonly afterRemoveFocus: () => void
 }
 
 const ThemeSignal = createContext<ReadonlySignal<boolean> | null>(null)
@@ -131,9 +135,6 @@ function secondaryForeground(context: DashboardAppContext) {
 }
 
 function Page(props: PageProps) {
-  const heading = createFocusTarget<TextBlockInstance>(
-    FocusState.Programmatic,
-  )
   return (
     <UI.ScrollViewer
       horizontalScrollBarVisibility={ScrollBarVisibility.Disabled}
@@ -144,15 +145,13 @@ function Page(props: PageProps) {
         spacing={18}
       >
         <UI.TextBlock
-          ref={heading}
+          {...(props.onLoaded ? { onLoaded: props.onLoaded } : {})}
           automationId={props.automationId}
           automationName={props.title}
+          automationHeadingLevel={1}
           text={props.title}
           fontSize={28}
           fontWeight={{ weight: 700 }}
-          onLoaded={() => {
-            heading.focus()
-          }}
         />
         <UI.TextBlock
           text={props.subtitle}
@@ -219,6 +218,9 @@ function DashboardPage(context: DashboardAppContext) {
       title="Dashboard"
       subtitle="Versioned, scoped hot reload preserves the same Window and model state."
       automationId="DashboardPageHeading"
+      onLoaded={() => {
+        context.model.status.value = 'running'
+      }}
     >
       <LayoutGrid
         rowDefinitions={[gridLength.auto()]}
@@ -308,6 +310,8 @@ function DashboardPage(context: DashboardAppContext) {
 async function confirmRemove(
   context: DashboardAppContext,
   task: DashboardTask,
+  cancelFocus: () => void,
+  afterRemoveFocus: () => void,
 ): Promise<void> {
   const dialog = new ContentDialog()
   const title = new TextBlock()
@@ -317,18 +321,34 @@ async function confirmRemove(
   dialog.closeButtonText = 'Cancel'
   dialog.defaultButton = ContentDialogButton.Close
   AutomationProperties.setAutomationId(dialog, 'RemoveTaskDialog')
-  const result = await showContentDialog(
+  AutomationProperties.setIsDialog(dialog, true)
+  await showContentDialog(
     context.renderer,
     dialog,
     context.window.content.xamlRoot,
     <UI.TextBlock text={`Remove "${task.title}" from the sprint?`} />,
+    {
+      onClosed(result) {
+        if (result === ContentDialogResult.Primary) {
+          context.model.removeTask(task.id)
+        }
+      },
+      restoreFocus(result) {
+        if (result === ContentDialogResult.Primary) {
+          afterRemoveFocus()
+        }
+        else {
+          cancelFocus()
+        }
+      },
+    },
   )
-  if (result === ContentDialogResult.Primary) {
-    context.model.removeTask(task.id)
-  }
 }
 
 function TaskRow(props: TaskRowProps) {
+  const removeButton = createFocusTarget<ButtonInstance>(
+    FocusState.Programmatic,
+  )
   return (
     <UI.Border
       padding={thickness(12)}
@@ -341,6 +361,8 @@ function TaskRow(props: TaskRowProps) {
         verticalAlignment={VerticalAlignment.Center}
       >
         <UI.CheckBox
+          automationId={`TaskCheck${props.task.id}`}
+          automationName={`Mark ${props.task.title} complete`}
           isChecked={props.task.completed}
           onChecked={() => {
             props.context.model.updateTask(props.task.id, true)
@@ -358,9 +380,18 @@ function TaskRow(props: TaskRowProps) {
           <UI.TextBlock text={props.task.detail} fontSize={11} />
         </UI.StackPanel>
         <UI.Button
+          ref={removeButton}
           automationName={`Remove ${props.task.title}`}
+          automationHelpText="Opens a confirmation dialog."
           onClick={() => {
-            void confirmRemove(props.context, props.task)
+            void confirmRemove(
+              props.context,
+              props.task,
+              () => {
+                removeButton.focus()
+              },
+              props.afterRemoveFocus,
+            )
           }}
         >
           Remove
@@ -372,6 +403,10 @@ function TaskRow(props: TaskRowProps) {
 
 function TasksPage(context: DashboardAppContext) {
   const input: RefObject<TextBoxInstance> = { current: null }
+  const inputLabel = signal<TextBlockInstance | null>(null)
+  const addButton = createFocusTarget<ButtonInstance>(
+    FocusState.Programmatic,
+  )
   const addTask = () => {
     const textBox = input.current
     if (!textBox) {
@@ -390,13 +425,22 @@ function TasksPage(context: DashboardAppContext) {
         orientation={1}
         spacing={10}
       >
+        <UI.TextBlock
+          ref={(value) => {
+            inputLabel.value = value
+          }}
+          automationId="TaskInputLabel"
+          text="New task"
+        />
         <UI.TextBox
           ref={input}
           automationId="TaskInput"
+          automationLabeledBy={inputLabel}
           width={640}
           placeholderText="Add a task"
         />
         <UI.Button
+          ref={addButton}
           automationId="AddTaskButton"
           style={resource('AccentButtonStyle')}
           onClick={addTask}
@@ -420,7 +464,15 @@ function TasksPage(context: DashboardAppContext) {
             />
           }
         >
-          {(task) => <TaskRow context={context} task={task} />}
+          {(task) => (
+            <TaskRow
+              context={context}
+              task={task}
+              afterRemoveFocus={() => {
+                addButton.focus()
+              }}
+            />
+          )}
         </For>
       </UI.StackPanel>
     </Page>
@@ -547,6 +599,8 @@ function ApplicationShell(context: DashboardAppContext) {
     icon: createSymbolIcon(SymbolIcon, Symbol.Home),
     automationId: 'DashboardNavItem',
     automationName: 'Dashboard page',
+    automationPositionInSet: 1,
+    automationSizeOfSet: 3,
   })
   const tasksItem = createNavigationItem(itemBindings, {
     name: 'tasks',
@@ -554,6 +608,8 @@ function ApplicationShell(context: DashboardAppContext) {
     icon: createSymbolIcon(SymbolIcon, Symbol.Bullets),
     automationId: 'TasksNavItem',
     automationName: 'Tasks page',
+    automationPositionInSet: 2,
+    automationSizeOfSet: 3,
   })
   const diagnosticsItem = createNavigationItem(itemBindings, {
     name: 'diagnostics',
@@ -561,6 +617,8 @@ function ApplicationShell(context: DashboardAppContext) {
     icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
     automationId: 'DiagnosticsNavItem',
     automationName: 'Diagnostics page',
+    automationPositionInSet: 3,
+    automationSizeOfSet: 3,
   })
   const routeItems = new Map<DashboardRoute, NavigationViewItem>([
     ['dashboard', dashboardItem],
@@ -573,7 +631,6 @@ function ApplicationShell(context: DashboardAppContext) {
     }
     return routeItems.get(context.model.route.value) ?? null
   })
-
   return (
     <ThemeSignal.Provider value={context.model.darkTheme}>
       <AppNavigation

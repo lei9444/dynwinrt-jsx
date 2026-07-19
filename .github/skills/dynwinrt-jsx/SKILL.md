@@ -176,8 +176,10 @@ The built-in WinUI layer currently provides:
 - Scoped ContentDialog rendering, native icon factories, and focus targets.
 - Canvas left and top attached setters.
 - Automation ID and name attached setters when those bindings are supplied.
+- Automation help, labeled-by, heading, set-position, live, dialog, and control-type metadata.
 - Primitive `content` and `header` conversion to native `TextBlock`.
 - Boolean `isChecked` conversion to `IReference<Boolean>`.
+- ContentDialog cleanup and focus restoration from the native Closed event.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters

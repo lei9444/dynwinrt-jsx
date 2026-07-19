@@ -8,8 +8,16 @@ param(
     [string]$NodePath,
     [string]$TypeScriptPath,
     [string]$DotNetPath,
+    [string]$WinAppPath,
     [string]$OutputDirectory,
     [int]$ReadyTimeoutMilliseconds = 30000,
+    [ValidateRange(0, 100)]
+    [double]$MaxPrivateMemoryGrowthPercent = 25,
+    [ValidateRange(0, 100)]
+    [double]$MaxHandleGrowthPercent = 15,
+    [ValidateRange(3, 100)]
+    [int]$MinimumTrendCycles = 5,
+    [switch]$UseExistingWinAppCli,
     [switch]$SkipRestore
 )
 
@@ -25,6 +33,9 @@ if (-not $WorkRoot) {
 }
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $dashboardRoot ".winapp\lifecycle-smoke"
+}
+if (-not $WinAppPath) {
+    $WinAppPath = Join-Path $WorkRoot "winappCli\src\winapp-npm\bin\win-x64\winapp.exe"
 }
 
 function Resolve-Node([string]$RequestedPath) {
@@ -102,19 +113,103 @@ function Wait-DashboardReady(
     throw "Dashboard did not report readiness within $ReadyTimeoutMilliseconds ms."
 }
 
+function Get-Median([double[]]$Values) {
+    if ($Values.Count -eq 0) {
+        return 0
+    }
+    $sorted = @($Values | Sort-Object)
+    $middle = [Math]::Floor($sorted.Count / 2)
+    if ($sorted.Count % 2 -eq 1) {
+        return [double]$sorted[$middle]
+    }
+    return (
+        [double]$sorted[$middle - 1] +
+        [double]$sorted[$middle]
+    ) / 2
+}
+
 function Write-Summary(
     [string]$Path,
     [DateTime]$StartedAt,
     [System.Collections.Generic.List[object]]$Results
 ) {
     $passed = @($Results | Where-Object { $_.status -eq "passed" }).Count
+    $resourceSamples = @(
+        $Results |
+            Where-Object {
+                $_.status -eq "passed" -and
+                $_.resources
+            } |
+            ForEach-Object { $_.resources }
+    )
+    $resourceTrend = $null
+    $resourceStable = $true
+    if ($resourceSamples.Count -ge $MinimumTrendCycles) {
+        $windowSize = [Math]::Max(
+            2,
+            [Math]::Floor($resourceSamples.Count / 3)
+        )
+        $baselineSamples = @(
+            $resourceSamples |
+                Select-Object -Skip 1 -First $windowSize
+        )
+        if ($baselineSamples.Count -lt 2) {
+            $baselineSamples = @($resourceSamples | Select-Object -First $windowSize)
+        }
+        $recentSamples = @(
+            $resourceSamples |
+                Select-Object -Last $windowSize
+        )
+        $baselinePrivate = Get-Median @(
+            $baselineSamples | ForEach-Object { $_.privateMemoryBytes }
+        )
+        $recentPrivate = Get-Median @(
+            $recentSamples | ForEach-Object { $_.privateMemoryBytes }
+        )
+        $baselineHandles = Get-Median @(
+            $baselineSamples | ForEach-Object { $_.handleCount }
+        )
+        $recentHandles = Get-Median @(
+            $recentSamples | ForEach-Object { $_.handleCount }
+        )
+        $privateGrowth = if ($baselinePrivate -eq 0) {
+            0
+        }
+        else {
+            (($recentPrivate - $baselinePrivate) / $baselinePrivate) * 100
+        }
+        $handleGrowth = if ($baselineHandles -eq 0) {
+            0
+        }
+        else {
+            (($recentHandles - $baselineHandles) / $baselineHandles) * 100
+        }
+        $resourceStable = (
+            $privateGrowth -le $MaxPrivateMemoryGrowthPercent -and
+            $handleGrowth -le $MaxHandleGrowthPercent
+        )
+        $resourceTrend = [ordered]@{
+            sampleCount = $resourceSamples.Count
+            windowSize = $windowSize
+            baselinePrivateMemoryBytes = [long]$baselinePrivate
+            recentPrivateMemoryBytes = [long]$recentPrivate
+            privateMemoryGrowthPercent = [Math]::Round($privateGrowth, 2)
+            baselineHandleCount = [int]$baselineHandles
+            recentHandleCount = [int]$recentHandles
+            handleGrowthPercent = [Math]::Round($handleGrowth, 2)
+            maxPrivateMemoryGrowthPercent = $MaxPrivateMemoryGrowthPercent
+            maxHandleGrowthPercent = $MaxHandleGrowthPercent
+            stable = $resourceStable
+        }
+    }
     $summary = [ordered]@{
         startedAt = $StartedAt.ToUniversalTime().ToString("o")
         completedAt = [DateTime]::UtcNow.ToString("o")
         requestedCycles = $Cycles
         completedCycles = $Results.Count
         passedCycles = $passed
-        passed = $passed -eq $Cycles
+        passed = $passed -eq $Cycles -and $resourceStable
+        resourceTrend = $resourceTrend
         cycles = $Results
     }
     [IO.File]::WriteAllText(
@@ -160,6 +255,9 @@ if ($DotNetPath) {
 }
 if ($SkipRestore) {
     $prepareArgs.SkipRestore = $true
+}
+if ($UseExistingWinAppCli) {
+    $prepareArgs.UseExistingWinAppCli = $true
 }
 
 Write-Host "Preparing dashboard once before $Cycles lifecycle cycles..." -ForegroundColor Cyan
@@ -213,11 +311,32 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
 
         & $smokeScript `
             -WorkRoot $WorkRoot `
+            -WinAppPath $WinAppPath `
             -ExpectedProcessId $process.Id `
-            -OutputDirectory $cycleDirectory
+            -OutputDirectory $cycleDirectory `
+            -KeepOpen
         if ($LASTEXITCODE -ne 0) {
             throw "UI smoke failed with code $LASTEXITCODE."
         }
+
+        $process.Refresh()
+        $resources = [ordered]@{
+            workingSetBytes = [long]$process.WorkingSet64
+            privateMemoryBytes = [long]$process.PrivateMemorySize64
+            handleCount = [int]$process.HandleCount
+            threadCount = [int]$process.Threads.Count
+            cpuSeconds = [Math]::Round($process.TotalProcessorTime.TotalSeconds, 3)
+        }
+        $status = & $WinAppPath ui status -a "$($process.Id)" --json |
+            ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to resolve dashboard window before close."
+        }
+        & $WinAppPath ui invoke "Close" -w "$($status.hwnd)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to close dashboard after resource sampling."
+        }
+        Wait-Process -Id $process.Id -Timeout 15
 
         $process.Refresh()
         if (-not $process.HasExited) {
@@ -247,6 +366,7 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
                 ([DateTime]::UtcNow - $cycleStarted).TotalMilliseconds
             )
             diagnostics = $diagnosticMatch.Groups[1].Value | ConvertFrom-Json
+            resources = $resources
             artifacts = $cycleDirectory
         })
     }
@@ -320,6 +440,10 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
 
 Write-Host "Lifecycle smoke completed: $Cycles/$Cycles cycles passed." -ForegroundColor Green
 Write-Host "Summary: $summaryPath" -ForegroundColor Green
+$finalSummary = [IO.File]::ReadAllText($summaryPath) | ConvertFrom-Json
+if (-not $finalSummary.passed) {
+    throw "Lifecycle resource trend exceeded configured thresholds. See $summaryPath."
+}
 }
 finally {
     if ($ownsMutex) {

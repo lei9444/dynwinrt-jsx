@@ -67,6 +67,7 @@ export {
 export {
   showContentDialog,
   type ContentDialogLike,
+  type ContentDialogOptions,
 } from './dialog'
 
 export {
@@ -77,8 +78,12 @@ export {
 
 export {
   assertRendererIdle,
+  createDiagnosticRecord,
+  formatDiagnosticRecord,
   formatRendererDiagnostics,
   hasActiveRendererRecords,
+  type DiagnosticLevel,
+  type DiagnosticRecord,
 } from './diagnostics'
 
 export {

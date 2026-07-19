@@ -16,6 +16,7 @@ export interface AppState {
 }
 
 export interface AppModel {
+  readonly status: Signal<AppState['status']>
   readonly route: Signal<AppRoute>
   readonly count: Signal<number>
   readonly darkTheme: Signal<boolean>
@@ -34,6 +35,7 @@ interface StateBridge {
 export function createAppModel(bridge: StateBridge): AppModel {
   return createRoot((dispose: Cleanup) => {
     const route = signal<AppRoute>('home')
+    const status = signal<AppState['status']>('starting')
     const count = signal(0)
     const darkTheme = signal(true)
     const hotStatus = signal('ready')
@@ -52,11 +54,12 @@ export function createAppModel(bridge: StateBridge): AppModel {
     const countText = computed(() => `Native count: ${count.value}`)
     effect(() => {
       bridge.set({
-        status: 'running',
+        status: status.value,
         count: count.value,
       })
     })
     return {
+      status,
       route,
       count,
       darkTheme,

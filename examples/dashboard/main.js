@@ -10,6 +10,8 @@ const {
 const {
   createMessageTransport,
   createStateBridge,
+  createDiagnosticRecord,
+  formatDiagnosticRecord,
 } = require('dynwinrt-jsx')
 
 const architecture = {
@@ -130,21 +132,46 @@ stateBridge.state.subscribe((state) => {
   if (state.status === 'running' && !announcedReady) {
     announcedReady = true
     console.log('dynwinrt-jsx dashboard is ready.')
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-host',
+      'application.ready',
+      { taskCount: state.taskCount },
+    )))
   }
 })
 
 worker.on('message', (message) => {
   if (message?.type === 'error') {
     console.error(message.message)
+    console.error(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-worker',
+      'worker.error',
+      { message: message.message },
+      'error',
+    )))
     process.exitCode = 1
   } else if (message?.type === 'diagnostics') {
     console.log(
       `dynwinrt-jsx renderer disposed cleanly: ${JSON.stringify(message.value)}`,
     )
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-worker',
+      'renderer.disposed',
+      message.value,
+    )))
   } else if (message?.type === 'hot-reload') {
     console.log(
       `dynwinrt-jsx hot reload ${message.status} (version ${message.version}).`,
     )
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-worker',
+      `hot-reload.${message.status}`,
+      {
+        version: message.version,
+        message: message.message ?? null,
+      },
+      message.status === 'error' ? 'error' : 'info',
+    )))
     if (message.message) {
       console.error(message.message)
     }

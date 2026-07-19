@@ -50,7 +50,7 @@ const Navigation = createNavigationViewControl<
 >({ NavigationView })
 
 type NavigationInstance = InstanceType<typeof NavigationView>
-type TextBlockInstance = InstanceType<typeof TextBlock>
+type ButtonInstance = InstanceType<typeof Button>
 type ToggleInstance = InstanceType<typeof ToggleSwitch>
 
 export interface AppContext {
@@ -64,27 +64,28 @@ function Page(props: {
   readonly title: string
   readonly automationId: string
   readonly children: Child
+  readonly onLoaded?: () => void
 }) {
-  const heading = createFocusTarget<TextBlockInstance>(
-    FocusState.Programmatic,
-  )
   return (
     <UI.StackPanel padding={thickness(32)} spacing={16}>
       <UI.TextBlock
-        ref={heading}
+        {...(props.onLoaded ? { onLoaded: props.onLoaded } : {})}
         automationId={props.automationId}
         automationName={props.title}
+        automationHeadingLevel={1}
         text={props.title}
         fontSize={30}
         fontWeight={{ weight: 700 }}
-        onLoaded={() => heading.focus()}
       />
       {props.children}
     </UI.StackPanel>
   )
 }
 
-async function showAbout(context: AppContext) {
+async function showAbout(
+  context: AppContext,
+  restoreFocus: () => void,
+) {
   const dialog = new ContentDialog()
   const title = new TextBlock()
   title.text = 'dynwinrt-jsx'
@@ -92,17 +93,28 @@ async function showAbout(context: AppContext) {
   dialog.closeButtonText = 'Done'
   dialog.defaultButton = ContentDialogButton.Close
   AutomationProperties.setAutomationId(dialog, 'AboutDialog')
+  AutomationProperties.setIsDialog(dialog, true)
   await showContentDialog(
     context.renderer,
     dialog,
     context.window.content.xamlRoot,
     <UI.TextBlock text="Native WinUI TSX with versioned hot reload." />,
+    { restoreFocus },
   )
 }
 
 function HomePage(context: AppContext) {
+  const aboutButton = createFocusTarget<ButtonInstance>(
+    FocusState.Programmatic,
+  )
   return (
-    <Page title="Home" automationId="HomePageHeading">
+    <Page
+      title="Home"
+      automationId="HomePageHeading"
+      onLoaded={() => {
+        context.model.status.value = 'running'
+      }}
+    >
       <UI.TextBlock text={context.model.countText} fontSize={20} />
       <UI.Button
         automationId="IncrementButton"
@@ -114,8 +126,11 @@ function HomePage(context: AppContext) {
         Increment
       </UI.Button>
       <UI.Button
+        ref={aboutButton}
         automationId="AboutButton"
-        onClick={() => void showAbout(context)}
+        onClick={() => void showAbout(context, () => {
+          aboutButton.focus()
+        })}
       >
         Show dialog
       </UI.Button>
@@ -201,12 +216,16 @@ function Shell(context: AppContext) {
     label: 'Home',
     icon: createSymbolIcon(SymbolIcon, Symbol.Home),
     automationId: 'HomeNavItem',
+    automationPositionInSet: 1,
+    automationSizeOfSet: 2,
   })
   const diagnosticsItem = createNavigationItem(itemBindings, {
     name: 'diagnostics',
     label: 'Diagnostics',
     icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
     automationId: 'DiagnosticsNavItem',
+    automationPositionInSet: 2,
+    automationSizeOfSet: 2,
   })
   const routeItems = new Map<AppRoute, NavigationViewItem>([
     ['home', homeItem],

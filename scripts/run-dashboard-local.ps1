@@ -7,6 +7,7 @@ param(
     [string]$TypeScriptPath,
     [string]$DotNetPath,
     [switch]$SkipRestore,
+    [switch]$UseExistingWinAppCli,
     [switch]$NoLaunch,
     [switch]$Wait
 )
@@ -326,7 +327,9 @@ if (Test-Path $pidPath) {
 
 $NodePath = Resolve-Node $NodePath
 $TypeScriptPath = Resolve-TypeScript $TypeScriptPath
-$DotNetPath = Resolve-DotNet10 $DotNetPath
+if (-not $UseExistingWinAppCli) {
+    $DotNetPath = Resolve-DotNet10 $DotNetPath
+}
 $nodeDirectory = Split-Path $NodePath -Parent
 $env:PATH = "$nodeDirectory;$env:PATH"
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
@@ -368,14 +371,19 @@ if (Test-Path $installerDirectory) {
     $env:PATH = "$installerDirectory;$env:PATH"
 }
 $winappOutput = Join-Path $winappNpmRoot "bin\win-x64"
-Invoke-Checked $DotNetPath @(
-    "publish",
-    (Join-Path $winappCliRoot "src\winapp-CLI\WinApp.Cli\WinApp.Cli.csproj"),
-    "-c", "Release",
-    "-r", "win-x64",
-    "--self-contained",
-    "-o", $winappOutput
-) $winappCliRoot
+if ($UseExistingWinAppCli) {
+    Write-Host "Using existing winappCli x64 publish output." -ForegroundColor DarkGray
+}
+else {
+    Invoke-Checked $DotNetPath @(
+        "publish",
+        (Join-Path $winappCliRoot "src\winapp-CLI\WinApp.Cli\WinApp.Cli.csproj"),
+        "-c", "Release",
+        "-r", "win-x64",
+        "--self-contained",
+        "-o", $winappOutput
+    ) $winappCliRoot
+}
 
 $winappExecutable = Join-Path $winappOutput "winapp.exe"
 $winappWrapper = Join-Path $winappNpmRoot "dist\cli.js"

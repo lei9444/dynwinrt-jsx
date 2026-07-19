@@ -196,6 +196,23 @@ const home = createNavigationItem(
 Collection changes validate before mutation and roll back if a native append
 fails. `createFocusTarget()` combines a native ref with typed `focus()` calls.
 
+Common automation metadata is available directly on native JSX controls:
+
+```tsx
+<UI.TextBlock
+  automationId="TaskInputLabel"
+  automationHeadingLevel={1}
+  text="New task"
+/>
+<UI.TextBox
+  automationId="TaskInput"
+  automationLabeledBy={labelSignal}
+/>
+```
+
+Supported metadata includes name, help text, labeled-by, heading level,
+position/size in set, live setting, dialog state, and automation control type.
+
 Render dialog content with a renderer-owned scope:
 
 ```tsx
@@ -204,11 +221,13 @@ const result = await showContentDialog(
   dialog,
   window.content.xamlRoot,
   <UI.TextBlock text="Native dialog content" />,
+  { restoreFocus: () => trigger.focus() },
 )
 ```
 
 The content is disposed from the native `Closed` event, even when Promise
-continuations cannot run until the WinUI loop exits.
+continuations cannot run until the WinUI loop exits. Focus restoration is also
+performed from that native event.
 
 Pass a refresh signal as the third `resource()` argument when a runtime theme change should resolve the resource again:
 
@@ -364,6 +383,9 @@ the main process and host-owned state remain alive.
 
 Renderer diagnostics expose active native/component counts and cumulative keyed-entry creation/reuse counts for leak checks.
 
+`createDiagnosticRecord()` and `formatDiagnosticRecord()` produce structured
+JSON events for startup, Worker failures, hot reload, and disposal evidence.
+
 ## Native child shapes
 
 | Native shape | JSX behavior |
@@ -410,6 +432,19 @@ npm pack
 ```
 
 Runtime tests use fake native controls; strict TSX contracts are compiled separately. The suite covers deterministic scheduling, lifecycle, Context, boundaries, portals, virtualization, bindings, Worker transport, hot updates, 1,000-item keyed movement, disposal, and scaffolding.
+
+Hosted Windows CI runs the source/type/package contract only. Native WinUI UIA
+tests require an interactive desktop and sibling dynwinrt/winappCli artifacts:
+
+```powershell
+.\scripts\smoke-dashboard-ui.ps1
+.\scripts\smoke-dashboard-hot-reload.ps1 -ReloadCycles 3
+.\scripts\repeat-dashboard-smoke.ps1 -Cycles 5 -UseExistingWinAppCli
+```
+
+Lifecycle summaries record renderer balance plus private memory, working set,
+handles, threads, and CPU. Trend checks use warmed median windows rather than
+single-process absolute limits.
 
 ### Local x64 source workflow
 
