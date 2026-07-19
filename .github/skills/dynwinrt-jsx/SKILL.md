@@ -86,6 +86,7 @@ adoption map.
 | Context | `src/context.ts` |
 | One-way and two-way props | `src/binding.ts` |
 | Worker state synchronization | `src/bridge.ts` |
+| Validated atomic JSON persistence | `src/persistence.ts` |
 | Root replacement | `src/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
@@ -293,6 +294,7 @@ Account for these limits when designing a feature:
 - `VirtualFor` is fixed-height windowing, not native `ItemsRepeater`
   virtualization.
 - State bridges clone complete state and do not validate schemas.
+- `createJsonStateStore()` validates persisted state, writes atomically, and preserves corrupt inputs.
 - Object-valued WinRT properties require projected objects unless a converter
   handles them.
 - Resource keys are strings and are not statically verified.

@@ -35,7 +35,7 @@ import {
   TitleBarTheme,
   ToggleSwitch,
   Window,
-} from '../.winapp/bindings/index.js'
+} from '#winapp/bindings'
 import type { AppModel, AppRoute } from './app-model'
 
 const UI = createControls({
@@ -120,7 +120,7 @@ function HomePage(context: AppContext) {
         automationId="IncrementButton"
         style={resource('AccentButtonStyle')}
         onClick={() => {
-          context.model.count.value += 1
+          context.model.increment()
         }}
       >
         Increment
@@ -152,6 +152,16 @@ function DiagnosticsPage(context: AppContext) {
           formatRendererDiagnostics(context.model.diagnostics.value),
         )}
       />
+      <UI.TextBlock
+        automationId="PersistenceStatus"
+        text={computed(() =>
+          context.model.persistenceError.value
+            ? `State recovery error: ${context.model.persistenceError.value}`
+            : context.model.updatedAt.value
+              ? `State changed ${context.model.updatedAt.value}`
+              : 'State has not changed in this session.',
+        )}
+      />
       <Show when={context.model.lastError}>
         {(error) => (
           <UI.TextBlock
@@ -181,7 +191,7 @@ function SettingsPage(context: AppContext) {
           const isOn =
             toggle.current?.isOn ?? context.model.darkTheme.value
           batch(() => {
-            context.model.darkTheme.value = isOn
+            context.model.setDarkTheme(isOn)
             Application.current.requestedTheme =
               isOn ? ApplicationTheme.Dark : ApplicationTheme.Light
             context.window.appWindow.titleBar.preferredTheme =

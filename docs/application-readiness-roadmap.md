@@ -387,7 +387,7 @@ Keep each slice usable and independently reviewable:
 - [ ] Select the pilot application and define its primary workflow.
 - [ ] Inventory required controls, overlays, navigation, and state.
 - [ ] Generate the application from the pinned artifacts.
-- [ ] Keep process-owned state behind the Worker state bridge.
+- [x] Keep process-owned state behind the Worker state bridge.
 - [ ] Put each screen under an `ErrorBoundary`.
 - [ ] Record every raw dynwinrt escape hatch.
 - [ ] Capture renderer diagnostics before and after each navigation path.

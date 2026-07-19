@@ -11,8 +11,13 @@ const {
   createMessageTransport,
   createStateBridge,
   createDiagnosticRecord,
+  createJsonStateStore,
   formatDiagnosticRecord,
 } = require('dynwinrt-jsx')
+const {
+  createDefaultPersistedDashboardState,
+  isPersistedDashboardState,
+} = require('./dist/dashboard-state.js')
 
 const architecture = {
   arm64: 'arm64',
@@ -44,17 +49,44 @@ process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH = bootstrapDll
 const { initWinappsdk } = require('@microsoft/dynwinrt')
 initWinappsdk(2, 2)
 
+const statePath =
+  process.env.DYNWINRT_JSX_STATE_PATH ??
+  path.join(
+    process.env.LOCALAPPDATA ?? os.homedir(),
+    'dynwinrt-jsx',
+    'dashboard-state.json',
+  )
+const stateStore = createJsonStateStore({
+  path: statePath,
+  defaultState: createDefaultPersistedDashboardState,
+  validate: isPersistedDashboardState,
+})
+const loadedState = stateStore.load()
+const initialState = {
+  ...loadedState.state,
+  status: 'starting',
+  persistenceError: loadedState.error,
+}
+if (loadedState.error) {
+  console.warn(formatDiagnosticRecord(createDiagnosticRecord(
+    'dashboard-host',
+    'state.recovered',
+    {
+      path: statePath,
+      error: loadedState.error,
+      corruptPath: loadedState.corruptPath,
+    },
+    'warning',
+  )))
+}
+
 const { port1, port2 } = new MessageChannel()
 const stateBridge = createStateBridge(
   createMessageTransport(port1),
   {
     role: 'host',
     channel: 'dashboard-state',
-    initial: {
-      status: 'starting',
-      taskCount: 0,
-      completedCount: 0,
-    },
+    initial: initialState,
   },
 )
 const hotEnabled = process.env.DYNWINRT_JSX_HOT === '1'
@@ -74,6 +106,7 @@ const worker = new Worker(
     workerData: {
       statePort: port2,
       hotStatePath: hotEnabled ? hotStatePath : null,
+      initialState,
     },
     transferList: [port2],
   },
@@ -128,6 +161,7 @@ if (hotEnabled) {
 }
 
 let announcedReady = false
+let persistedFingerprint = JSON.stringify(loadedState.state)
 stateBridge.state.subscribe((state) => {
   if (state.status === 'running' && !announcedReady) {
     announcedReady = true
@@ -135,7 +169,44 @@ stateBridge.state.subscribe((state) => {
     console.log(formatDiagnosticRecord(createDiagnosticRecord(
       'dashboard-host',
       'application.ready',
-      { taskCount: state.taskCount },
+      {
+        taskCount: state.tasks.length,
+        statePath,
+      },
+    )))
+  }
+  const persistedState = {
+    version: 1,
+    tasks: state.tasks,
+    nextTaskId: state.nextTaskId,
+    darkTheme: state.darkTheme,
+    updatedAt: state.updatedAt,
+  }
+  const fingerprint = JSON.stringify(persistedState)
+  if (fingerprint === persistedFingerprint) {
+    return
+  }
+  try {
+    stateStore.save(persistedState)
+    persistedFingerprint = fingerprint
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-host',
+      'state.saved',
+      {
+        path: statePath,
+        taskCount: persistedState.tasks.length,
+        updatedAt: persistedState.updatedAt,
+      },
+    )))
+  } catch (error) {
+    console.error(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-host',
+      'state.save-error',
+      {
+        path: statePath,
+        message: error instanceof Error ? error.stack ?? error.message : String(error),
+      },
+      'error',
     )))
   }
 })
@@ -175,6 +246,17 @@ worker.on('message', (message) => {
     if (message.message) {
       console.error(message.message)
     }
+  } else if (message?.type === 'state-initialized') {
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-worker',
+      'state.initialized',
+      message.value,
+    )))
+  } else if (message?.type === 'startup-stage') {
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'dashboard-worker',
+      `startup.${message.stage}`,
+    )))
   }
 })
 

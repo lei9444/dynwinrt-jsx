@@ -299,13 +299,20 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
     $cleanupFailure = $null
     try {
         Write-Host "[$cycleName] Launching dashboard..." -ForegroundColor Cyan
-        $process = Start-Process `
-            -FilePath $NodePath `
-            -ArgumentList ".\main.js" `
-            -WorkingDirectory $dashboardRoot `
-            -RedirectStandardOutput $stdoutPath `
-            -RedirectStandardError $stderrPath `
-            -PassThru
+        $oldStatePath = $env:DYNWINRT_JSX_STATE_PATH
+        try {
+            $env:DYNWINRT_JSX_STATE_PATH = Join-Path $cycleDirectory "state.json"
+            $process = Start-Process `
+                -FilePath $NodePath `
+                -ArgumentList ".\main.js" `
+                -WorkingDirectory $dashboardRoot `
+                -RedirectStandardOutput $stdoutPath `
+                -RedirectStandardError $stderrPath `
+                -PassThru
+        }
+        finally {
+            $env:DYNWINRT_JSX_STATE_PATH = $oldStatePath
+        }
         [IO.File]::WriteAllText($pidPath, "$($process.Id)`n")
         Wait-DashboardReady $process $stdoutPath $stderrPath
 

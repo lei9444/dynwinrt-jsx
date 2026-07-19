@@ -10,6 +10,7 @@
 - Updated the dashboard and generated application template with a pilot-ready app shell.
 - Added Automation relationship metadata, deterministic dialog focus restoration, and accessibility UIA assertions.
 - Added structured diagnostic records, multi-cycle hot reload/lifecycle soak tests, resource trend reporting, and Windows source/package CI.
+- Added validated atomic JSON persistence with corrupt-file recovery for dashboard and generated app state.
 
 ## 1.0.0
 

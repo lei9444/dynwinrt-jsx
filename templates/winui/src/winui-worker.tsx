@@ -25,7 +25,7 @@ import {
   TextBlock,
   TitleBarTheme,
   Window,
-} from '../.winapp/bindings/index.js'
+} from '#winapp/bindings'
 import { createAppModel, type AppModel, type AppState } from './app-model'
 import type { AppContext } from './app'
 
@@ -66,6 +66,7 @@ const {
   workerData: {
     statePort: StatePort
     hotStatePath: string | null
+    initialState: AppState
   }
 }
 if (!parentPort) {
@@ -78,7 +79,7 @@ const bridge = createStateBridge<AppState>(
   {
     role: 'client',
     channel: 'app-state',
-    initial: { status: 'starting', count: 0 },
+    initial: workerData.initialState,
   },
 )
 const renderer = createWinUIRenderer({
@@ -124,11 +125,17 @@ Application.start(() => {
     Application.create(() => {
       try {
         const window = new Window()
-        Application.current.requestedTheme = ApplicationTheme.Dark
+        Application.current.requestedTheme =
+          workerData.initialState.darkTheme
+            ? ApplicationTheme.Dark
+            : ApplicationTheme.Light
         window.title = 'dynwinrt-jsx'
         window.systemBackdrop = new MicaBackdrop()
-        window.appWindow.titleBar.preferredTheme = TitleBarTheme.Dark
-        model = createAppModel(bridge)
+        window.appWindow.titleBar.preferredTheme =
+          workerData.initialState.darkTheme
+            ? TitleBarTheme.Dark
+            : TitleBarTheme.Light
+        model = createAppModel(bridge, workerData.initialState)
         const context: AppContext = {
           model,
           renderer,
@@ -208,7 +215,12 @@ Application.start(() => {
         }
         closeSubscription = window.onClosed(() => {
           try {
-            bridge.set({ ...bridge.state.value, status: 'closed' })
+            bridge.set(
+              model?.snapshot('closed') ?? {
+                ...workerData.initialState,
+                status: 'closed',
+              },
+            )
             timer?.stop()
             timerSubscription?.()
             hotSession?.dispose()

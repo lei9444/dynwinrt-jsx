@@ -11,8 +11,13 @@ const {
   createMessageTransport,
   createStateBridge,
   createDiagnosticRecord,
+  createJsonStateStore,
   formatDiagnosticRecord,
 } = require('dynwinrt-jsx')
+const {
+  createDefaultPersistedAppState,
+  isPersistedAppState,
+} = require('./dist/app-state.js')
 
 const architecture = {
   arm64: 'arm64',
@@ -41,16 +46,45 @@ process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH = bootstrapDll
 const { initWinappsdk } = require('@microsoft/dynwinrt')
 initWinappsdk(2, 2)
 
+const statePath =
+  process.env.DYNWINRT_JSX_STATE_PATH ??
+  path.join(
+    process.env.LOCALAPPDATA ?? os.homedir(),
+    'dynwinrt-jsx',
+    path.basename(__dirname),
+    'state.json',
+  )
+const stateStore = createJsonStateStore({
+  path: statePath,
+  defaultState: createDefaultPersistedAppState,
+  validate: isPersistedAppState,
+})
+const loadedState = stateStore.load()
+const initialState = {
+  ...loadedState.state,
+  status: 'starting',
+  persistenceError: loadedState.error,
+}
+if (loadedState.error) {
+  console.warn(formatDiagnosticRecord(createDiagnosticRecord(
+    'app-host',
+    'state.recovered',
+    {
+      path: statePath,
+      error: loadedState.error,
+      corruptPath: loadedState.corruptPath,
+    },
+    'warning',
+  )))
+}
+
 const { port1, port2 } = new MessageChannel()
 const bridge = createStateBridge(
   createMessageTransport(port1),
   {
     role: 'host',
     channel: 'app-state',
-    initial: {
-      status: 'starting',
-      count: 0,
-    },
+    initial: initialState,
   },
 )
 const hotEnabled = process.env.DYNWINRT_JSX_HOT === '1'
@@ -70,6 +104,7 @@ const worker = new Worker(
     workerData: {
       statePort: port2,
       hotStatePath: hotEnabled ? hotStatePath : null,
+      initialState,
     },
     transferList: [port2],
   },
@@ -120,6 +155,7 @@ if (hotEnabled) {
 }
 
 let announcedReady = false
+let persistedFingerprint = JSON.stringify(loadedState.state)
 bridge.state.subscribe((state) => {
   if (state.status === 'running' && !announcedReady) {
     announcedReady = true
@@ -127,7 +163,43 @@ bridge.state.subscribe((state) => {
     console.log(formatDiagnosticRecord(createDiagnosticRecord(
       'app-host',
       'application.ready',
-      { count: state.count },
+      {
+        count: state.count,
+        statePath,
+      },
+    )))
+  }
+  const persistedState = {
+    version: 1,
+    count: state.count,
+    darkTheme: state.darkTheme,
+    updatedAt: state.updatedAt,
+  }
+  const fingerprint = JSON.stringify(persistedState)
+  if (fingerprint === persistedFingerprint) {
+    return
+  }
+  try {
+    stateStore.save(persistedState)
+    persistedFingerprint = fingerprint
+    console.log(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-host',
+      'state.saved',
+      {
+        path: statePath,
+        count: persistedState.count,
+        updatedAt: persistedState.updatedAt,
+      },
+    )))
+  } catch (error) {
+    console.error(formatDiagnosticRecord(createDiagnosticRecord(
+      'app-host',
+      'state.save-error',
+      {
+        path: statePath,
+        message: error instanceof Error ? error.stack ?? error.message : String(error),
+      },
+      'error',
     )))
   }
 })

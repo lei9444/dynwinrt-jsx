@@ -12,6 +12,7 @@ import {
   createControls,
   createFocusTarget,
   createGridControl,
+  createJsonStateStore,
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
@@ -161,6 +162,19 @@ createNavigationItem(
   },
 )
 const navFocus = createFocusTarget<TypeNavigationItem>(3)
+const stateStore = createJsonStateStore({
+  path: 'state.json',
+  defaultState: () => ({ version: 1 as const, count: 0 }),
+  validate(value): value is { version: 1; count: number } {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      (value as { version?: unknown }).version === 1 &&
+      typeof (value as { count?: unknown }).count === 'number'
+    )
+  },
+})
+stateStore.save({ version: 1, count: 1 })
 
 const count = signal(0)
 const enabled = signal(true)

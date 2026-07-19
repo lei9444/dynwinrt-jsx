@@ -1,4 +1,5 @@
 import {
+  batch,
   color,
   computed,
   createRoot,
@@ -10,26 +11,24 @@ import {
 } from 'dynwinrt-jsx'
 import {
   SolidColorBrush,
-} from '../.winapp/bindings/index.js'
+} from '#winapp/bindings'
+import {
+  type DashboardState,
+  type DashboardTask,
+  type PersistedDashboardState,
+} from './dashboard-state'
+
+export type {
+  DashboardState,
+  DashboardTask,
+  PersistedDashboardState,
+} from './dashboard-state'
 
 export type DashboardRoute =
   | 'dashboard'
   | 'tasks'
   | 'diagnostics'
   | 'settings'
-
-export interface DashboardTask {
-  readonly id: number
-  readonly title: string
-  readonly detail: string
-  readonly completed: boolean
-}
-
-export interface DashboardState {
-  readonly status: 'starting' | 'running' | 'closed'
-  readonly taskCount: number
-  readonly completedCount: number
-}
 
 export interface DashboardBridge {
   set(value: DashboardState): void
@@ -50,6 +49,8 @@ export interface DashboardModel {
   readonly focusMode: Signal<boolean>
   readonly tasks: Signal<DashboardTask[]>
   readonly nextTaskId: Signal<number>
+  readonly updatedAt: Signal<string | null>
+  readonly persistenceError: Signal<string | null>
   readonly completedCount: ReturnType<typeof computed<number>>
   readonly completion: ReturnType<typeof computed<number>>
   readonly taskSummary: ReturnType<typeof computed<string>>
@@ -62,6 +63,8 @@ export interface DashboardModel {
   updateTask(id: number, completed: boolean): void
   removeTask(id: number): void
   addTask(title: string): void
+  setDarkTheme(value: boolean): void
+  snapshot(status?: DashboardState['status']): DashboardState
   dispose(): void
 }
 
@@ -81,33 +84,17 @@ const brush = (r: number, g: number, b: number, a = 255) =>
 
 export function createDashboardModel(
   bridge: DashboardBridge,
+  initialState: DashboardState,
 ): DashboardModel {
   return createRoot((dispose: Cleanup) => {
     const route = signal<DashboardRoute>('dashboard')
-    const status = signal<DashboardState['status']>('starting')
-    const darkTheme = signal(true)
+    const status = signal<DashboardState['status']>(initialState.status)
+    const darkTheme = signal(initialState.darkTheme)
     const focusMode = signal(false)
-    const nextTaskId = signal(4)
-    const tasks = signal<DashboardTask[]>([
-      {
-        id: 1,
-        title: 'Finalize JSX renderer',
-        detail: 'Native children, events, refs, and disposal',
-        completed: true,
-      },
-      {
-        id: 2,
-        title: 'Exercise real WinUI bindings',
-        detail: 'Run the TSX dashboard through dynwinrt',
-        completed: false,
-      },
-      {
-        id: 3,
-        title: 'Build the pilot application shell',
-        detail: 'Navigation, dialogs, diagnostics, and hot reload',
-        completed: false,
-      },
-    ])
+    const nextTaskId = signal(initialState.nextTaskId)
+    const tasks = signal<DashboardTask[]>([...initialState.tasks])
+    const updatedAt = signal(initialState.updatedAt)
+    const persistenceError = signal(initialState.persistenceError)
     const completedCount = computed(
       () => tasks.value.filter((task) => task.completed).length,
     )
@@ -136,13 +123,25 @@ export function createDashboardModel(
       white: brush(255, 255, 255),
     }
 
-    effect(() => {
-      bridge.set({
-        status: status.value,
-        taskCount: tasks.value.length,
-        completedCount: completedCount.value,
-      })
+    const snapshot = (
+      nextStatus = status.value,
+    ): DashboardState => ({
+        version: 1,
+        status: nextStatus,
+        tasks: tasks.value,
+        nextTaskId: nextTaskId.value,
+        darkTheme: darkTheme.value,
+        updatedAt: updatedAt.value,
+        persistenceError: persistenceError.value,
     })
+    effect(() => {
+      bridge.set(snapshot())
+    })
+
+    const markChanged = () => {
+      updatedAt.value = new Date().toISOString()
+      persistenceError.value = null
+    }
 
     return {
       status,
@@ -151,6 +150,8 @@ export function createDashboardModel(
       focusMode,
       tasks,
       nextTaskId,
+      updatedAt,
+      persistenceError,
       completedCount,
       completion,
       taskSummary,
@@ -161,29 +162,48 @@ export function createDashboardModel(
       diagnostics,
       colors,
       updateTask(id, completed) {
-        tasks.value = tasks.value.map((task) =>
-          task.id === id ? { ...task, completed } : task,
-        )
+        batch(() => {
+          tasks.value = tasks.value.map((task) =>
+            task.id === id ? { ...task, completed } : task,
+          )
+          markChanged()
+        })
       },
       removeTask(id) {
-        tasks.value = tasks.value.filter((task) => task.id !== id)
+        batch(() => {
+          tasks.value = tasks.value.filter((task) => task.id !== id)
+          markChanged()
+        })
       },
       addTask(title) {
         const trimmed = title.trim()
         if (!trimmed) {
           return
         }
-        tasks.value = [
-          ...tasks.value,
-          {
-            id: nextTaskId.value,
-            title: trimmed,
-            detail: 'Added from the native WinUI text box',
-            completed: false,
-          },
-        ]
-        nextTaskId.value += 1
+        batch(() => {
+          tasks.value = [
+            ...tasks.value,
+            {
+              id: nextTaskId.value,
+              title: trimmed,
+              detail: 'Added from the native WinUI text box',
+              completed: false,
+            },
+          ]
+          nextTaskId.value += 1
+          markChanged()
+        })
       },
+      setDarkTheme(value) {
+        if (darkTheme.value === value) {
+          return
+        }
+        batch(() => {
+          darkTheme.value = value
+          markChanged()
+        })
+      },
+      snapshot,
       dispose,
     }
   })

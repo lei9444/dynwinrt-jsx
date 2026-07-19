@@ -57,6 +57,12 @@ The generated app keeps its Window, Worker, and model state alive while
 reloading `src/app.tsx`. Changes to the Worker, model, generated bindings, or
 native runtime require a restart.
 
+The main process also persists model state atomically. By default generated apps
+write under `%LOCALAPPDATA%\dynwinrt-jsx\<project>\state.json`; override the
+location with `DYNWINRT_JSX_STATE_PATH`. Invalid JSON or schema data is renamed
+to a timestamped `.corrupt-*` file, the default state is restored, and the
+recovery error remains visible in Diagnostics.
+
 For sibling source repositories under one work directory:
 
 ```powershell
@@ -386,6 +392,21 @@ Renderer diagnostics expose active native/component counts and cumulative keyed-
 `createDiagnosticRecord()` and `formatDiagnosticRecord()` produce structured
 JSON events for startup, Worker failures, hot reload, and disposal evidence.
 
+`createJsonStateStore()` provides validated atomic JSON load/save behavior:
+
+```ts
+const store = createJsonStateStore({
+  path: statePath,
+  defaultState: () => ({ version: 1, count: 0 }),
+  validate: isAppState,
+})
+const loaded = store.load()
+store.save({ version: 1, count: 1 })
+```
+
+Recovery returns the default state together with an explicit error and the path
+of the preserved corrupt file.
+
 ## Native child shapes
 
 | Native shape | JSX behavior |
@@ -439,6 +460,7 @@ tests require an interactive desktop and sibling dynwinrt/winappCli artifacts:
 ```powershell
 .\scripts\smoke-dashboard-ui.ps1
 .\scripts\smoke-dashboard-hot-reload.ps1 -ReloadCycles 3
+.\scripts\smoke-dashboard-persistence.ps1
 .\scripts\repeat-dashboard-smoke.ps1 -Cycles 5 -UseExistingWinAppCli
 ```
 

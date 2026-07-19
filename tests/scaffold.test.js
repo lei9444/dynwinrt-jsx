@@ -49,8 +49,14 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   )
   assert.ok(fs.existsSync(path.join(target, 'src', 'app.tsx')))
   assert.ok(fs.existsSync(path.join(target, 'src', 'app-model.ts')))
+  assert.ok(fs.existsSync(path.join(target, 'src', 'app-state.ts')))
   assert.ok(fs.existsSync(path.join(target, 'dev.js')))
   assert.equal(manifest.scripts.dev, 'node dev.js')
+  assert.deepEqual(manifest.imports['#winapp/bindings'], {
+    types: './.winapp/bindings/index.d.ts',
+    require: './.winapp/bindings/index.js',
+    default: './.winapp/bindings/index.js',
+  })
   const controls = manifest.winapp.jsBindings.additionalWinmds
     .find((entry) =>
       entry.namespace === 'Microsoft.UI.Xaml.Controls'

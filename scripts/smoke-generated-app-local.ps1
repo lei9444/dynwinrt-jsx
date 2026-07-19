@@ -380,13 +380,20 @@ try {
         ConvertFrom-Json
     $result.winappPackages = Read-WinAppPackages (Join-Path $target "winapp.yaml")
 
-    $process = Start-Process `
-        -FilePath $NodePath `
-        -ArgumentList ".\main.js" `
-        -WorkingDirectory $target `
-        -RedirectStandardOutput $stdoutPath `
-        -RedirectStandardError $stderrPath `
-        -PassThru
+    $oldStatePath = $env:DYNWINRT_JSX_STATE_PATH
+    try {
+        $env:DYNWINRT_JSX_STATE_PATH = Join-Path $runDirectory "state.json"
+        $process = Start-Process `
+            -FilePath $NodePath `
+            -ArgumentList ".\main.js" `
+            -WorkingDirectory $target `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath `
+            -PassThru
+    }
+    finally {
+        $env:DYNWINRT_JSX_STATE_PATH = $oldStatePath
+    }
     Wait-Ready $process $stdoutPath $stderrPath
 
     $status = Invoke-WinApp @(

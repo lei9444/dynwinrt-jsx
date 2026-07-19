@@ -44,9 +44,11 @@ jobs:
             'package/dist/navigation.js',
             'package/dist/dialog.js',
             'package/dist/hot.js',
+            'package/dist/persistence.js',
             'package/bin/create.js',
             'package/templates/winui/dev.js',
             'package/templates/winui/src/app.tsx',
+            'package/templates/winui/src/app-state.ts',
             'package/templates/winui/src/winui-worker.tsx',
             'package/README.md',
             'package/LICENSE'

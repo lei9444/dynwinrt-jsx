@@ -15,6 +15,13 @@
   "engines": {
     "node": ">=20"
   },
+  "imports": {
+    "#winapp/bindings": {
+      "types": "./.winapp/bindings/index.d.ts",
+      "require": "./.winapp/bindings/index.js",
+      "default": "./.winapp/bindings/index.js"
+    }
+  },
   "dependencies": {
     "@microsoft/dynwinrt": "0.1.0",
     "dynwinrt-jsx": "1.0.0"

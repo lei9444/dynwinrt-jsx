@@ -26,7 +26,7 @@ import {
   TextBlock,
   TitleBarTheme,
   Window,
-} from '../.winapp/bindings/index.js'
+} from '#winapp/bindings'
 import {
   createDashboardModel,
   type DashboardModel,
@@ -81,6 +81,7 @@ const {
   workerData: {
     statePort: StatePort
     hotStatePath: string | null
+    initialState: DashboardState
   }
 }
 
@@ -89,19 +90,17 @@ if (!parentPort) {
 }
 
 roInitialize(0)
+parentPort.postMessage({ type: 'startup-stage', stage: 'ro-initialized' })
 
 const stateBridge = createStateBridge<DashboardState>(
   createMessageTransport(workerData.statePort),
   {
     role: 'client',
     channel: 'dashboard-state',
-    initial: {
-      status: 'starting',
-      taskCount: 0,
-      completedCount: 0,
-    },
+    initial: workerData.initialState,
   },
 )
+parentPort.postMessage({ type: 'startup-stage', stage: 'bridge-created' })
 
 const renderer = createWinUIRenderer({
   Application,
@@ -153,16 +152,35 @@ let reloadTimer: DispatcherQueueTimer | undefined
 let reloadTimerSubscription: (() => void) | undefined
 let exitCode = 1
 
+parentPort.postMessage({ type: 'startup-stage', stage: 'application-starting' })
 Application.start(() => {
   try {
     Application.create(() => {
       try {
         const window = new Window()
-        Application.current.requestedTheme = ApplicationTheme.Dark
+        Application.current.requestedTheme =
+          workerData.initialState.darkTheme
+            ? ApplicationTheme.Dark
+            : ApplicationTheme.Light
         window.title = 'DynWinRT JSX Workspace'
         window.systemBackdrop = new MicaBackdrop()
-        window.appWindow.titleBar.preferredTheme = TitleBarTheme.Dark
-        model = createDashboardModel(stateBridge)
+        window.appWindow.titleBar.preferredTheme =
+          workerData.initialState.darkTheme
+            ? TitleBarTheme.Dark
+            : TitleBarTheme.Light
+        model = createDashboardModel(
+          stateBridge,
+          workerData.initialState,
+        )
+        parentPort.postMessage({
+          type: 'state-initialized',
+          value: {
+            taskCount: model.tasks.value.length,
+            darkTheme: model.darkTheme.value,
+            updatedAt: model.updatedAt.value,
+            persistenceError: model.persistenceError.value,
+          },
+        })
         const context: DashboardAppContext = {
           model,
           renderer,
@@ -276,10 +294,12 @@ Application.start(() => {
 
         closeSubscription = window.onClosed(() => {
           try {
-            stateBridge.set({
-              ...stateBridge.state.value,
-              status: 'closed',
-            })
+            stateBridge.set(
+              model?.snapshot('closed') ?? {
+                ...workerData.initialState,
+                status: 'closed',
+              },
+            )
             reloadTimer?.stop()
             reloadTimerSubscription?.()
             reloadTimerSubscription = undefined

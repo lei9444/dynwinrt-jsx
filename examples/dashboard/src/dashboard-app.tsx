@@ -55,7 +55,7 @@ import {
   ToggleSwitch,
   VerticalAlignment,
   Window,
-} from '../.winapp/bindings/index.js'
+} from '#winapp/bindings'
 import type {
   DashboardModel,
   DashboardRoute,
@@ -81,7 +81,7 @@ const LayoutGrid = createGridControl({
 })
 const AppNavigation = createNavigationViewControl<
   NavigationView,
-  InstanceType<typeof import('../.winapp/bindings/NavigationViewItem.js').NavigationViewItem>
+  NavigationViewItem
 >({
   NavigationView,
 })
@@ -293,6 +293,16 @@ function DashboardPage(context: DashboardAppContext) {
             <UI.TextBlock
               text={computed(() =>
                 formatRendererDiagnostics(context.model.diagnostics.value),
+              )}
+            />
+            <UI.TextBlock
+              automationId="PersistenceStatus"
+              text={computed(() =>
+                context.model.persistenceError.value
+                  ? `State recovery error: ${context.model.persistenceError.value}`
+                  : context.model.updatedAt.value
+                    ? `State changed ${context.model.updatedAt.value}`
+                    : 'State has not changed in this session.',
               )}
             />
             <UI.TextBlock
@@ -547,7 +557,7 @@ function SettingsPage(context: DashboardAppContext) {
                 return
               }
               batch(() => {
-                context.model.darkTheme.value = isOn
+                context.model.setDarkTheme(isOn)
                 Application.current.requestedTheme =
                   isOn ? ApplicationTheme.Dark : ApplicationTheme.Light
                 context.window.appWindow.titleBar.preferredTheme =

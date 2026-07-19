@@ -87,6 +87,13 @@ export {
 } from './diagnostics'
 
 export {
+  createJsonStateStore,
+  type JsonStateLoadResult,
+  type JsonStateStore,
+  type JsonStateStoreOptions,
+} from './persistence'
+
+export {
   createRenderer,
   Renderer,
   type NativeCollection,

@@ -96,14 +96,17 @@ function Write-HotMessage(
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $stdoutPath = Join-Path $OutputDirectory "dashboard.stdout.log"
 $stderrPath = Join-Path $OutputDirectory "dashboard.stderr.log"
+$statePath = Join-Path $OutputDirectory "state.json"
 $pidPath = Join-Path $dashboardRoot ".winapp\dashboard.pid"
-Remove-Item $stdoutPath, $stderrPath, $pidPath -Force -ErrorAction SilentlyContinue
+Remove-Item $stdoutPath, $stderrPath, $statePath, $pidPath -Force -ErrorAction SilentlyContinue
 
 $oldHot = $env:DYNWINRT_JSX_HOT
 $oldSkip = $env:DYNWINRT_JSX_HOT_SKIP_BASELINE
+$oldStatePath = $env:DYNWINRT_JSX_STATE_PATH
 $process = $null
 try {
     $env:DYNWINRT_JSX_HOT = "1"
+    $env:DYNWINRT_JSX_STATE_PATH = $statePath
     Remove-Item Env:\DYNWINRT_JSX_HOT_SKIP_BASELINE -ErrorAction SilentlyContinue
     $process = Start-Process `
         -FilePath $NodePath `
@@ -117,6 +120,7 @@ try {
 finally {
     $env:DYNWINRT_JSX_HOT = $oldHot
     $env:DYNWINRT_JSX_HOT_SKIP_BASELINE = $oldSkip
+    $env:DYNWINRT_JSX_STATE_PATH = $oldStatePath
 }
 
 try {

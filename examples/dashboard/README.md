@@ -46,6 +46,8 @@ from sibling source repositories without npm:
 
 .\scripts\smoke-dashboard-hot-reload.ps1
 
+.\scripts\smoke-dashboard-persistence.ps1
+
 .\scripts\repeat-dashboard-smoke.ps1 `
   -Cycles 5 `
   -SkipRestore `
@@ -63,5 +65,10 @@ The repeated lifecycle smoke prepares once, launches a fresh process for each
 cycle, and records exit codes, renderer counts, process memory, handles, threads,
 logs, UI inspection, and screenshots in a timestamped
 `.winapp\lifecycle-smoke\run-*` directory.
+
+The dashboard main process persists tasks, IDs, theme, and update time to
+`%LOCALAPPDATA%\dynwinrt-jsx\dashboard-state.json`. Set
+`DYNWINRT_JSX_STATE_PATH` to isolate development or test state. Invalid state is
+renamed to `.corrupt-*`, restored to defaults, and reported on the dashboard.
 
 The Windows App SDK is bootstrapped in `main.js`. A revisioned state bridge connects the main thread to the UI Worker. `src\winui-worker.tsx` owns the UI STA and stable model, while `src\dashboard-app.tsx` is the reloadable application module.
