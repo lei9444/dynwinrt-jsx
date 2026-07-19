@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const {
   MessageChannel,
@@ -54,15 +55,75 @@ const stateBridge = createStateBridge(
     },
   },
 )
+const hotEnabled = process.env.DYNWINRT_JSX_HOT === '1'
+const hotStatePath = path.join(
+  os.tmpdir(),
+  `dynwinrt-jsx-hot-${process.pid}.json`,
+)
+if (hotEnabled) {
+  fs.writeFileSync(
+    hotStatePath,
+    JSON.stringify({ type: 'ready', version: 0 }),
+  )
+}
 const worker = new Worker(
   path.join(__dirname, 'dist', 'winui-worker.js'),
   {
     workerData: {
       statePort: port2,
+      hotStatePath: hotEnabled ? hotStatePath : null,
     },
     transferList: [port2],
   },
 )
+const hotWatchedFiles = []
+let hotVersion = 0
+
+function postHotMessage(type, value = {}) {
+  hotVersion += 1
+  const message = {
+    type,
+    version: hotVersion,
+    ...value,
+  }
+  const temporaryPath = `${hotStatePath}.tmp`
+  fs.writeFileSync(temporaryPath, JSON.stringify(message))
+  fs.renameSync(temporaryPath, hotStatePath)
+}
+
+if (hotEnabled) {
+  const distDirectory = path.join(__dirname, 'dist')
+  const watchHotFile = (filename, callback) => {
+    const filePath = path.join(distDirectory, filename)
+    hotWatchedFiles.push(filePath)
+    fs.watchFile(filePath, { interval: 100 }, (current, previous) => {
+      if (current.mtimeMs === previous.mtimeMs) {
+        return
+      }
+      callback(filename)
+    })
+  }
+  watchHotFile('dashboard-app.js', (filename) => {
+    postHotMessage('hot-reload', {
+      changedFiles: [filename],
+    })
+  })
+  for (const boundary of ['winui-worker.js', 'dashboard-model.js']) {
+    watchHotFile(boundary, (filename) => {
+      console.log(
+        `Hot reload boundary changed (${filename}); restart the Worker.`,
+      )
+    })
+  }
+  process.on('message', (message) => {
+    if (message?.type === 'hot-build-error') {
+      postHotMessage('hot-build-error', {
+        message: message.message,
+      })
+    }
+  })
+  console.log('dynwinrt-jsx dashboard hot reload is active.')
+}
 
 let announcedReady = false
 stateBridge.state.subscribe((state) => {
@@ -80,6 +141,13 @@ worker.on('message', (message) => {
     console.log(
       `dynwinrt-jsx renderer disposed cleanly: ${JSON.stringify(message.value)}`,
     )
+  } else if (message?.type === 'hot-reload') {
+    console.log(
+      `dynwinrt-jsx hot reload ${message.status} (version ${message.version}).`,
+    )
+    if (message.message) {
+      console.error(message.message)
+    }
   }
 })
 
@@ -89,7 +157,13 @@ worker.on('error', (error) => {
 })
 
 worker.on('exit', (code) => {
+  for (const filePath of hotWatchedFiles) {
+    fs.unwatchFile(filePath)
+  }
   stateBridge.dispose()
   port1.close()
+  if (hotEnabled) {
+    fs.rmSync(hotStatePath, { force: true })
+  }
   process.exit(code)
 })

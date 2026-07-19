@@ -9,6 +9,7 @@
     "setup": "winapp restore",
     "generate": "winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
+    "dev": "node dev.js",
     "start": "npm run build && node main.js"
   },
   "engines": {
@@ -46,12 +47,25 @@
           ]
         },
         {
+          "namespace": "Microsoft.UI.Xaml.Automation",
+          "classes": [
+            "AutomationProperties"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml.Controls",
           "classes": [
             "Button",
+            "ContentDialog",
+            "FontIcon",
             "Grid",
+            "NavigationView",
+            "NavigationViewItem",
+            "NavigationViewItemHeader",
+            "NavigationViewItemSeparator",
             "ScrollViewer",
             "StackPanel",
+            "SymbolIcon",
             "TextBlock",
             "ToggleSwitch"
           ]

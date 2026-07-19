@@ -1,171 +1,121 @@
 import {
-  ErrorBoundary,
-  batch,
-  computed,
+  assertRendererIdle,
   createControls,
+  createHotReloadSession,
   createMessageTransport,
   createStateBridge,
   createWinUIRenderer,
-  effect,
-  resource,
-  signal,
   thickness,
-  type RefObject,
+  type Child,
+  type HotReloadSession,
   type RenderHandle,
 } from 'dynwinrt-jsx'
 import { roInitialize } from '@microsoft/dynwinrt'
 import {
   Application,
   ApplicationTheme,
-  Button,
-  ElementTheme,
+  AutomationProperties,
+  DispatcherQueueTimer,
   Grid,
   IMap_Object_Object,
   IVector_UIElement,
   MicaBackdrop,
   PropertyValue,
-  ScrollViewer,
   StackPanel,
   TextBlock,
   TitleBarTheme,
-  ToggleSwitch,
   Window,
 } from '../.winapp/bindings/index.js'
+import { createAppModel, type AppModel, type AppState } from './app-model'
+import type { AppContext } from './app'
 
 interface ParentPort {
   postMessage(message: unknown): void
 }
-
 interface StatePort {
   postMessage(message: unknown): void
   on(type: 'message', listener: (message: unknown) => void): unknown
   off(type: 'message', listener: (message: unknown) => void): unknown
   close(): void
 }
-
-declare function require(
-  id: 'node:worker_threads',
-): {
-  parentPort: ParentPort | null
-  workerData: { statePort: StatePort }
+interface NodeRequire {
+  (id: string): unknown
+  readonly cache: Record<string, unknown>
+  resolve(id: string): string
+}
+interface FileSystem {
+  existsSync(path: string): boolean
+  readFileSync(path: string, encoding: 'utf8'): string
+}
+interface HotMessage {
+  readonly type?: string
+  readonly version?: number
+  readonly message?: string
+}
+interface AppModule {
+  renderApp(context: AppContext): Child
 }
 
-declare const process: {
-  exit(code?: number): never
-}
-
+declare const require: NodeRequire
+declare const process: { exit(code?: number): never }
 const {
   parentPort,
   workerData,
-} = require('node:worker_threads')
+} = require('node:worker_threads') as {
+  parentPort: ParentPort | null
+  workerData: {
+    statePort: StatePort
+    hotStatePath: string | null
+  }
+}
 if (!parentPort) {
   throw new Error('The WinUI entry point must run in a Worker.')
 }
-
 roInitialize(0)
 
-const bridge = createStateBridge(
+const bridge = createStateBridge<AppState>(
   createMessageTransport(workerData.statePort),
   {
     role: 'client',
     channel: 'app-state',
-    initial: {
-      status: 'starting',
-      count: 0,
-    },
+    initial: { status: 'starting', count: 0 },
   },
 )
-const UI = createControls({
-  Button,
-  ScrollViewer,
-  StackPanel,
-  TextBlock,
-  ToggleSwitch,
-})
 const renderer = createWinUIRenderer({
   Application,
+  AutomationProperties,
   Grid,
   IMap_Object_Object,
   IVector_UIElement,
   PropertyValue,
   TextBlock,
 })
-
-type StackPanelInstance = InstanceType<typeof StackPanel>
-type ToggleSwitchInstance = InstanceType<typeof ToggleSwitch>
-
-function App(props: { window: Window }) {
-  const count = signal(0)
-  const darkTheme = signal(true)
-  const rootRef: RefObject<StackPanelInstance> = { current: null }
-  const themeRef: RefObject<ToggleSwitchInstance> = { current: null }
-  const requestedTheme = computed(() =>
-    darkTheme.value ? ElementTheme.Dark : ElementTheme.Light,
-  )
-
-  effect(() => {
-    bridge.set({
-      status: 'running',
-      count: count.value,
-    })
-  })
-
-  return (
-    <UI.ScrollViewer>
-      <UI.StackPanel
-        ref={rootRef}
-        requestedTheme={requestedTheme}
-        padding={thickness(32)}
-        spacing={16}
-        onLoaded={() => {
-          const scale = rootRef.current?.xamlRoot?.rasterizationScale ?? 1
-          props.window.appWindow.resize({
-            width: Math.round(640 * scale),
-            height: Math.round(420 * scale),
-          })
-        }}
-      >
-        <UI.TextBlock
-          text="dynwinrt-jsx"
-          fontSize={30}
-          fontWeight={{ weight: 700 }}
-        />
-        <UI.TextBlock
-          text={computed(() => `Native count: ${count.value}`)}
-          fontSize={20}
-        />
-        <UI.Button
-          style={resource('AccentButtonStyle')}
-          onClick={() => {
-            count.value += 1
-          }}
-        >
-          Increment
-        </UI.Button>
-        <UI.ToggleSwitch
-          ref={themeRef}
-          header="Dark theme"
-          isOn={darkTheme}
-          onToggled={() => {
-            const isOn = themeRef.current?.isOn ?? darkTheme.value
-            if (isOn === darkTheme.value) {
-              return
-            }
-            batch(() => {
-              darkTheme.value = isOn
-              Application.current.requestedTheme =
-                isOn ? ApplicationTheme.Dark : ApplicationTheme.Light
-              props.window.appWindow.titleBar.preferredTheme =
-                isOn ? TitleBarTheme.Dark : TitleBarTheme.Light
-            })
-          }}
-        />
-      </UI.StackPanel>
-    </UI.ScrollViewer>
-  )
+const FallbackUI = createControls({ StackPanel, TextBlock })
+const moduleId = './app.js'
+const modulePath = require.resolve(moduleId)
+const fs = require('node:fs') as FileSystem
+const loadApp = (invalidate: boolean): AppModule => {
+  if (invalidate) {
+    delete require.cache[modulePath]
+  }
+  return require(moduleId) as AppModule
 }
+const errorTree = (error: unknown): Child => (
+  <FallbackUI.StackPanel padding={thickness(24)} spacing={12}>
+    <FallbackUI.TextBlock text="Hot reload failed" fontSize={24} />
+    <FallbackUI.TextBlock
+      automationId="HotReloadError"
+      text={error instanceof Error ? error.stack ?? error.message : String(error)}
+      textWrapping={1}
+    />
+  </FallbackUI.StackPanel>
+)
 
+let model: AppModel | undefined
 let renderHandle: RenderHandle | undefined
+let hotSession: HotReloadSession | undefined
+let timer: DispatcherQueueTimer | undefined
+let timerSubscription: (() => void) | undefined
 let closeSubscription: (() => void) | undefined
 let exitCode = 1
 
@@ -178,42 +128,99 @@ Application.start(() => {
         window.title = 'dynwinrt-jsx'
         window.systemBackdrop = new MicaBackdrop()
         window.appWindow.titleBar.preferredTheme = TitleBarTheme.Dark
-        renderHandle = renderer.render(
-          <ErrorBoundary
-            fallback={(error) => (
-              <UI.TextBlock
-                text={`App failed: ${String(error)}`}
-                margin={thickness(24)}
-              />
-            )}
-          >
-            <App window={window} />
-          </ErrorBoundary>,
+        model = createAppModel(bridge)
+        const context: AppContext = {
+          model,
+          renderer,
           window,
-        )
+          refreshDiagnostics() {
+            if (model) {
+              model.diagnostics.value = renderer.diagnostics
+            }
+          },
+        }
+        let tree: Child
+        try {
+          tree = loadApp(false).renderApp(context)
+        } catch (error) {
+          tree = errorTree(error)
+        }
+        renderHandle = renderer.render(tree, window)
+        hotSession = createHotReloadSession(renderHandle, {
+          fallback: errorTree,
+          onReload(version) {
+            if (!model) return
+            model.hotStatus.value = 'ready'
+            model.hotVersion.value = version
+            model.lastError.value = null
+            model.diagnostics.value = renderer.diagnostics
+            parentPort.postMessage({
+              type: 'hot-reload',
+              status: 'applied',
+              version,
+            })
+          },
+          onError(error, version) {
+            if (!model) return
+            model.hotStatus.value = 'error'
+            model.hotVersion.value = version
+            model.lastError.value =
+              error instanceof Error
+                ? error.stack ?? error.message
+                : String(error)
+            parentPort.postMessage({
+              type: 'hot-reload',
+              status: 'error',
+              version,
+              message: model.lastError.value,
+            })
+          },
+        })
+        if (workerData.hotStatePath) {
+          timer = window.dispatcherQueue.createTimer()
+          timer.interval = { duration: 2_500_000n }
+          timerSubscription = timer.onTick(() => {
+            if (
+              !workerData.hotStatePath ||
+              !fs.existsSync(workerData.hotStatePath)
+            ) {
+              return
+            }
+            const message = JSON.parse(
+              fs.readFileSync(workerData.hotStatePath, 'utf8'),
+            ) as HotMessage
+            const version = message.version ?? 0
+            if (!hotSession || !model || version <= hotSession.version) {
+              return
+            }
+            model.hotStatus.value =
+              message.type === 'hot-build-error'
+                ? 'build error'
+                : 'reloading'
+            void hotSession.reload(version, () => {
+              if (message.type === 'hot-build-error') {
+                throw new Error(message.message ?? 'TypeScript build failed.')
+              }
+              return loadApp(true).renderApp(context)
+            })
+          })
+          timer.start()
+        }
         closeSubscription = window.onClosed(() => {
           try {
-            bridge.set({
-              ...bridge.state.value,
-              status: 'closed',
-            })
+            bridge.set({ ...bridge.state.value, status: 'closed' })
+            timer?.stop()
+            timerSubscription?.()
+            hotSession?.dispose()
             renderHandle?.dispose()
-            renderHandle = undefined
+            model?.dispose()
             const diagnostics = renderer.diagnostics
-            if (
-              diagnostics.activeNative !== 0 ||
-              diagnostics.activeComponents !== 0
-            ) {
-              throw new Error(
-                `Renderer disposal left active records: ${JSON.stringify(diagnostics)}`,
-              )
-            }
+            assertRendererIdle(diagnostics)
             parentPort.postMessage({
               type: 'diagnostics',
               value: diagnostics,
             })
             closeSubscription?.()
-            closeSubscription = undefined
           } finally {
             Application.current.exit()
           }

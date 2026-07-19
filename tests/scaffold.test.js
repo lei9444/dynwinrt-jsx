@@ -47,6 +47,30 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.ok(
     fs.existsSync(path.join(target, 'src', 'winui-worker.tsx')),
   )
+  assert.ok(fs.existsSync(path.join(target, 'src', 'app.tsx')))
+  assert.ok(fs.existsSync(path.join(target, 'src', 'app-model.ts')))
+  assert.ok(fs.existsSync(path.join(target, 'dev.js')))
+  assert.equal(manifest.scripts.dev, 'node dev.js')
+  const controls = manifest.winapp.jsBindings.additionalWinmds
+    .find((entry) =>
+      entry.namespace === 'Microsoft.UI.Xaml.Controls'
+    )
+    .classes
+  for (const control of [
+    'ContentDialog',
+    'NavigationView',
+    'NavigationViewItem',
+    'SymbolIcon',
+  ]) {
+    assert.ok(controls.includes(control))
+  }
+  assert.ok(
+    manifest.winapp.jsBindings.additionalWinmds.some(
+      (entry) =>
+        entry.namespace === 'Microsoft.UI.Xaml.Automation' &&
+        entry.classes.includes('AutomationProperties'),
+    ),
+  )
 })
 
 test('create configures sibling repositories in local mode', (t) => {

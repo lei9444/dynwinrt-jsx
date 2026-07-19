@@ -50,6 +50,38 @@ export {
 } from './grid'
 
 export {
+  createNavigationItem,
+  createNavigationViewControl,
+  type NavigationItemBindings,
+  type NavigationItemOptions,
+  type NavigationViewCollectionProps,
+  type NavigationViewControlBindings,
+} from './navigation'
+
+export {
+  createFontIcon,
+  createSymbolIcon,
+  type FontIconOptions,
+} from './icons'
+
+export {
+  showContentDialog,
+  type ContentDialogLike,
+} from './dialog'
+
+export {
+  createFocusTarget,
+  type Focusable,
+  type FocusTarget,
+} from './focus'
+
+export {
+  assertRendererIdle,
+  formatRendererDiagnostics,
+  hasActiveRendererRecords,
+} from './diagnostics'
+
+export {
   createRenderer,
   Renderer,
   type NativeCollection,
@@ -104,7 +136,10 @@ export {
 } from './bridge'
 
 export {
+  createHotReloadSession,
   createHotRoot,
+  type HotReloadOptions,
+  type HotReloadSession,
   type HotRoot,
 } from './hot'
 

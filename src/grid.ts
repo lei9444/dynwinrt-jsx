@@ -4,6 +4,10 @@ import {
   type NativeConstructor,
 } from './native'
 import type { MaybeSignal } from './reactive'
+import {
+  replaceNativeCollection,
+  requireNativeArray,
+} from './native-collection'
 import type { NativeCollection } from './renderer'
 
 export type WinUIGridUnitType = 0 | 1 | 2
@@ -135,53 +139,6 @@ function normalizeTrack(
   return { size: { ...size }, min, max }
 }
 
-function snapshot(collection: NativeCollection): unknown[] {
-  if (typeof collection.toArray === 'function') {
-    return [...collection.toArray()]
-  }
-  const length = collection.length ?? collection.size ?? 0
-  if (length > 0 && typeof collection.getAt !== 'function') {
-    throw new Error('Grid definition collection cannot be snapshotted.')
-  }
-  return Array.from(
-    { length },
-    (_, index) => collection.getAt?.(index),
-  )
-}
-
-function replaceCollection(
-  collection: NativeCollection,
-  values: readonly unknown[],
-): void {
-  const previous = snapshot(collection)
-  try {
-    collection.clear()
-    for (const value of values) {
-      collection.append(value)
-    }
-  } catch (error) {
-    try {
-      collection.clear()
-      for (const value of previous) {
-        collection.append(value)
-      }
-    } catch (rollbackError) {
-      throw new AggregateError(
-        [error, rollbackError],
-        'Grid definition update and rollback both failed.',
-      )
-    }
-    throw error
-  }
-}
-
-function requireDefinitions(value: unknown, property: string): readonly unknown[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`${property} must be an array.`)
-  }
-  return value
-}
-
 export function createGridControl<
   Grid extends GridInstance,
   RowDefinition extends RowDefinitionInstance,
@@ -199,7 +156,7 @@ export function createGridControl<
     displayName: 'Grid',
     setProperty(instance, property, value) {
       if (property === 'rowDefinitions') {
-        const definitions = requireDefinitions(value, property).map(
+        const definitions = requireNativeArray(value, property).map(
           (definition) => {
             if (definition instanceof bindings.RowDefinition) {
               return definition
@@ -218,12 +175,16 @@ export function createGridControl<
             return row
           },
         )
-        replaceCollection(instance.rowDefinitions, definitions)
+        replaceNativeCollection(
+          instance.rowDefinitions,
+          definitions,
+          'Grid rowDefinitions',
+        )
         return true
       }
 
       if (property === 'columnDefinitions') {
-        const definitions = requireDefinitions(value, property).map(
+        const definitions = requireNativeArray(value, property).map(
           (definition) => {
             if (definition instanceof bindings.ColumnDefinition) {
               return definition
@@ -242,7 +203,11 @@ export function createGridControl<
             return column
           },
         )
-        replaceCollection(instance.columnDefinitions, definitions)
+        replaceNativeCollection(
+          instance.columnDefinitions,
+          definitions,
+          'Grid columnDefinitions',
+        )
         return true
       }
 

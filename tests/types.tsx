@@ -10,7 +10,11 @@ import {
   cornerRadius,
   createContext,
   createControls,
+  createFocusTarget,
   createGridControl,
+  createNavigationItem,
+  createNavigationViewControl,
+  createSymbolIcon,
   gridLength,
   resource,
   signal,
@@ -36,6 +40,36 @@ class TypePanel {
 class TypeGrid extends TypePanel {
   readonly rowDefinitions = new TypeVector()
   readonly columnDefinitions = new TypeVector()
+}
+
+class TypeNavigationView {
+  readonly menuItems = new TypeVector()
+  readonly footerMenuItems = new TypeVector()
+  content: unknown = null
+  selectedItem: unknown = null
+
+  onSelectionChanged(
+    _callback: (
+      sender: TypeNavigationView,
+      args: { selectedItemContainer: TypeNavigationItem },
+    ) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypeNavigationItem {
+  name = ''
+  content: unknown = null
+  icon: TypeSymbolIcon | null = null
+  selectsOnInvoked = true
+  focus(_state: number): boolean {
+    return true
+  }
+}
+
+class TypeSymbolIcon {
+  constructor(readonly symbol: number) {}
 }
 
 class TypeRowDefinition {
@@ -97,6 +131,36 @@ const LayoutGrid = createGridControl({
   RowDefinition: TypeRowDefinition,
   ColumnDefinition: TypeColumnDefinition,
 })
+const Navigation = createNavigationViewControl<
+  TypeNavigationView,
+  TypeNavigationItem
+>({
+  NavigationView: TypeNavigationView,
+})
+const navItem = createNavigationItem(
+  {
+    NavigationViewItem: TypeNavigationItem,
+    TextBlock: TypeTextBlock,
+  },
+  {
+    name: 'dashboard',
+    label: 'Dashboard',
+    icon: createSymbolIcon(TypeSymbolIcon, 1),
+  },
+)
+createNavigationItem(
+  {
+    NavigationViewItem: TypeNavigationItem,
+    TextBlock: TypeTextBlock,
+  },
+  {
+    name: 'invalid',
+    label: 'Invalid',
+    // @ts-expect-error NavigationViewItem icon must retain its native type.
+    icon: 'not-an-icon',
+  },
+)
+const navFocus = createFocusTarget<TypeNavigationItem>(3)
 
 const count = signal(0)
 const enabled = signal(true)
@@ -151,6 +215,18 @@ export const typeCheckedTree = (
     >
       <UI.TextBlock gridRow={1} gridColumn={1} text="Grid child" />
     </LayoutGrid>
+
+    <Navigation
+      menuItems={[navItem]}
+      footerMenuItems={signal<TypeNavigationItem[]>([])}
+      selectedItem={navItem}
+      onSelectionChanged={(_sender, args) => {
+        navFocus.current = args.selectedItemContainer
+        navFocus.focus()
+      }}
+    >
+      <UI.TextBlock text="Navigation content" />
+    </Navigation>
 
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}

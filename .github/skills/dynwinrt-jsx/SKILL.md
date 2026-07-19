@@ -79,6 +79,9 @@ adoption map.
 | Mounting, updates, child adapters, disposal | `src/renderer.ts` |
 | WinUI resources, converters, attached props | `src/winui.ts` |
 | Grid definitions and track helpers | `src/grid.ts` |
+| Native collection transactions | `src/native-collection.ts` |
+| NavigationView and navigation items | `src/navigation.ts` |
+| Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
 | Context | `src/context.ts` |
 | One-way and two-way props | `src/binding.ts` |
@@ -169,6 +172,8 @@ The built-in WinUI layer currently provides:
 
 - Grid row, column, and span attached setters.
 - Typed Grid row and column definitions through `createGridControl()`.
+- NavigationView menu/footer collections through `createNavigationViewControl()`.
+- Scoped ContentDialog rendering, native icon factories, and focus targets.
 - Canvas left and top attached setters.
 - Automation ID and name attached setters when those bindings are supplied.
 - Primitive `content` and `header` conversion to native `TextBlock`.

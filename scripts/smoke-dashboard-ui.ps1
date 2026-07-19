@@ -117,6 +117,26 @@ function Find-UniqueElement(
     return $matches[0]
 }
 
+function Find-UniqueAutomationElement(
+    $Inspection,
+    [string]$AutomationId
+) {
+    $elements = @(
+        $Inspection.windows |
+            ForEach-Object { Get-FlattenedElements $_.elements }
+    )
+    $matches = @(
+        $elements |
+            Where-Object {
+                (Get-ObjectProperty $_ "automationId") -eq $AutomationId
+            }
+    )
+    if ($matches.Count -ne 1) {
+        throw "Expected one element with AutomationId '$AutomationId', found $($matches.Count)."
+    }
+    return $matches[0]
+}
+
 function Wait-ForProcessExit([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
     while ([DateTime]::UtcNow -lt $deadline) {
@@ -180,20 +200,22 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $inspectionPath = Join-Path $OutputDirectory "interactive-elements.json"
 $layoutEvidencePath = Join-Path $OutputDirectory "grid-layout.json"
 $initialScreenshot = Join-Path $OutputDirectory "dashboard-initial.png"
-$focusScreenshot = Join-Path $OutputDirectory "dashboard-focus.png"
 $taskScreenshot = Join-Path $OutputDirectory "dashboard-task-added.png"
+$dialogScreenshot = Join-Path $OutputDirectory "dashboard-dialog.png"
+$settingsScreenshot = Join-Path $OutputDirectory "dashboard-settings.png"
 Remove-Item @(
     $inspectionPath,
     $layoutEvidencePath,
     $initialScreenshot,
-    $focusScreenshot,
-    $taskScreenshot
+    $taskScreenshot,
+    $dialogScreenshot,
+    $settingsScreenshot
 ) -Force -ErrorAction SilentlyContinue
 
 $cleanupError = $null
 try {
     Invoke-WinApp @(
-        "ui", "wait-for", "FocusModeButton",
+        "ui", "wait-for", "DashboardPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
@@ -206,21 +228,25 @@ try {
     ) -Capture
     [IO.File]::WriteAllText($inspectionPath, "$inspection`n")
     $inspectionObject = $inspection | ConvertFrom-Json
-    $themeSelector = Require-AutomationSelector $inspectionObject "ThemeToggle"
-    $focusSelector = Require-AutomationSelector $inspectionObject "FocusModeButton"
-    $inputSelector = Require-AutomationSelector $inspectionObject "TaskInput"
-    $addTaskSelector = Require-AutomationSelector $inspectionObject "AddTaskButton"
+    $dashboardSelector = Require-AutomationSelector $inspectionObject "DashboardNavItem"
+    $tasksSelector = Require-AutomationSelector $inspectionObject "TasksNavItem"
+    $diagnosticsSelector = Require-AutomationSelector $inspectionObject "DiagnosticsNavItem"
     $fullInspection = Invoke-WinApp @(
         "ui", "inspect",
         "-w", "$WindowHandle",
         "--depth", "10",
         "--json"
     ) -Capture | ConvertFrom-Json
-    $metricNames = @("TASKS", "COMPLETE", "RUNTIME", "BUILD")
+    $metricIds = @(
+        "TasksMetric",
+        "CompleteMetric",
+        "RuntimeMetric",
+        "BuildMetric"
+    )
     $metrics = @(
-        $metricNames |
+        $metricIds |
             ForEach-Object {
-                Find-UniqueElement $fullInspection "Text" $_
+                Find-UniqueAutomationElement $fullInspection $_
             }
     )
     for ($index = 1; $index -lt $metrics.Count; $index += 1) {
@@ -231,12 +257,12 @@ try {
             throw "Metric Grid items are not aligned in the same row."
         }
     }
-    $tasksTitle = Find-UniqueElement $fullInspection "Text" "Sprint tasks"
+    $shellTitle = Find-UniqueElement $fullInspection "Text" "Pilot application shell"
     $healthTitle = Find-UniqueElement $fullInspection "Text" "Runtime health"
-    if ($healthTitle.x -le $tasksTitle.x) {
+    if ($healthTitle.x -le $shellTitle.x) {
         throw "Dashboard detail Grid columns are not ordered left to right."
     }
-    if ([Math]::Abs($healthTitle.y - $tasksTitle.y) -gt 8) {
+    if ([Math]::Abs($healthTitle.y - $shellTitle.y) -gt 8) {
         throw "Dashboard detail Grid items are not aligned in the same row."
     }
     [IO.File]::WriteAllText(
@@ -251,9 +277,9 @@ try {
                     height = $_.height
                 }
             }
-            tasks = [ordered]@{
-                x = $tasksTitle.x
-                y = $tasksTitle.y
+            shell = [ordered]@{
+                x = $shellTitle.x
+                y = $shellTitle.y
             }
             health = [ordered]@{
                 x = $healthTitle.x
@@ -268,37 +294,20 @@ try {
         "--output", $initialScreenshot
     )
 
-    $initialTheme = Get-ToggleState $themeSelector
-    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
-    $updatedTheme = Get-ToggleState $themeSelector
-    if ($updatedTheme -eq $initialTheme) {
-        throw "The theme toggle did not change state."
-    }
-    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
-    if ((Get-ToggleState $themeSelector) -ne $initialTheme) {
-        throw "The theme toggle did not return to its initial state."
-    }
-
-    Invoke-WinApp @("ui", "invoke", $focusSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @("ui", "invoke", $tasksSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
-        "ui", "wait-for", $focusSelector,
-        "-w", "$WindowHandle",
-        "--property", "Name",
-        "--value", "Exit focus",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp @(
-        "ui", "screenshot",
-        "-w", "$WindowHandle",
-        "--output", $focusScreenshot
-    )
-
-    Invoke-WinApp @("ui", "invoke", $focusSelector, "-w", "$WindowHandle")
-    Invoke-WinApp @(
-        "ui", "wait-for", $inputSelector,
+        "ui", "wait-for", "TasksPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $taskInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $inputSelector = Require-AutomationSelector $taskInspection "TaskInput"
+    $addTaskSelector = Require-AutomationSelector $taskInspection "AddTaskButton"
     Invoke-WinApp @(
         "ui", "set-value", $inputSelector, "UI automation task",
         "-w", "$WindowHandle"
@@ -313,6 +322,68 @@ try {
         "ui", "screenshot",
         "-w", "$WindowHandle",
         "--output", $taskScreenshot
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "Remove UI automation task",
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "RemoveTaskDialog",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$WindowHandle",
+        "--output", $dialogScreenshot
+    )
+    Invoke-WinApp @("ui", "invoke", "Cancel", "-w", "$WindowHandle")
+
+    Invoke-WinApp @("ui", "invoke", $diagnosticsSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "DiagnosticsPageHeading",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "HotReloadStatus",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+
+    Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "SettingsPageHeading",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $settingsInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $themeSelector = Require-AutomationSelector $settingsInspection "ThemeToggle"
+    $initialTheme = Get-ToggleState $themeSelector
+    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
+    if ((Get-ToggleState $themeSelector) -eq $initialTheme) {
+        throw "The theme toggle did not change state."
+    }
+    Invoke-WinApp @("ui", "invoke", $themeSelector, "-w", "$WindowHandle")
+    if ((Get-ToggleState $themeSelector) -ne $initialTheme) {
+        throw "The theme toggle did not return to its initial state."
+    }
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$WindowHandle",
+        "--output", $settingsScreenshot
+    )
+
+    Invoke-WinApp @("ui", "invoke", $dashboardSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "DashboardPageHeading",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
     )
 }
 finally {

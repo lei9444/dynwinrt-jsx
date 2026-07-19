@@ -394,6 +394,9 @@ Write-LocalCodegenPackage `
 Set-DirectoryJunction `
     (Join-Path $localPackagesRoot "dynwinrt-jsx") `
     $repoRoot
+Set-DirectoryJunction `
+    (Join-Path $localPackagesRoot "typescript") `
+    (Split-Path (Split-Path $TypeScriptPath -Parent) -Parent)
 
 if (-not $SkipRestore) {
     Write-Step "Restoring pinned SDKs and generating WinRT bindings"

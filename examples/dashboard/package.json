@@ -10,6 +10,7 @@
     "setup": "npm run build:codegen && winapp restore",
     "generate": "winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
+    "dev": "node dev.js",
     "start": "npm run build && node main.js"
   },
   "engines": {
@@ -66,11 +67,18 @@
             "Button",
             "CheckBox",
             "ColumnDefinition",
+            "ContentDialog",
+            "FontIcon",
             "Grid",
+            "NavigationView",
+            "NavigationViewItem",
+            "NavigationViewItemHeader",
+            "NavigationViewItemSeparator",
             "ProgressBar",
             "RowDefinition",
             "ScrollViewer",
             "StackPanel",
+            "SymbolIcon",
             "TextBlock",
             "TextBox",
             "ToggleSwitch"

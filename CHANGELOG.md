@@ -4,6 +4,10 @@
 
 - Added typed, signal-backed declarative Grid row and column definitions.
 - Added transactional native definition collection replacement with rollback.
+- Added NavigationView menu/footer collection adapters and navigation item/icon helpers.
+- Added scoped ContentDialog rendering, focus targets, and renderer diagnostic helpers.
+- Added versioned Worker-side TSX hot reload with state preservation and error recovery.
+- Updated the dashboard and generated application template with a pilot-ready app shell.
 
 ## 1.0.0
 

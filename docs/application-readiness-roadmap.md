@@ -401,11 +401,13 @@ Keep each slice usable and independently reviewable:
 - [ ] Classify controlled properties by synchronous, deferred, coercing, or
       collection-valued behavior.
 - [x] Add declarative Grid row and column definitions.
-- [ ] Add adapters for common collection-valued properties.
+- [x] Add adapters for common collection-valued properties.
 - [ ] Add named-content slots beyond `children`, `child`, `content`, and `items`.
 - [ ] Add common brush, icon, image, font, nullable, and URI helpers.
-- [ ] Add the pilot's navigation, menu, flyout, and dialog adapters.
+- [x] Add the pilot's navigation, menu, and dialog adapters.
+- [ ] Add the pilot's flyout adapters.
 - [ ] Add the pilot's list and selection-control adapters.
+- [x] Add integrated TSX hot reload with state preservation and error recovery.
 - [ ] Generalize attached-property registration.
 - [ ] Add strict TSX contracts for every new adapter.
 - [ ] Remove routine imperative native-tree mutations from pilot screens.
@@ -426,7 +428,7 @@ Keep each slice usable and independently reviewable:
 ### Phase 4: Reliability and accessibility
 
 - [ ] Add a real WinUI in-process verification tier.
-- [ ] Add a cross-process UI Automation E2E tier.
+- [x] Add a cross-process UI Automation E2E tier.
 - [ ] Exercise every supported x64 and ARM64 configuration.
 - [ ] Exercise every supported Node.js and Windows configuration.
 - [ ] Cover repeated startup, close, restart, and theme transitions.

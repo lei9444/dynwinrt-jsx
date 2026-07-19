@@ -410,12 +410,9 @@ try {
         ($inspection | ConvertFrom-Json).windows[0].elements
     )
     $increment = $elements | Where-Object {
-        $_.type -eq "Button" -and $_.name -eq "Increment"
+        (Get-ObjectProperty $_ "automationId") -eq "IncrementButton"
     }
-    $theme = $elements | Where-Object {
-        $_.type -eq "Button" -and $_.name -eq "Dark theme"
-    }
-    if (@($increment).Count -ne 1 -or @($theme).Count -ne 1) {
+    if (@($increment).Count -ne 1) {
         throw "Generated app controls were not uniquely discoverable through UIA."
     }
     $fullInspection = Invoke-WinApp @(
@@ -427,8 +424,7 @@ try {
     $heading = @(
         Get-FlattenedElements $fullInspection.windows[0].elements |
             Where-Object {
-                (Get-ObjectProperty $_ "type") -eq "Text" -and
-                (Get-ObjectProperty $_ "name") -eq "dynwinrt-jsx"
+                (Get-ObjectProperty $_ "automationId") -eq "HomePageHeading"
             }
     )
     if ($heading.Count -ne 1) {
@@ -454,6 +450,54 @@ try {
         "-w", "$windowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+
+    Invoke-WinApp @(
+        "ui", "invoke", "AboutButton",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "AboutDialog",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @("ui", "invoke", "Done", "-w", "$windowHandle")
+
+    Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$windowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "SettingsPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $settingsInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$windowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $theme = @(
+        Get-FlattenedElements $settingsInspection.windows[0].elements |
+            Where-Object {
+                (Get-ObjectProperty $_ "automationId") -eq "ThemeToggle"
+            }
+    )
+    if ($theme.Count -ne 1) {
+        throw "Generated app theme toggle was not uniquely discoverable."
+    }
+    $settingsTree = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$windowHandle",
+        "--depth", "8",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $heading = @(
+        Get-FlattenedElements $settingsTree.windows[0].elements |
+            Where-Object {
+                (Get-ObjectProperty $_ "automationId") -eq "SettingsPageHeading"
+            }
+    )
+    if ($heading.Count -ne 1) {
+        throw "Generated app settings theme probe was not uniquely discoverable."
+    }
 
     $themeBefore = (
         Invoke-WinApp @(

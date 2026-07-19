@@ -47,6 +47,16 @@ npm run setup
 npm start
 ```
 
+Use development hot reload after setup:
+
+```powershell
+npm run dev
+```
+
+The generated app keeps its Window, Worker, and model state alive while
+reloading `src/app.tsx`. Changes to the Worker, model, generated bindings, or
+native runtime require a restart.
+
 For sibling source repositories under one work directory:
 
 ```powershell
@@ -153,6 +163,52 @@ Definition arrays may be signals. A changed array reference validates and
 creates the complete new definition set before transactionally replacing the
 native collections. Native `RowDefinition` and `ColumnDefinition` instances are
 accepted as escape hatches. Grid track strings are intentionally not parsed.
+
+### Application shell adapters
+
+Use `createNavigationViewControl()` for the native `menuItems` and
+`footerMenuItems` collections:
+
+```tsx
+const Navigation = createNavigationViewControl({
+  NavigationView: bindings.NavigationView,
+})
+
+const home = createNavigationItem(
+  {
+    NavigationViewItem: bindings.NavigationViewItem,
+    TextBlock: bindings.TextBlock,
+    AutomationProperties: bindings.AutomationProperties,
+  },
+  {
+    name: 'home',
+    label: 'Home',
+    icon: createSymbolIcon(bindings.SymbolIcon, bindings.Symbol.Home),
+    automationId: 'HomeNavItem',
+  },
+)
+
+<Navigation menuItems={[home]}>
+  <HomePage />
+</Navigation>
+```
+
+Collection changes validate before mutation and roll back if a native append
+fails. `createFocusTarget()` combines a native ref with typed `focus()` calls.
+
+Render dialog content with a renderer-owned scope:
+
+```tsx
+const result = await showContentDialog(
+  renderer,
+  dialog,
+  window.content.xamlRoot,
+  <UI.TextBlock text="Native dialog content" />,
+)
+```
+
+The content is disposed from the native `Closed` event, even when Promise
+continuations cannot run until the WinUI loop exits.
 
 Pass a refresh signal as the third `resource()` argument when a runtime theme change should resolve the resource again:
 
@@ -300,6 +356,11 @@ The host is authoritative and assigns monotonically increasing revisions. Client
 ### Rendering and hot refresh
 
 `renderer.render()` returns a handle with `update()`, `dispose()`, `disposed`, `roots`, and `container`. `createHotRoot()` calls the supplied render function again and replaces the root tree on `refresh()`.
+
+`createHotReloadSession()` adds monotonic version handling, stale reload
+rejection, and error fallback rendering. The generated app polls a version file
+from a `DispatcherQueueTimer`, so reload work executes on the WinUI STA while
+the main process and host-owned state remain alive.
 
 Renderer diagnostics expose active native/component counts and cumulative keyed-entry creation/reuse counts for leak checks.
 
