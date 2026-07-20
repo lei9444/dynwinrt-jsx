@@ -454,11 +454,11 @@ external release gates.
 
 ### Phase 5: Packaging and servicing
 
-- [ ] Add package identity, manifest capabilities, and visual assets.
+- [x] Add package identity, manifest capabilities, and visual assets.
 - [ ] Produce x64 and ARM64 MSIX packages.
 - [ ] Sign release packages.
 - [ ] Define install, upgrade, rollback, and uninstall behavior.
-- [ ] Keep unpackaged startup available for development.
+- [x] Keep unpackaged startup available for development.
 - [ ] Build release artifacts only from pinned dependencies.
 - [ ] Install, launch, upgrade, and uninstall on a clean machine.
 

@@ -28,26 +28,28 @@ if (!architecture) {
   throw new Error(`Unsupported Node.js architecture: ${process.arch}`)
 }
 
-const bootstrapDll =
-  process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH ??
-  path.join(
-    __dirname,
-    '.winapp',
-    'bin',
-    architecture,
-    'Microsoft.WindowsAppRuntime.Bootstrap.dll',
-  )
+if (process.env.DYNWINRT_JSX_PACKAGED !== '1') {
+  const bootstrapDll =
+    process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH ??
+    path.join(
+      __dirname,
+      '.winapp',
+      'bin',
+      architecture,
+      'Microsoft.WindowsAppRuntime.Bootstrap.dll',
+    )
 
-if (!fs.existsSync(bootstrapDll)) {
-  throw new Error(
-    `Windows App SDK bootstrap DLL was not found at ${bootstrapDll}. Run npm run setup first.`,
-  )
+  if (!fs.existsSync(bootstrapDll)) {
+    throw new Error(
+      `Windows App SDK bootstrap DLL was not found at ${bootstrapDll}. Run npm run setup first.`,
+    )
+  }
+
+  process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH = bootstrapDll
+
+  const { initWinappsdk } = require('@microsoft/dynwinrt')
+  initWinappsdk(2, 2)
 }
-
-process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH = bootstrapDll
-
-const { initWinappsdk } = require('@microsoft/dynwinrt')
-initWinappsdk(2, 2)
 
 const statePath =
   process.env.DYNWINRT_JSX_STATE_PATH ??

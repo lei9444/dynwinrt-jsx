@@ -30,6 +30,45 @@ For state-preserving TSX hot reload:
 npm run dev
 ```
 
+## Package the x64 SEA application
+
+The package workflow downloads the exact Node.js 24.18.0 x64 archive and
+postject 1.0.0-alpha.6 API bundle, verifies both SHA256 values, injects the
+small bootstrap into a Windows GUI copy of `node.exe`, stages only runtime
+files, and uses winappCli for assets, signing, and MSIX creation:
+
+```powershell
+npm run package:sea
+```
+
+See [`docs/sea-packaging.md`](../../docs/sea-packaging.md) for the complete
+command-by-command build and runtime flow.
+
+The signed development package and certificate are written under
+`.winapp\sea-package`. Trust the generated certificate once from an elevated
+terminal, then install the package:
+
+```powershell
+winapp cert install .\.winapp\sea-package\certificate\DynWinRTJSXDashboard-dev.pfx
+Add-AppxPackage .\.winapp\sea-package\artifacts\DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+```
+
+Use a release certificate without placing its password in source control:
+
+```powershell
+$env:DYNWINRT_JSX_CERT_PASSWORD = '<certificate password>'
+npm run package:sea -- `
+  -Version 1.0.0.1 `
+  -Publisher 'CN=Your Publisher' `
+  -CertificatePath C:\secure\release.pfx
+```
+
+The MSIX contains the SEA executable, external application JavaScript,
+generated bindings, and native dynwinrt runtime. It does not contain a separate
+`node.exe` or launcher process. Packaged asynchronous host errors are appended
+to `%LOCALAPPDATA%\dynwinrt-jsx\sea-host.log`. Normal `npm start` remains
+unpackaged.
+
 `setup` builds the current local dynwinrt code generator, restores the pinned Windows SDK packages from `winapp.yaml`, and generates `.winapp\bindings`.
 
 Use `npm run generate` after changing the `winapp.jsBindings` roots without changing SDK versions.
