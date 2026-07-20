@@ -3,11 +3,8 @@ import {
   type NativeComponent,
   type NativeConstructor,
 } from './native'
+import { adapter } from './adapters'
 import type { MaybeSignal } from './reactive'
-import {
-  replaceNativeCollection,
-  requireNativeArray,
-} from './native-collection'
 import type { NativeCollection } from './renderer'
 
 export type WinUIGridUnitType = 0 | 1 | 2
@@ -154,64 +151,49 @@ export function createGridControl<
     GridLayoutProps<RowDefinition, ColumnDefinition>
   >(bindings.Grid, {
     displayName: 'Grid',
-    setProperty(instance, property, value) {
-      if (property === 'rowDefinitions') {
-        const definitions = requireNativeArray(value, property).map(
-          (definition) => {
-            if (definition instanceof bindings.RowDefinition) {
-              return definition
-            }
-            const track = normalizeTrack(
-              definition as WinUIGridLength | WinUIGridTrack,
-            )
-            const row = new bindings.RowDefinition()
-            row.height = track.size
-            if (track.min !== undefined) {
-              row.minHeight = track.min
-            }
-            if (track.max !== undefined) {
-              row.maxHeight = track.max
-            }
-            return row
-          },
-        )
-        replaceNativeCollection(
-          instance.rowDefinitions,
-          definitions,
-          'Grid rowDefinitions',
-        )
-        return true
-      }
-
-      if (property === 'columnDefinitions') {
-        const definitions = requireNativeArray(value, property).map(
-          (definition) => {
-            if (definition instanceof bindings.ColumnDefinition) {
-              return definition
-            }
-            const track = normalizeTrack(
-              definition as WinUIGridLength | WinUIGridTrack,
-            )
-            const column = new bindings.ColumnDefinition()
-            column.width = track.size
-            if (track.min !== undefined) {
-              column.minWidth = track.min
-            }
-            if (track.max !== undefined) {
-              column.maxWidth = track.max
-            }
-            return column
-          },
-        )
-        replaceNativeCollection(
-          instance.columnDefinitions,
-          definitions,
-          'Grid columnDefinitions',
-        )
-        return true
-      }
-
-      return false
+    adapters: {
+      rowDefinitions: adapter.collection<Grid>({
+        get: (instance) => instance.rowDefinitions,
+        label: 'Grid rowDefinitions',
+        map(definition) {
+          if (definition instanceof bindings.RowDefinition) {
+            return definition
+          }
+          const track = normalizeTrack(
+            definition as WinUIGridLength | WinUIGridTrack,
+          )
+          const row = new bindings.RowDefinition()
+          row.height = track.size
+          if (track.min !== undefined) {
+            row.minHeight = track.min
+          }
+          if (track.max !== undefined) {
+            row.maxHeight = track.max
+          }
+          return row
+        },
+      }),
+      columnDefinitions: adapter.collection<Grid>({
+        get: (instance) => instance.columnDefinitions,
+        label: 'Grid columnDefinitions',
+        map(definition) {
+          if (definition instanceof bindings.ColumnDefinition) {
+            return definition
+          }
+          const track = normalizeTrack(
+            definition as WinUIGridLength | WinUIGridTrack,
+          )
+          const column = new bindings.ColumnDefinition()
+          column.width = track.size
+          if (track.min !== undefined) {
+            column.minWidth = track.min
+          }
+          if (track.max !== undefined) {
+            column.maxWidth = track.max
+          }
+          return column
+        },
+      }),
     },
   })
 }

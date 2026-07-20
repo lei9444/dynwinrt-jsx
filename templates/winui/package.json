@@ -37,7 +37,8 @@
         {
           "namespace": "Windows.Foundation",
           "classes": [
-            "PropertyValue"
+            "PropertyValue",
+            "Uri"
           ]
         },
         {
@@ -63,9 +64,17 @@
           "namespace": "Microsoft.UI.Xaml.Controls",
           "classes": [
             "Button",
+            "BitmapIcon",
             "ContentDialog",
+            "Flyout",
             "FontIcon",
             "Grid",
+            "Image",
+            "ListView",
+            "ListViewItem",
+            "MenuFlyout",
+            "MenuFlyoutItem",
+            "MenuFlyoutSeparator",
             "NavigationView",
             "NavigationViewItem",
             "NavigationViewItemHeader",
@@ -73,14 +82,29 @@
             "ScrollViewer",
             "StackPanel",
             "SymbolIcon",
+            "TeachingTip",
             "TextBlock",
             "ToggleSwitch"
           ]
         },
         {
+          "namespace": "Microsoft.UI.Xaml.Controls.Primitives",
+          "classes": [
+            "Selector"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml.Media",
           "classes": [
-            "MicaBackdrop"
+            "FontFamily",
+            "MicaBackdrop",
+            "SolidColorBrush"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Media.Imaging",
+          "classes": [
+            "BitmapImage"
           ]
         }
       ]

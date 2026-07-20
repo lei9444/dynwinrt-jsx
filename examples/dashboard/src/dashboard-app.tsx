@@ -3,19 +3,26 @@ import {
   For,
   Show,
   batch,
+  color,
   computed,
   cornerRadius,
   createContext,
   createControls,
   createFocusTarget,
+  createFontFamily,
   createGridControl,
+  createListViewControl,
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
+  createSolidColorBrush,
   formatRendererDiagnostics,
   gridLength,
+  onCleanup,
+  onMount,
   resource,
   showContentDialog,
+  showFlyout,
   signal,
   thickness,
   useContext,
@@ -36,9 +43,13 @@ import {
   ContentDialogButton,
   ContentDialogResult,
   ElementTheme,
+  Flyout,
   FocusState,
+  FontFamily,
   Grid,
   HorizontalAlignment,
+  ListView,
+  ListViewItem,
   NavigationView,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
@@ -46,15 +57,19 @@ import {
   RowDefinition,
   ScrollBarVisibility,
   ScrollViewer,
+  Selector,
   StackPanel,
+  SolidColorBrush,
   Symbol,
   SymbolIcon,
+  TeachingTip,
   TextBlock,
   TextBox,
   TitleBarTheme,
   ToggleSwitch,
   VerticalAlignment,
   Window,
+  XamlRoot,
 } from '#winapp/bindings'
 import type {
   DashboardModel,
@@ -67,9 +82,11 @@ const UI = createControls({
   Button,
   CheckBox,
   Grid,
+  ListViewItem,
   ProgressBar,
   ScrollViewer,
   StackPanel,
+  TeachingTip,
   TextBlock,
   TextBox,
   ToggleSwitch,
@@ -78,6 +95,10 @@ const LayoutGrid = createGridControl({
   Grid,
   RowDefinition,
   ColumnDefinition,
+})
+const TaskList = createListViewControl({
+  ListView,
+  selectedIndexProperty: Selector.selectedIndexProperty,
 })
 const AppNavigation = createNavigationViewControl<
   NavigationView,
@@ -97,6 +118,7 @@ export interface DashboardAppContext {
   readonly model: DashboardModel
   readonly renderer: Renderer
   readonly window: Window
+  getXamlRoot(): XamlRoot
   refreshDiagnostics(): void
 }
 
@@ -114,7 +136,13 @@ interface TaskRowProps {
   readonly afterRemoveFocus: () => void
 }
 
+interface TeachingTipService {
+  open(target: ButtonInstance): void
+}
+
 const ThemeSignal = createContext<ReadonlySignal<boolean> | null>(null)
+const TeachingTipServiceContext =
+  createContext<TeachingTipService | null>(null)
 
 function themeResource<Value = unknown>(
   key: string,
@@ -207,6 +235,93 @@ function MetricCard(props: {
           text={props.detail}
           fontSize={12}
         />
+      </UI.StackPanel>
+    </Card>
+  )
+}
+
+function OverlayShowcase(context: DashboardAppContext) {
+  const flyoutTarget = createFocusTarget<ButtonInstance>(
+    FocusState.Programmatic,
+  )
+  const teachingTipTarget = createFocusTarget<ButtonInstance>(
+    FocusState.Programmatic,
+  )
+  const teachingTipService = useContext(TeachingTipServiceContext)
+  let flyoutSession: ReturnType<typeof showFlyout> | undefined
+  onCleanup(() => {
+    flyoutSession?.dispose()
+  })
+  const headingFont = createFontFamily(
+    FontFamily,
+    'Segoe UI Variable Text',
+  )
+  const accentBrush = createSolidColorBrush(
+    SolidColorBrush,
+    color(0, 120, 212),
+  )
+
+  return (
+    <Card>
+      <UI.StackPanel spacing={10}>
+        <UI.TextBlock
+          text="Scoped guidance"
+          fontSize={18}
+          fontWeight={{ weight: 700 }}
+          fontFamily={headingFont}
+          foreground={accentBrush}
+        />
+        <UI.StackPanel orientation={1} spacing={10}>
+          <UI.Button
+            ref={flyoutTarget}
+            automationId="ShowFlyoutButton"
+            onClick={() => {
+              const target = flyoutTarget.current
+              if (!target) {
+                throw new Error('Flyout target is not mounted.')
+              }
+              flyoutSession?.dispose()
+              flyoutSession = showFlyout(
+                context.renderer,
+                new Flyout(),
+                target,
+                <UI.StackPanel spacing={8}>
+                  <UI.TextBlock
+                    automationId="Phase2FlyoutContent"
+                    text="Renderer-owned Flyout content"
+                  />
+                  <UI.Button
+                    automationId="CloseFlyoutButton"
+                    onClick={() => {
+                      flyoutSession?.hide()
+                    }}
+                  >
+                    Close flyout
+                  </UI.Button>
+                </UI.StackPanel>,
+                { observeClose: false },
+              )
+            }}
+          >
+            Show flyout
+          </UI.Button>
+          <UI.Button
+            ref={teachingTipTarget}
+            automationId="ShowTeachingTipButton"
+            onClick={() => {
+              const target = teachingTipTarget.current
+              if (!target) {
+                throw new Error('TeachingTip target is not mounted.')
+              }
+              if (!teachingTipService) {
+                throw new Error('TeachingTip service is unavailable.')
+              }
+              teachingTipService.open(target)
+            }}
+          >
+            Show teaching tip
+          </UI.Button>
+        </UI.StackPanel>
       </UI.StackPanel>
     </Card>
   )
@@ -313,8 +428,21 @@ function DashboardPage(context: DashboardAppContext) {
           </UI.StackPanel>
         </Card>
       </LayoutGrid>
+      <OverlayShowcase {...context} />
     </Page>
   )
+}
+
+function deferFocus(window: Window, focus: () => boolean): void {
+  const timer = window.dispatcherQueue.createTimer()
+  timer.interval = { duration: 2_500_000n }
+  timer.isRepeating = false
+  const unsubscribe = timer.onTick(() => {
+    timer.stop()
+    unsubscribe()
+    focus()
+  })
+  timer.start()
 }
 
 async function confirmRemove(
@@ -335,7 +463,7 @@ async function confirmRemove(
   await showContentDialog(
     context.renderer,
     dialog,
-    context.window.content.xamlRoot,
+    context.getXamlRoot(),
     <UI.TextBlock text={`Remove "${task.title}" from the sprint?`} />,
     {
       onClosed(result) {
@@ -398,7 +526,10 @@ function TaskRow(props: TaskRowProps) {
               props.context,
               props.task,
               () => {
-                removeButton.focus()
+                deferFocus(
+                  props.context.window,
+                  () => removeButton.focus(),
+                )
               },
               props.afterRemoveFocus,
             )
@@ -417,6 +548,7 @@ function TasksPage(context: DashboardAppContext) {
   const addButton = createFocusTarget<ButtonInstance>(
     FocusState.Programmatic,
   )
+  const selectedTaskIndex = signal(-1)
   const addTask = () => {
     const textBox = input.current
     if (!textBox) {
@@ -463,7 +595,24 @@ function TasksPage(context: DashboardAppContext) {
         minimum={0}
         maximum={100}
       />
-      <UI.StackPanel spacing={8}>
+      <TaskList
+        automationId="TaskList"
+        selectedIndex={selectedTaskIndex}
+        onSelectedIndexChange={(index) => {
+          selectedTaskIndex.value = index
+        }}
+        header={
+          <UI.TextBlock
+            text={computed(() =>
+              `${context.model.tasks.value.length} sprint tasks`,
+            )}
+            fontWeight={{ weight: 600 }}
+          />
+        }
+        footer={
+          <UI.TextBlock text="Select a task or use its checkbox and remove action." />
+        }
+      >
         <For
           each={context.model.tasks}
           key={(task) => task.id}
@@ -475,16 +624,25 @@ function TasksPage(context: DashboardAppContext) {
           }
         >
           {(task) => (
-            <TaskRow
-              context={context}
-              task={task}
-              afterRemoveFocus={() => {
-                addButton.focus()
-              }}
-            />
+            <UI.ListViewItem
+              automationId={`TaskItem${task.id}`}
+              automationName={task.title}
+              horizontalContentAlignment={HorizontalAlignment.Stretch}
+            >
+              <TaskRow
+                context={context}
+                task={task}
+                afterRemoveFocus={() => {
+                  deferFocus(
+                    context.window,
+                    () => addButton.focus(),
+                  )
+                }}
+              />
+            </UI.ListViewItem>
           )}
         </For>
-      </UI.StackPanel>
+      </TaskList>
     </Page>
   )
 }
@@ -598,6 +756,62 @@ function ApplicationShell(context: DashboardAppContext) {
       ? ElementTheme.Dark
       : ElementTheme.Light,
   )
+  const teachingTip: RefObject<TeachingTip> = { current: null }
+  const teachingTipOpen = signal(false)
+  let teachingTipTarget: ButtonInstance | null = null
+  let teachingTipTimer:
+    | ReturnType<Window['dispatcherQueue']['createTimer']>
+    | undefined
+  let teachingTipTimerSubscription: (() => void) | undefined
+  const stopTeachingTipTimer = () => {
+    teachingTipTimer?.stop()
+    teachingTipTimerSubscription?.()
+    teachingTipTimer = undefined
+    teachingTipTimerSubscription = undefined
+  }
+  onCleanup(stopTeachingTipTimer)
+  const teachingTipService: TeachingTipService = {
+    open(target) {
+      stopTeachingTipTimer()
+      if (teachingTipOpen.value) {
+        teachingTipOpen.value = false
+        return
+      }
+      const tip = teachingTip.current
+      if (!tip) {
+        throw new Error('TeachingTip is not mounted.')
+      }
+      teachingTipTarget = target
+      tip.target = target
+      teachingTipOpen.value = true
+      teachingTipTimer = context.window.dispatcherQueue.createTimer()
+      teachingTipTimer.interval = { duration: 10_000_000n }
+      teachingTipTimer.isRepeating = false
+      teachingTipTimerSubscription = teachingTipTimer.onTick(() => {
+        stopTeachingTipTimer()
+        teachingTipOpen.value = false
+      })
+      teachingTipTimer.start()
+    },
+  }
+  onMount(() => {
+    const tip = teachingTip.current
+    if (!tip) {
+      throw new Error('TeachingTip did not mount before onMount.')
+    }
+    const property = TeachingTip.isOpenProperty
+    const token = tip.registerPropertyChangedCallback(
+      property,
+      () => {
+        if (!tip.isOpen) {
+          teachingTipOpen.value = false
+        }
+      },
+    )
+    return () => {
+      tip.unregisterPropertyChangedCallback(property, token)
+    }
+  })
   const itemBindings = {
     NavigationViewItem,
     TextBlock,
@@ -643,45 +857,72 @@ function ApplicationShell(context: DashboardAppContext) {
   })
   return (
     <ThemeSignal.Provider value={context.model.darkTheme}>
-      <AppNavigation
-        ref={navigation}
-        automationId="AppNavigation"
-        requestedTheme={requestedTheme}
-        paneTitle="DynWinRT JSX"
-        paneDisplayMode={NavigationViewPaneDisplayMode.Left}
-        isSettingsVisible
-        menuItems={[dashboardItem, tasksItem]}
-        footerMenuItems={[diagnosticsItem]}
-        selectedItem={selectedItem}
-        onLoaded={() => {
-          const scale =
-            navigation.current?.xamlRoot?.rasterizationScale ?? 1
-          context.window.appWindow.resize({
-            width: Math.round(1220 * scale),
-            height: Math.round(820 * scale),
-          })
-          context.window.appWindow.moveInZOrderAtTop()
-        }}
-        onSelectionChanged={(_sender, args) => {
-          if (args.isSettingsSelected) {
-            context.model.route.value = 'settings'
-            return
-          }
-          const route = [...routeItems.entries()]
-            .find(
-              ([, item]) =>
-                item.name === args.selectedItemContainer.name,
-            )
-            ?.[0]
-          if (route) {
-            context.model.route.value = route
-          }
-        }}
-      >
-        {computed(() =>
-          renderRoute(context, context.model.route.value),
-        )}
-      </AppNavigation>
+      <TeachingTipServiceContext.Provider value={teachingTipService}>
+        <AppNavigation
+          ref={navigation}
+          automationId="AppNavigation"
+          requestedTheme={requestedTheme}
+          paneTitle="DynWinRT JSX"
+          paneDisplayMode={NavigationViewPaneDisplayMode.Left}
+          isSettingsVisible
+          menuItems={[dashboardItem, tasksItem]}
+          footerMenuItems={[diagnosticsItem]}
+          selectedItem={selectedItem}
+          onLoaded={() => {
+            const scale = context.getXamlRoot().rasterizationScale
+            context.window.appWindow.resize({
+              width: Math.round(1220 * scale),
+              height: Math.round(820 * scale),
+            })
+            context.window.appWindow.moveInZOrderAtTop()
+          }}
+          onSelectionChanged={(_sender, args) => {
+            if (args.isSettingsSelected) {
+              context.model.route.value = 'settings'
+              return
+            }
+            const route = [...routeItems.entries()]
+              .find(
+                ([, item]) =>
+                  item.name === args.selectedItemContainer.name,
+              )
+              ?.[0]
+            if (route) {
+              context.model.route.value = route
+            }
+          }}
+        >
+          <UI.Grid>
+            {computed(() =>
+              renderRoute(context, context.model.route.value),
+            )}
+            <UI.TeachingTip
+              ref={teachingTip}
+              isLightDismissEnabled
+              isOpen={teachingTipOpen}
+            >
+              <Show when={teachingTipOpen}>
+                {() => (
+                  <UI.StackPanel spacing={8}>
+                    <UI.TextBlock
+                      automationId="Phase2TeachingTipContent"
+                      text="TeachingTip content is scoped per open cycle."
+                    />
+                    <UI.Button
+                      automationId="CloseTeachingTipButton"
+                      onClick={() => {
+                        teachingTipOpen.value = false
+                      }}
+                    >
+                      Close tip
+                    </UI.Button>
+                  </UI.StackPanel>
+                )}
+              </Show>
+            </UI.TeachingTip>
+          </UI.Grid>
+        </AppNavigation>
+      </TeachingTipServiceContext.Provider>
     </ThemeSignal.Provider>
   )
 }
@@ -700,7 +941,11 @@ export function renderDashboardApp(
             fontWeight={{ weight: 700 }}
           />
           <UI.TextBlock
-            text={String(error)}
+            text={
+              error instanceof Error
+                ? error.stack ?? error.message
+                : String(error)
+            }
             textWrapping={1}
           />
         </UI.StackPanel>

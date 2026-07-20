@@ -1,5 +1,6 @@
 import {
   createRenderer,
+  isNativeCollection,
   type NativeCollection,
   type NativePropertyConverter,
   type NativePropertySetter,
@@ -54,15 +55,48 @@ export interface WinUIBindings {
   readonly IReference_Boolean?: ReferenceBooleanType
 }
 
+export interface AttachedPropertyRegistration {
+  readonly owner?: object
+  readonly method: string
+  readonly optional?: boolean
+}
+
+export type AttachedPropertyRegistrations = Record<
+  string,
+  AttachedPropertyRegistration
+>
+
+export function createAttachedPropertySetters(
+  registrations: AttachedPropertyRegistrations,
+): Record<string, NativePropertySetter> {
+  const setters: Record<string, NativePropertySetter> = {}
+  for (const [property, registration] of Object.entries(registrations)) {
+    addStaticSetter(
+      setters,
+      property,
+      registration.owner,
+      registration.method,
+      registration.optional ?? false,
+    )
+  }
+  return setters
+}
+
 function addStaticSetter(
   setters: Record<string, NativePropertySetter>,
   property: string,
   type: object | undefined,
   method: string,
+  optional: boolean,
 ): void {
   const setter = (type as Record<string, unknown> | undefined)?.[method]
   if (typeof setter !== 'function') {
-    return
+    if (optional) {
+      return
+    }
+    throw new Error(
+      `Attached property ${property} requires static method ${method}.`,
+    )
   }
 
   setters[property] = (target, value) => {
@@ -74,79 +108,83 @@ function addStaticSetter(
   }
 }
 
-function createPropertySetters(
+export function createWinUIAttachedPropertyRegistrations(
   bindings: WinUIBindings,
-): Record<string, NativePropertySetter> {
-  const setters: Record<string, NativePropertySetter> = {}
-
-  addStaticSetter(setters, 'gridRow', bindings.Grid, 'setRow')
-  addStaticSetter(setters, 'gridColumn', bindings.Grid, 'setColumn')
-  addStaticSetter(setters, 'gridRowSpan', bindings.Grid, 'setRowSpan')
-  addStaticSetter(setters, 'gridColumnSpan', bindings.Grid, 'setColumnSpan')
-  addStaticSetter(setters, 'canvasLeft', bindings.Canvas, 'setLeft')
-  addStaticSetter(setters, 'canvasTop', bindings.Canvas, 'setTop')
-  addStaticSetter(
-    setters,
-    'automationId',
-    bindings.AutomationProperties,
-    'setAutomationId',
-  )
-  addStaticSetter(
-    setters,
-    'automationName',
-    bindings.AutomationProperties,
-    'setName',
-  )
-  addStaticSetter(
-    setters,
-    'automationHelpText',
-    bindings.AutomationProperties,
-    'setHelpText',
-  )
-  addStaticSetter(
-    setters,
-    'automationLabeledBy',
-    bindings.AutomationProperties,
-    'setLabeledBy',
-  )
-  addStaticSetter(
-    setters,
-    'automationHeadingLevel',
-    bindings.AutomationProperties,
-    'setHeadingLevel',
-  )
-  addStaticSetter(
-    setters,
-    'automationPositionInSet',
-    bindings.AutomationProperties,
-    'setPositionInSet',
-  )
-  addStaticSetter(
-    setters,
-    'automationSizeOfSet',
-    bindings.AutomationProperties,
-    'setSizeOfSet',
-  )
-  addStaticSetter(
-    setters,
-    'automationLiveSetting',
-    bindings.AutomationProperties,
-    'setLiveSetting',
-  )
-  addStaticSetter(
-    setters,
-    'automationIsDialog',
-    bindings.AutomationProperties,
-    'setIsDialog',
-  )
-  addStaticSetter(
-    setters,
-    'automationControlType',
-    bindings.AutomationProperties,
-    'setAutomationControlType',
-  )
-
-  return setters
+): AttachedPropertyRegistrations {
+  return {
+    gridRow: { owner: bindings.Grid, method: 'setRow', optional: true },
+    gridColumn: { owner: bindings.Grid, method: 'setColumn', optional: true },
+    gridRowSpan: {
+      owner: bindings.Grid,
+      method: 'setRowSpan',
+      optional: true,
+    },
+    gridColumnSpan: {
+      owner: bindings.Grid,
+      method: 'setColumnSpan',
+      optional: true,
+    },
+    canvasLeft: {
+      owner: bindings.Canvas,
+      method: 'setLeft',
+      optional: true,
+    },
+    canvasTop: {
+      owner: bindings.Canvas,
+      method: 'setTop',
+      optional: true,
+    },
+    automationId: {
+      owner: bindings.AutomationProperties,
+      method: 'setAutomationId',
+      optional: true,
+    },
+    automationName: {
+      owner: bindings.AutomationProperties,
+      method: 'setName',
+      optional: true,
+    },
+    automationHelpText: {
+      owner: bindings.AutomationProperties,
+      method: 'setHelpText',
+      optional: true,
+    },
+    automationLabeledBy: {
+      owner: bindings.AutomationProperties,
+      method: 'setLabeledBy',
+      optional: true,
+    },
+    automationHeadingLevel: {
+      owner: bindings.AutomationProperties,
+      method: 'setHeadingLevel',
+      optional: true,
+    },
+    automationPositionInSet: {
+      owner: bindings.AutomationProperties,
+      method: 'setPositionInSet',
+      optional: true,
+    },
+    automationSizeOfSet: {
+      owner: bindings.AutomationProperties,
+      method: 'setSizeOfSet',
+      optional: true,
+    },
+    automationLiveSetting: {
+      owner: bindings.AutomationProperties,
+      method: 'setLiveSetting',
+      optional: true,
+    },
+    automationIsDialog: {
+      owner: bindings.AutomationProperties,
+      method: 'setIsDialog',
+      optional: true,
+    },
+    automationControlType: {
+      owner: bindings.AutomationProperties,
+      method: 'setAutomationControlType',
+      optional: true,
+    },
+  }
 }
 
 export function createWinUIPropertyConverters(
@@ -306,10 +344,15 @@ function createResourceResolver(
 
 export function createWinUIRenderer(
   bindings: WinUIBindings,
-  options: RendererOptions = {},
+  options: RendererOptions & {
+    attachedProperties?: AttachedPropertyRegistrations
+  } = {},
 ): Renderer {
   const propertySetters = {
-    ...createPropertySetters(bindings),
+    ...createAttachedPropertySetters({
+      ...createWinUIAttachedPropertyRegistrations(bindings),
+      ...options.attachedProperties,
+    }),
     ...options.propertySetters,
   }
   const propertyConverters = {
@@ -324,6 +367,9 @@ export function createWinUIRenderer(
     asCollection:
       options.asCollection ??
       ((value) => {
+        if (isNativeCollection(value)) {
+          return value
+        }
         if (
           !bindings.IVector_UIElement ||
           typeof (value as Partial<ProjectedCollection> | null)?.as !== 'function'

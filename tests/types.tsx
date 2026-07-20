@@ -4,23 +4,40 @@ import {
   Portal,
   Show,
   VirtualFor,
+  adapter,
   bind,
+  boxNullable,
   color,
   computed,
   cornerRadius,
+  createBitmapIcon,
+  createBitmapImage,
   createContext,
   createControls,
   createFocusTarget,
+  createFontFamily,
   createGridControl,
   createJsonStateStore,
+  createListViewControl,
+  createListViewScrollTarget,
   createNavigationItem,
   createNavigationViewControl,
+  createReferenceBoxing,
+  createRelativeUri,
+  createSolidColorBrush,
   createSymbolIcon,
+  createTeachingTip,
+  createUri,
   gridLength,
+  native,
   resource,
   signal,
+  showFlyout,
+  showMenuFlyout,
   thickness,
   useContext,
+  type MaybeSignal,
+  type Renderer,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
 
@@ -69,8 +86,121 @@ class TypeNavigationItem {
   }
 }
 
+class TypeListView {
+  readonly items = new TypeVector()
+  header: unknown = null
+  footer: unknown = null
+  selectedIndex = -1
+  selectedItem: unknown = null
+
+  focus(_state: number): boolean {
+    return true
+  }
+  scrollIntoView(_item: unknown, _alignment?: number): void {}
+  onSelectionChanged(
+    _callback: (sender: TypeListView, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+  registerPropertyChangedCallback(
+    _property: unknown,
+    _callback: (sender: unknown, property: unknown) => void,
+  ): bigint {
+    return 1n
+  }
+  unregisterPropertyChangedCallback(
+    _property: unknown,
+    _token: bigint,
+  ): void {}
+}
+
 class TypeSymbolIcon {
   constructor(readonly symbol: number) {}
+}
+
+class TypeUri {
+  constructor(
+    readonly uri: string,
+    readonly relativeUri?: string,
+  ) {}
+}
+
+class TypeBitmapImage {
+  uriSource = new TypeUri('about:blank')
+  decodePixelWidth = 0
+  decodePixelHeight = 0
+}
+
+class TypeBitmapIcon {
+  uriSource = new TypeUri('about:blank')
+  showAsMonochrome = false
+}
+
+class TypeFontFamily {
+  constructor(readonly source: string) {}
+}
+
+class TypeSolidColorBrush {
+  constructor(readonly colorValue: ReturnType<typeof color>) {}
+}
+
+class TypeFlyout {
+  content: unknown = null
+  xamlRoot: unknown = null
+  isOpen = false
+
+  showAt(_target: TypePanel): void
+  showAt(_target: TypePanel, _options: { placement: number }): void
+  showAt(_target: TypePanel, _options?: { placement: number }): void {
+    this.isOpen = true
+  }
+  hide(): void {
+    this.isOpen = false
+  }
+  onClosed(
+    _callback: (sender: unknown, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypeMenuFlyout {
+  readonly items = new TypeVector()
+  xamlRoot: unknown = null
+  isOpen = false
+
+  showAt(_target: TypePanel, _point: { x: number; y: number }): void {
+    this.isOpen = true
+  }
+  hide(): void {
+    this.isOpen = false
+  }
+  onClosed(
+    _callback: (sender: unknown, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypeTeachingTip {
+  content: unknown = null
+  xamlRoot: unknown = null
+  target?: TypePanel
+  isOpen = false
+
+  onClosed(
+    _callback: (sender: unknown, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypeNumberReference {
+  private constructor(readonly value: number) {}
+
+  static from(value: unknown): TypeNumberReference {
+    return new TypeNumberReference(Number(value))
+  }
 }
 
 class TypeRowDefinition {
@@ -127,6 +257,14 @@ const UI = createControls({
   TextBlock: TypeTextBlock,
   TextBox: TypeTextBox,
 })
+const DockedPanel = native<
+  TypePanel,
+  { dock?: MaybeSignal<number> }
+>(TypePanel, {
+  adapters: {
+    spacing: adapter.initialOnly<TypePanel>(),
+  },
+})
 const LayoutGrid = createGridControl({
   Grid: TypeGrid,
   RowDefinition: TypeRowDefinition,
@@ -138,6 +276,11 @@ const Navigation = createNavigationViewControl<
 >({
   NavigationView: TypeNavigationView,
 })
+const List = createListViewControl({
+  ListView: TypeListView,
+  selectedIndexProperty: {},
+})
+const listScroll = createListViewScrollTarget<TypeListView>()
 const navItem = createNavigationItem(
   {
     NavigationViewItem: TypeNavigationItem,
@@ -208,6 +351,39 @@ const twoWayBinding = bind.twoWay(
 thickness(8)
 cornerRadius(8)
 color(0, 120, 212)
+const imageUri = createUri(TypeUri, 'ms-appx:///Assets/Logo.png')
+createRelativeUri(TypeUri, 'ms-appx:///Assets/', 'Logo.png')
+createBitmapImage(TypeBitmapImage, imageUri, { decodePixelWidth: 64 })
+createBitmapIcon(TypeBitmapIcon, imageUri, { showAsMonochrome: true })
+createFontFamily(TypeFontFamily, 'Segoe UI')
+createSolidColorBrush(TypeSolidColorBrush, color(0, 120, 212))
+boxNullable(
+  createReferenceBoxing<number, TypeNumberReference>(
+    (value) => value,
+    TypeNumberReference,
+  ),
+  1,
+)
+declare const typeRenderer: Renderer
+declare const overlayTarget: TypePanel
+showFlyout(
+  typeRenderer,
+  new TypeFlyout(),
+  overlayTarget,
+  <UI.TextBlock text="Flyout" />,
+  { showOptions: { placement: 1 } },
+)
+showMenuFlyout(
+  typeRenderer,
+  new TypeMenuFlyout(),
+  overlayTarget,
+  <UI.TextBlock text="Menu" />,
+)
+createTeachingTip(
+  typeRenderer,
+  new TypeTeachingTip(),
+  { target: overlayTarget },
+)
 
 function LocaleLabel() {
   const locale = useContext(Locale)
@@ -242,6 +418,18 @@ export const typeCheckedTree = (
       <UI.TextBlock text="Navigation content" />
     </Navigation>
 
+    <List
+      ref={listScroll}
+      selectedIndex={signal(0)}
+      onSelectedIndexChange={(index, sender) => {
+        sender.scrollIntoView(sender.items.values[index])
+      }}
+      header={<UI.TextBlock text="Header" />}
+      footer={<UI.TextBlock text="Footer" />}
+    >
+      <UI.TextBlock text="Item" />
+    </List>
+
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}
       fontSize={resource('BodyStrongFontSize', 24, enabled)}
@@ -260,6 +448,9 @@ export const typeCheckedTree = (
     <UI.CheckBox isChecked={enabled} />
     <UI.TextBox {...oneWayBinding} />
     <UI.TextBox {...twoWayBinding} />
+    <DockedPanel dock={signal(2)} spacing={8} />
+    {/* @ts-expect-error Custom attached props require an explicit component contract. */}
+    <UI.Panel dock={2} />
 
     <Show when={enabled} fallback={<UI.TextBlock text="Disabled" />}>
       <UI.TextBlock text="Enabled" />

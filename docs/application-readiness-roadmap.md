@@ -37,7 +37,7 @@ The implementation is currently best described as:
 |---|---|
 | Renderer feature set | Ready for a pilot |
 | Simple dashboard/settings UI | Ready for a pilot |
-| Complex WinUI authoring | Needs adapters and recipes |
+| Complex WinUI authoring | Pilot control set is covered; broader recipes remain |
 | Styling developer experience | Native capability exists; framework layer is limited |
 | Accessibility | Needs end-to-end application coverage |
 | Native reliability | Needs a broader machine and lifecycle matrix |
@@ -395,22 +395,26 @@ Keep each slice usable and independently reviewable:
 
 ### Phase 2: WinUI authoring gaps
 
-- [ ] Define one-way, initial-only, controlled, coercing, reference, and
+- [x] Define one-way, initial-only, controlled, coercing, reference, and
       child-strategy adapter shapes.
-- [ ] Preserve direct generated-property assignment for ordinary controls.
-- [ ] Classify controlled properties by synchronous, deferred, coercing, or
+- [x] Preserve direct generated-property assignment for ordinary controls.
+- [x] Classify controlled properties by synchronous, deferred, coercing, or
       collection-valued behavior.
 - [x] Add declarative Grid row and column definitions.
 - [x] Add adapters for common collection-valued properties.
-- [ ] Add named-content slots beyond `children`, `child`, `content`, and `items`.
-- [ ] Add common brush, icon, image, font, nullable, and URI helpers.
+- [x] Add named-content slots beyond `children`, `child`, `content`, and `items`.
+- [x] Add common brush, icon, image, font, nullable, and URI helpers.
 - [x] Add the pilot's navigation, menu, and dialog adapters.
-- [ ] Add the pilot's flyout adapters.
-- [ ] Add the pilot's list and selection-control adapters.
+- [x] Add the pilot's flyout adapters.
+- [x] Add the pilot's list and selection-control adapters.
 - [x] Add integrated TSX hot reload with state preservation and error recovery.
-- [ ] Generalize attached-property registration.
-- [ ] Add strict TSX contracts for every new adapter.
-- [ ] Remove routine imperative native-tree mutations from pilot screens.
+- [x] Generalize attached-property registration.
+- [x] Add strict TSX contracts for every new adapter.
+- [x] Remove routine imperative native-tree mutations from pilot screens.
+
+The Flyout shutdown access violation was fixed with an explicit package-local
+projection lifetime scope: raw and cast runtime-class values created while the
+scope is active are released from `AppWindow.Closing` before XAML core teardown.
 
 ### Phase 3: Styling and themes
 
@@ -433,7 +437,7 @@ Keep each slice usable and independently reviewable:
 - [ ] Exercise every supported Node.js and Windows configuration.
 - [x] Cover repeated startup, close, restart, and theme transitions.
 - [ ] Cover large keyed reorders, dialogs, flyouts, and Worker failures.
-- [ ] Measure native memory and COM object growth across repeated cycles.
+- [x] Measure native memory and COM object growth across repeated cycles.
 - [ ] Verify property, event, effect, startup, and Worker error propagation.
 - [x] Make Automation IDs, names, roles, and relationships usable from TSX.
 - [ ] Add reactive automation and focus reference relationships.

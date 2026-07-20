@@ -76,11 +76,15 @@ adoption map.
 | Signals, scheduling, scopes, lifecycle | `src/reactive.ts` |
 | VNode and JSX descriptors | `src/vnode.ts`, `src/jsx-runtime.ts` |
 | Native control typing and factories | `src/native.ts` |
+| Adapter descriptors and child strategies | `src/adapters.ts` |
 | Mounting, updates, child adapters, disposal | `src/renderer.ts` |
 | WinUI resources, converters, attached props | `src/winui.ts` |
+| URI, image, brush, font, icon, and nullable values | `src/values.ts` |
 | Grid definitions and track helpers | `src/grid.ts` |
 | Native collection transactions | `src/native-collection.ts` |
 | NavigationView and navigation items | `src/navigation.ts` |
+| ListView selection, focus, and scrolling | `src/list-view.ts` |
+| Flyout, MenuFlyout, and TeachingTip scopes | `src/overlays.ts` |
 | Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
 | Context | `src/context.ts` |
@@ -111,8 +115,11 @@ Preserve these rules in every change:
      reactive scope.
    - Removing a subtree must release effects, subscriptions, event handlers,
      refs, children, and native diagnostics exactly once.
-   - Dispose the render handle from the window closed callback, then call
-     `Application.current.exit()`.
+   - Create generated `ProjectedLifetimeScope` after Application/Window setup.
+   - Dispose renderer/application scopes and the projection scope from
+     `AppWindow.Closing`.
+   - Return without teardown when an earlier closing handler set `args.cancel`.
+   - Call `Application.current.exit()` from `Window.Closed`.
 
 3. **Deterministic reactivity**
    - Computed observers settle before effects.
@@ -175,7 +182,11 @@ The built-in WinUI layer currently provides:
 - Typed Grid row and column definitions through `createGridControl()`.
 - NavigationView menu/footer collections through `createNavigationViewControl()`.
 - Scoped ContentDialog rendering, native icon factories, and focus targets.
+- ListView item/slot adapters with controlled selection helpers.
+- Scoped Flyout, MenuFlyout, and TeachingTip rendering.
+- Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
 - Canvas left and top attached setters.
+- Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.
 - Automation help, labeled-by, heading, set-position, live, dialog, and control-type metadata.
 - Primitive `content` and `header` conversion to native `TextBlock`.

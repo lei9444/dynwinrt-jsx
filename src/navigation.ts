@@ -3,10 +3,7 @@ import {
   type NativeComponent,
   type NativeConstructor,
 } from './native'
-import {
-  replaceNativeCollection,
-  requireNativeArray,
-} from './native-collection'
+import { adapter } from './adapters'
 import type { MaybeSignal } from './reactive'
 import type { NativeCollection } from './renderer'
 
@@ -40,26 +37,15 @@ export function createNavigationViewControl<
     NavigationViewCollectionProps<Item>
   >(bindings.NavigationView, {
     displayName: 'NavigationView',
-    setProperty(instance, property, value) {
-      if (property === 'menuItems') {
-        replaceNativeCollection(
-          instance.menuItems,
-          requireNativeArray(value, property),
-          'NavigationView menuItems',
-        )
-        return true
-      }
-
-      if (property === 'footerMenuItems') {
-        replaceNativeCollection(
-          instance.footerMenuItems,
-          requireNativeArray(value, property),
-          'NavigationView footerMenuItems',
-        )
-        return true
-      }
-
-      return false
+    adapters: {
+      menuItems: adapter.collection<NavigationView>({
+        get: (instance) => instance.menuItems,
+        label: 'NavigationView menuItems',
+      }),
+      footerMenuItems: adapter.collection<NavigationView>({
+        get: (instance) => instance.footerMenuItems,
+        label: 'NavigationView footerMenuItems',
+      }),
     },
   })
 }

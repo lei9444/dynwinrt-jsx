@@ -16,6 +16,30 @@ class TestControl {
   content = null
 }
 
+class TestCollection {
+  values = []
+
+  insertAt(index, value) {
+    this.values.splice(index, 0, value)
+  }
+  removeAt(index) {
+    this.values.splice(index, 1)
+  }
+  append(value) {
+    this.values.push(value)
+  }
+  clear() {
+    this.values.length = 0
+  }
+  as() {
+    throw new Error('Native collections should not be reprojected.')
+  }
+}
+
+class TestItemsControl {
+  items = new TestCollection()
+}
+
 test('WinUI renderer applies automation relationship metadata', () => {
   const calls = []
   const AutomationProperties = {
@@ -93,5 +117,62 @@ test('WinUI renderer applies automation relationship metadata', () => {
       ['control', true, 5],
     ],
   )
+  handle.dispose()
+})
+
+test('WinUI renderer accepts custom attached-property registrations', () => {
+  const calls = []
+  const DockPanel = {
+    setDock(target, value) {
+      calls.push([target, value])
+    },
+  }
+  const UI = createControls({ Control: TestControl })
+  let control
+  const handle = createWinUIRenderer({}, {
+    attachedProperties: {
+      dock: { owner: DockPanel, method: 'setDock' },
+    },
+  }).render(
+    UI.Control({
+      ref(value) {
+        control = value
+      },
+      dock: 2,
+    }),
+    new TestWindow(),
+  )
+
+  assert.deepEqual(calls, [[control, 2]])
+  handle.dispose()
+})
+
+test('custom attached-property registrations reject missing setters', () => {
+  assert.throws(
+    () => createWinUIRenderer({}, {
+      attachedProperties: {
+        dock: { owner: {}, method: 'setDock' },
+      },
+    }),
+    /dock requires static method setDock/,
+  )
+})
+
+test('WinUI renderer keeps directly projected native collections', () => {
+  const UI = createControls({
+    ItemsControl: TestItemsControl,
+    TextBlock: TestControl,
+  })
+  const window = new TestWindow()
+  const handle = createWinUIRenderer({
+    IVector_UIElement: {},
+  }).render(
+    UI.ItemsControl({
+      children: UI.TextBlock({}),
+    }),
+    window,
+  )
+
+  assert.equal(window.content.items.values.length, 1)
   handle.dispose()
 })

@@ -37,6 +37,14 @@ import {
   type PortalNode,
   type VNode,
 } from './vnode'
+import type {
+  NativeAdapter,
+  NativeSlotAdapter,
+} from './adapters'
+import {
+  replaceNativeCollection,
+  requireNativeArray,
+} from './native-collection'
 
 export interface NativeCollection {
   readonly length?: number
@@ -401,7 +409,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isNativeCollection(value: unknown): value is NativeCollection {
+export function isNativeCollection(
+  value: unknown,
+): value is NativeCollection {
   if (!isRecord(value)) {
     return false
   }
@@ -1164,6 +1174,9 @@ export class Renderer {
   ): MountedRecord {
     const scope = createScope(parentScope)
     const metadata = getNativeComponentMetadata(component)
+    const adapters = metadata.options.adapters as
+      | Record<string, NativeAdapter<object> | undefined>
+      | undefined
     let instance: object
 
     try {
@@ -1181,7 +1194,7 @@ export class Renderer {
       return this.mountEmpty(onNodesChanged)
     }
 
-    let childrenController: ChildrenController | undefined
+    const childControllers: ChildrenController[] = []
     const ref = vnode.props.ref as Ref<object> | undefined
     let nativeActive = true
 
@@ -1198,10 +1211,19 @@ export class Renderer {
       onNodesChanged,
       () => {
         try {
-          childrenController?.dispose()
-          childrenController = undefined
+          let firstError: unknown
+          for (const controller of childControllers.splice(0)) {
+            try {
+              controller.dispose()
+            } catch (error) {
+              firstError ??= error
+            }
+          }
           setRef(ref, null)
           scope.dispose()
+          if (firstError !== undefined) {
+            throw firstError
+          }
         } finally {
           markDisposed()
         }
@@ -1214,25 +1236,54 @@ export class Renderer {
           instance,
           vnode.props,
           metadata.options.setProperty,
+          adapters,
           scope,
         )
         this.applyEvents(instance, vnode.props, scope)
         setRef(ref, instance)
 
+        for (
+          const [property, descriptor] of
+          Object.entries(adapters ?? {})
+        ) {
+          if (
+            descriptor?.kind !== 'slot' ||
+            vnode.props[property] == null
+          ) {
+            continue
+          }
+          const slotAdapter = this.resolveSlotAdapter(
+            instance,
+            descriptor,
+          )
+          if (!slotAdapter) {
+            throw new Error(
+              `${component.displayName}.${property} cannot host JSX children.`,
+            )
+          }
+          childControllers.push(new ChildrenController(
+            this,
+            slotAdapter,
+            scope,
+            vnode.props[property] as Child,
+          ))
+        }
+
         if (vnode.props.children != null) {
-          const adapter = this.resolveChildAdapter(instance)
-          if (!adapter) {
+          const childAdapter = metadata.options.children
+            ? this.resolveSlotAdapter(instance, metadata.options.children)
+            : this.resolveChildAdapter(instance)
+          if (!childAdapter) {
             throw new Error(
               `${component.displayName} does not support JSX children.`,
             )
           }
-
-          childrenController = new ChildrenController(
+          childControllers.push(new ChildrenController(
             this,
-            adapter,
+            childAdapter,
             scope,
             vnode.props.children,
-          )
+          ))
         }
       })
       record.setNodes([instance])
@@ -1257,11 +1308,15 @@ export class Renderer {
           value: unknown,
         ) => boolean)
       | undefined,
+    adapters:
+      | Record<string, NativeAdapter<object> | undefined>
+      | undefined,
     scope: ReactiveScope,
   ): void {
     for (const [property, sourceValue] of Object.entries(props)) {
       if (
         reservedProperties.has(property) ||
+        adapters?.[property]?.kind === 'slot' ||
         isEventProperty(
           target as Record<string, unknown>,
           property,
@@ -1272,6 +1327,24 @@ export class Renderer {
       }
 
       if (isSignal(sourceValue)) {
+        if (
+          adapters?.[property]?.kind === 'property' &&
+          adapters[property].mode === 'initialOnly'
+        ) {
+          this.assignProperty(
+            target,
+            property,
+            this.resolvePropertyValue(
+              target,
+              property,
+              sourceValue.peek(),
+            ),
+            componentSetter,
+            adapters[property],
+            scope,
+          )
+          continue
+        }
         runInScope(scope, () => {
           effect(() => {
             this.assignProperty(
@@ -1283,6 +1356,7 @@ export class Renderer {
                 sourceValue.value,
               ),
               componentSetter,
+              adapters?.[property],
               scope,
             )
           })
@@ -1297,6 +1371,7 @@ export class Renderer {
             sourceValue,
           ),
           componentSetter,
+          adapters?.[property],
           scope,
         )
       }
@@ -1352,9 +1427,35 @@ export class Renderer {
           value: unknown,
         ) => boolean)
       | undefined,
+    adapter: NativeAdapter<object> | undefined,
     scope: ReactiveScope,
   ): void {
     try {
+      if (adapter?.kind === 'collection') {
+        const values = requireNativeArray(value, property)
+        const mapped = adapter.map
+          ? values.map((item, index) =>
+              adapter.map!(item, index, target),
+            )
+          : values
+        replaceNativeCollection(
+          adapter.get(target),
+          mapped,
+          adapter.label ?? `${target.constructor.name}.${property}`,
+        )
+        return
+      }
+
+      if (adapter?.kind === 'property') {
+        if (adapter.coerce) {
+          value = adapter.coerce(value, target)
+        }
+        if (adapter.set) {
+          adapter.set(target, value)
+          return
+        }
+      }
+
       if (componentSetter?.(target, property, value)) {
         return
       }
@@ -1453,6 +1554,20 @@ export class Renderer {
     }
 
     return null
+  }
+
+  private resolveSlotAdapter(
+    owner: object,
+    descriptor: NativeSlotAdapter<object>,
+  ): ChildAdapter | null {
+    const record = owner as Record<string, unknown>
+    if (descriptor.strategy === 'single') {
+      return new SinglePropertyAdapter(record, descriptor.property)
+    }
+    return this.collectionAdapter(
+      record[descriptor.property],
+      owner,
+    )
   }
 
   private collectionAdapter(

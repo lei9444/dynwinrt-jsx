@@ -27,6 +27,46 @@ function readManifest(directory) {
   )
 }
 
+function generatedClasses(manifest, namespace) {
+  return manifest.winapp.jsBindings.additionalWinmds
+    .find((entry) => entry.namespace === namespace)
+    ?.classes ?? []
+}
+
+function assertLifetimeTeardownSource(workerSource) {
+  assert.match(workerSource, /createProjectedLifetimeScope/)
+  assert.match(workerSource, /appWindow\.onClosing/)
+  assert.match(
+    workerSource,
+    /if \(attempt\(\(\) => \{\s*hotSession\?\.dispose\(\)\s*\}\)\) \{\s*hotSession = undefined\s*\}/s,
+  )
+  assert.match(
+    workerSource,
+    /if \(attempt\(\(\) => \{\s*renderHandle\?\.dispose\(\)\s*\}\)\) \{\s*renderHandle = undefined\s*\}/s,
+  )
+  assert.match(
+    workerSource,
+    /if \(attempt\(\(\) => \{\s*model\?\.dispose\(\)\s*\}\)\) \{\s*model = undefined\s*\}/s,
+  )
+  assert.match(workerSource, /let projectionError: unknown/)
+  assert.match(
+    workerSource,
+    /if \(projectionError === undefined\) \{[\s\S]*projectionLifetime = undefined[\s\S]*\} else \{\s*args\.cancel = true\s*\}/,
+  )
+  assert.doesNotMatch(
+    workerSource,
+    /args\.cancel = true[\s\S]{0,80}throw/,
+  )
+  assert.match(
+    workerSource,
+    /if \(firstError === undefined\) \{\s*exitCode = 0\s*\}/s,
+  )
+  assert.match(
+    workerSource,
+    /try \{\s*unsubscribe\?\.\(\)\s*\} finally \{\s*Application\.current\.exit\(\)\s*\}/s,
+  )
+}
+
 test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   const temp = createTempDirectory(t)
   const target = path.join(temp, 'My Native App')
@@ -57,16 +97,30 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     require: './.winapp/bindings/index.js',
     default: './.winapp/bindings/index.js',
   })
+  const workerSource = fs.readFileSync(
+    path.join(target, 'src', 'winui-worker.tsx'),
+    'utf8',
+  )
+  assertLifetimeTeardownSource(workerSource)
   const controls = manifest.winapp.jsBindings.additionalWinmds
     .find((entry) =>
       entry.namespace === 'Microsoft.UI.Xaml.Controls'
     )
     .classes
   for (const control of [
+    'BitmapIcon',
     'ContentDialog',
+    'Flyout',
+    'Image',
+    'ListView',
+    'ListViewItem',
+    'MenuFlyout',
+    'MenuFlyoutItem',
+    'MenuFlyoutSeparator',
     'NavigationView',
     'NavigationViewItem',
     'SymbolIcon',
+    'TeachingTip',
   ]) {
     assert.ok(controls.includes(control))
   }
@@ -77,6 +131,43 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
         entry.classes.includes('AutomationProperties'),
     ),
   )
+  for (const [namespace, className] of [
+    ['Windows.Foundation', 'Uri'],
+    ['Microsoft.UI.Xaml.Media', 'FontFamily'],
+    ['Microsoft.UI.Xaml.Media', 'SolidColorBrush'],
+    ['Microsoft.UI.Xaml.Media.Imaging', 'BitmapImage'],
+  ]) {
+    assert.ok(
+    manifest.winapp.jsBindings.additionalWinmds.some(
+      (entry) =>
+        entry.namespace === namespace &&
+        entry.classes.includes(className),
+    ),
+    )
+  }
+})
+
+test('dashboard and template keep lifetime teardown retry-safe', () => {
+  for (const workerPath of [
+    path.join(
+      __dirname,
+      '..',
+      'templates',
+      'winui',
+      'src',
+      'winui-worker.tsx',
+    ),
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'dashboard',
+      'src',
+      'winui-worker.tsx',
+    ),
+  ]) {
+    assertLifetimeTeardownSource(fs.readFileSync(workerPath, 'utf8'))
+  }
 })
 
 test('create configures sibling repositories in local mode', (t) => {
@@ -113,6 +204,44 @@ test('create configures sibling repositories in local mode', (t) => {
       path.join(target, 'tools', 'local-codegen', 'cli.js'),
     ),
   )
+})
+
+test('dashboard and template include Phase 2 WinMD roots', () => {
+  const template = readManifest(
+    path.join(__dirname, '..', 'templates', 'winui'),
+  )
+  const dashboard = readManifest(
+    path.join(__dirname, '..', 'examples', 'dashboard'),
+  )
+  const expected = new Map([
+    ['Windows.Foundation', ['Uri']],
+    ['Microsoft.UI.Xaml.Controls', [
+      'BitmapIcon',
+      'Flyout',
+      'Image',
+      'ListView',
+      'ListViewItem',
+      'MenuFlyout',
+      'MenuFlyoutItem',
+      'MenuFlyoutSeparator',
+      'TeachingTip',
+    ]],
+    ['Microsoft.UI.Xaml.Controls.Primitives', ['Selector']],
+    ['Microsoft.UI.Xaml.Media', ['FontFamily', 'SolidColorBrush']],
+    ['Microsoft.UI.Xaml.Media.Imaging', ['BitmapImage']],
+  ])
+
+  for (const [namespace, classNames] of expected) {
+    for (const manifest of [template, dashboard]) {
+      const classes = generatedClasses(manifest, namespace)
+      for (const className of classNames) {
+        assert.ok(
+          classes.includes(className),
+          `${namespace}.${className} is missing`,
+        )
+      }
+    }
+  }
 })
 
 test('create refuses to overwrite a non-empty directory', (t) => {

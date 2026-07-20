@@ -1,6 +1,10 @@
 import type { MaybeSignal } from './reactive'
 import type { ResourceReference } from './resource'
 import { createVNode, type Child, type Key, type VNode } from './vnode'
+import type {
+  NativeAdapter,
+  NativeSlotAdapter,
+} from './adapters'
 
 export type NativeConstructor<Instance = object> = new (...args: never[]) => Instance
 
@@ -102,6 +106,8 @@ export type NativeComponentProps<
 export interface NativeComponentOptions<Instance> {
   displayName?: string
   create?: () => Instance
+  adapters?: Record<string, NativeAdapter<Instance> | undefined>
+  children?: NativeSlotAdapter<Instance>
   setProperty?: (
     instance: Instance,
     property: string,

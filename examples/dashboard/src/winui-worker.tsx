@@ -26,6 +26,8 @@ import {
   TextBlock,
   TitleBarTheme,
   Window,
+  XamlRoot,
+  createProjectedLifetimeScope,
 } from '#winapp/bindings'
 import {
   createDashboardModel,
@@ -147,9 +149,14 @@ function errorTree(error: unknown): Child {
 let model: DashboardModel | undefined
 let renderHandle: RenderHandle | undefined
 let hotSession: HotReloadSession | undefined
+let closingSubscription: (() => void) | undefined
 let closeSubscription: (() => void) | undefined
 let reloadTimer: DispatcherQueueTimer | undefined
 let reloadTimerSubscription: (() => void) | undefined
+let xamlRoot: XamlRoot | undefined
+let projectionLifetime:
+  | ReturnType<typeof createProjectedLifetimeScope>
+  | undefined
 let exitCode = 1
 
 parentPort.postMessage({ type: 'startup-stage', stage: 'application-starting' })
@@ -158,16 +165,18 @@ Application.start(() => {
     Application.create(() => {
       try {
         const window = new Window()
+        const appWindow = window.appWindow
         Application.current.requestedTheme =
           workerData.initialState.darkTheme
             ? ApplicationTheme.Dark
             : ApplicationTheme.Light
         window.title = 'DynWinRT JSX Workspace'
-        window.systemBackdrop = new MicaBackdrop()
-        window.appWindow.titleBar.preferredTheme =
+        appWindow.titleBar.preferredTheme =
           workerData.initialState.darkTheme
             ? TitleBarTheme.Dark
             : TitleBarTheme.Light
+        projectionLifetime = createProjectedLifetimeScope()
+        window.systemBackdrop = new MicaBackdrop()
         model = createDashboardModel(
           stateBridge,
           workerData.initialState,
@@ -185,6 +194,10 @@ Application.start(() => {
           model,
           renderer,
           window,
+          getXamlRoot() {
+            xamlRoot ??= window.content.xamlRoot
+            return xamlRoot
+          },
           refreshDiagnostics() {
             if (model) {
               model.diagnostics.value = renderer.diagnostics
@@ -292,32 +305,113 @@ Application.start(() => {
           reloadTimer.start()
         }
 
-        closeSubscription = window.onClosed(() => {
-          try {
+        closingSubscription = appWindow.onClosing((_sender, args) => {
+          // App-owned closing handlers mount before this final teardown handler.
+          if (args.cancel) {
+            return
+          }
+          let firstError: unknown
+          const attempt = (action: () => void) => {
+            try {
+              action()
+              return true
+            } catch (error) {
+              firstError ??= error
+              return false
+            }
+          }
+          attempt(() => {
             stateBridge.set(
               model?.snapshot('closed') ?? {
                 ...workerData.initialState,
                 status: 'closed',
               },
             )
+          })
+          if (attempt(() => {
             reloadTimer?.stop()
-            reloadTimerSubscription?.()
-            reloadTimerSubscription = undefined
+          })) {
             reloadTimer = undefined
+          }
+          if (attempt(() => {
+            reloadTimerSubscription?.()
+          })) {
+            reloadTimerSubscription = undefined
+          }
+          if (attempt(() => {
             hotSession?.dispose()
+          })) {
             hotSession = undefined
+          }
+          if (attempt(() => {
             renderHandle?.dispose()
+          })) {
             renderHandle = undefined
+          }
+          if (attempt(() => {
             model?.dispose()
+          })) {
             model = undefined
-            const diagnostics = renderer.diagnostics
+          }
+          const diagnostics = renderer.diagnostics
+          attempt(() => {
             assertRendererIdle(diagnostics)
+          })
+          attempt(() => {
             parentPort.postMessage({
               type: 'diagnostics',
               value: diagnostics,
             })
-            closeSubscription?.()
-            closeSubscription = undefined
+          })
+          let projectionError: unknown
+          try {
+            projectionLifetime?.dispose()
+          } catch (error) {
+            projectionError = error
+            firstError ??= error
+          }
+          if (projectionError === undefined) {
+            projectionLifetime = undefined
+            xamlRoot = undefined
+            if (attempt(() => {
+              closingSubscription?.()
+            })) {
+              closingSubscription = undefined
+            }
+          } else {
+            args.cancel = true
+          }
+          if (firstError !== undefined) {
+            exitCode = 1
+            parentPort.postMessage({
+              type: 'error',
+              message:
+                firstError instanceof Error
+                  ? firstError.stack
+                  : String(firstError),
+            })
+          }
+          if (
+            projectionError !== undefined &&
+            projectionError !== firstError
+          ) {
+            parentPort.postMessage({
+              type: 'error',
+              message:
+                projectionError instanceof Error
+                  ? projectionError.stack
+                  : String(projectionError),
+            })
+          }
+          if (firstError === undefined) {
+            exitCode = 0
+          }
+        })
+        closeSubscription = window.onClosed(() => {
+          const unsubscribe = closeSubscription
+          closeSubscription = undefined
+          try {
+            unsubscribe?.()
           } finally {
             Application.current.exit()
           }
@@ -329,6 +423,18 @@ Application.start(() => {
           type: 'error',
           message: error instanceof Error ? error.stack : String(error),
         })
+        try {
+          projectionLifetime?.dispose()
+        } catch (releaseError) {
+          parentPort.postMessage({
+            type: 'error',
+            message:
+              releaseError instanceof Error
+                ? releaseError.stack
+                : String(releaseError),
+          })
+        }
+        projectionLifetime = undefined
         Application.current?.exit()
       }
     })

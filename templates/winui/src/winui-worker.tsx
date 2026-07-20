@@ -25,6 +25,7 @@ import {
   TextBlock,
   TitleBarTheme,
   Window,
+  createProjectedLifetimeScope,
 } from '#winapp/bindings'
 import { createAppModel, type AppModel, type AppState } from './app-model'
 import type { AppContext } from './app'
@@ -117,7 +118,11 @@ let renderHandle: RenderHandle | undefined
 let hotSession: HotReloadSession | undefined
 let timer: DispatcherQueueTimer | undefined
 let timerSubscription: (() => void) | undefined
+let closingSubscription: (() => void) | undefined
 let closeSubscription: (() => void) | undefined
+let projectionLifetime:
+  | ReturnType<typeof createProjectedLifetimeScope>
+  | undefined
 let exitCode = 1
 
 Application.start(() => {
@@ -125,16 +130,18 @@ Application.start(() => {
     Application.create(() => {
       try {
         const window = new Window()
+        const appWindow = window.appWindow
         Application.current.requestedTheme =
           workerData.initialState.darkTheme
             ? ApplicationTheme.Dark
             : ApplicationTheme.Light
         window.title = 'dynwinrt-jsx'
-        window.systemBackdrop = new MicaBackdrop()
-        window.appWindow.titleBar.preferredTheme =
+        appWindow.titleBar.preferredTheme =
           workerData.initialState.darkTheme
             ? TitleBarTheme.Dark
             : TitleBarTheme.Light
+        projectionLifetime = createProjectedLifetimeScope()
+        window.systemBackdrop = new MicaBackdrop()
         model = createAppModel(bridge, workerData.initialState)
         const context: AppContext = {
           model,
@@ -213,26 +220,112 @@ Application.start(() => {
           })
           timer.start()
         }
-        closeSubscription = window.onClosed(() => {
-          try {
+        closingSubscription = appWindow.onClosing((_sender, args) => {
+          // App-owned closing handlers mount before this final teardown handler.
+          if (args.cancel) {
+            return
+          }
+          let firstError: unknown
+          const attempt = (action: () => void) => {
+            try {
+              action()
+              return true
+            } catch (error) {
+              firstError ??= error
+              return false
+            }
+          }
+          attempt(() => {
             bridge.set(
               model?.snapshot('closed') ?? {
                 ...workerData.initialState,
                 status: 'closed',
               },
             )
+          })
+          if (attempt(() => {
             timer?.stop()
+          })) {
+            timer = undefined
+          }
+          if (attempt(() => {
             timerSubscription?.()
+          })) {
+            timerSubscription = undefined
+          }
+          if (attempt(() => {
             hotSession?.dispose()
+          })) {
+            hotSession = undefined
+          }
+          if (attempt(() => {
             renderHandle?.dispose()
+          })) {
+            renderHandle = undefined
+          }
+          if (attempt(() => {
             model?.dispose()
-            const diagnostics = renderer.diagnostics
+          })) {
+            model = undefined
+          }
+          const diagnostics = renderer.diagnostics
+          attempt(() => {
             assertRendererIdle(diagnostics)
+          })
+          attempt(() => {
             parentPort.postMessage({
               type: 'diagnostics',
               value: diagnostics,
             })
-            closeSubscription?.()
+          })
+          let projectionError: unknown
+          try {
+            projectionLifetime?.dispose()
+          } catch (error) {
+            projectionError = error
+            firstError ??= error
+          }
+          if (projectionError === undefined) {
+            projectionLifetime = undefined
+            if (attempt(() => {
+              closingSubscription?.()
+            })) {
+              closingSubscription = undefined
+            }
+          } else {
+            args.cancel = true
+          }
+          if (firstError !== undefined) {
+            exitCode = 1
+            parentPort.postMessage({
+              type: 'error',
+              message:
+                firstError instanceof Error
+                  ? firstError.stack
+                  : String(firstError),
+            })
+          }
+          if (
+            projectionError !== undefined &&
+            projectionError !== firstError
+          ) {
+            parentPort.postMessage({
+              type: 'error',
+              message:
+                projectionError instanceof Error
+                  ? projectionError.stack
+                  : String(projectionError),
+            })
+          }
+          if (firstError === undefined) {
+            exitCode = 0
+          }
+        })
+        closeSubscription = window.onClosed(() => {
+          const unsubscribe = closeSubscription
+          closeSubscription = undefined
+          try {
+            unsubscribe?.()
           } finally {
             Application.current.exit()
           }
@@ -244,6 +337,18 @@ Application.start(() => {
           type: 'error',
           message: error instanceof Error ? error.stack : String(error),
         })
+        try {
+          projectionLifetime?.dispose()
+        } catch (releaseError) {
+          parentPort.postMessage({
+            type: 'error',
+            message:
+              releaseError instanceof Error
+                ? releaseError.stack
+                : String(releaseError),
+          })
+        }
+        projectionLifetime = undefined
         Application.current?.exit()
       }
     })

@@ -133,6 +133,59 @@ Primitive children become native `TextBlock` instances. Primitive `content` and 
 
 Use `thickness()`, `cornerRadius()`, and `color()` for common WinUI value structs.
 
+### Native adapters
+
+Use `native()` adapters for generated controls whose authoring shape is not a
+direct writable property. The descriptor vocabulary covers one-way,
+initial-only, controlled, coercing, reference, transactional collection, named
+slot, and default-child behavior:
+
+```tsx
+const CommandSurface = native<
+  CommandBar,
+  { commands?: MaybeSignal<readonly object[]> }
+>(CommandBar, {
+  adapters: {
+    commands: adapter.collection({
+      get: (instance) => instance.primaryCommands,
+      label: 'CommandBar primaryCommands',
+    }),
+  },
+  children: adapter.slot('content'),
+})
+```
+
+Ordinary generated properties still use direct assignment. Collection
+adapters validate the complete array and roll back failed native replacement;
+slot adapters own and dispose the JSX subtree they mount.
+
+### WinUI object values
+
+Create object-valued properties from the generated constructors inside the
+WinUI application callback:
+
+```tsx
+const logoUri = createUri(Uri, 'ms-appx:///Assets/Logo.png')
+const logo = createBitmapImage(BitmapImage, logoUri, {
+  decodePixelWidth: 64,
+})
+const accent = createSolidColorBrush(
+  SolidColorBrush,
+  color(0, 120, 212),
+)
+
+<UI.Image source={logo} />
+<UI.TextBlock foreground={accent} fontFamily={
+  createFontFamily(FontFamily, 'Segoe UI Variable Text')
+} />
+```
+
+`BitmapImage` is the constructible `ImageSource` implementation.
+`createBitmapIcon()` accepts the same generated `Uri` object. For other
+nullable WinRT value types, combine `createReferenceBoxing()` with the matching
+`PropertyValue.createX` and generated `IReference_X` binding, then call
+`boxNullable()`.
+
 ### Grid definitions
 
 Create a specialized Grid component when an application needs declarative row
@@ -202,6 +255,36 @@ const home = createNavigationItem(
 Collection changes validate before mutation and roll back if a native append
 fails. `createFocusTarget()` combines a native ref with typed `focus()` calls.
 
+Use `createListViewControl()` when JSX children should populate native
+`items`, with owned `header` and `footer` slots:
+
+```tsx
+const Tasks = createListViewControl({
+  ListView,
+  selectedIndexProperty: Selector.selectedIndexProperty,
+})
+const selectedIndex = signal(-1)
+
+<Tasks
+  selectedIndex={selectedIndex}
+  onSelectedIndexChange={(index) => {
+    selectedIndex.value = index
+  }}
+  header={<UI.TextBlock text="Sprint tasks" />}
+>
+  <For each={tasks} key={(task) => task.id}>
+    {(task) => <UI.ListViewItem content={task.title} />}
+  </For>
+</Tasks>
+```
+
+Programmatic `selectedIndex` writes suppress their matching native change.
+Supplying `Selector.selectedIndexProperty` uses a dependency-property callback,
+which avoids relying on generic WinRT event-delegate projection. Raw
+`onSelectionChanged` remains available when that projected event is usable.
+`createListViewScrollTarget()` provides a typed
+`scrollIntoView()` ref; use `createFocusTarget()` for focus.
+
 Common automation metadata is available directly on native JSX controls:
 
 ```tsx
@@ -219,6 +302,21 @@ Common automation metadata is available directly on native JSX controls:
 Supported metadata includes name, help text, labeled-by, heading level,
 position/size in set, live setting, dialog state, and automation control type.
 
+Register additional WinUI attached properties when an application generates
+the owning type:
+
+```tsx
+const renderer = createWinUIRenderer(bindings, {
+  attachedProperties: {
+    dock: { owner: DockPanel, method: 'setDock' },
+  },
+})
+```
+
+Custom registrations require the named static setter. Add the matching prop to
+a specialized `native<Instance, ExtraProps>()` component contract so TSX remains
+strict.
+
 Render dialog content with a renderer-owned scope:
 
 ```tsx
@@ -234,6 +332,25 @@ const result = await showContentDialog(
 The content is disposed from the native `Closed` event, even when Promise
 continuations cannot run until the WinUI loop exits. Focus restoration is also
 performed from that native event.
+
+TeachingTip content can use the same signal-owned lifecycle:
+
+```tsx
+<UI.TeachingTip target={target} isOpen={tipOpen}>
+  <Show when={tipOpen}>
+    <UI.TextBlock text="Guidance" />
+  </Show>
+</UI.TeachingTip>
+```
+
+`createTeachingTip()` returns an `open(content)`/`close()` controller that
+releases each content scope from the native close transition. Dispose active
+controllers from the owning component or window cleanup. Pass an instance
+already mounted in the owner's native tree, and use the generated
+`isOpenProperty` when the projected generic `Closed` event is unavailable.
+
+`showFlyout()` and `showMenuFlyout()` own their rendered content and release it
+when the native overlay closes or the returned controller is disposed.
 
 Pass a refresh signal as the third `resource()` argument when a runtime theme change should resolve the resource again:
 
@@ -422,7 +539,26 @@ of the preserved corrupt file.
 
 Bootstrap the Windows App SDK in the main process before creating the UI Worker. The Worker must call `roInitialize(0)`, enter `Application.start()`, create resources with `Application.create()`, and create/render all WinUI objects from that STA.
 
-Dispose the render handle from the window's closed callback, then call `Application.current.exit()`. See [`examples/dashboard`](examples/dashboard) and the generated template for complete implementations.
+Generated bindings include a package-local lifetime module. Tracking remains
+inactive until the UI host explicitly creates a scope:
+
+```ts
+const lifetime = createProjectedLifetimeScope()
+```
+
+Applications that never create a scope do not allocate WeakRefs or retain
+projected objects.
+
+Create Application, Window, and AppWindow before the lifetime scope. Dispose
+application-owned scopes and the projection scope from `AppWindow.Closing`
+before native window teardown. Register app-owned close-veto handlers during
+mount; the final teardown handler runs afterward and returns when `args.cancel`
+is true. Use `Window.Closed` only to unsubscribe the final handler and call
+`Application.current.exit()`. Report ordinary cleanup failures without vetoing
+the native close; only a projection-scope release failure should cancel close
+so its retained values can be retried. See
+[`examples/dashboard`](examples/dashboard) and the generated template for the
+complete ordering.
 
 ## Migration from 0.1
 

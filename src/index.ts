@@ -21,6 +21,16 @@ export {
 } from './reactive'
 
 export {
+  adapter,
+  type NativeAdapter,
+  type NativeAdapterMap,
+  type NativeCollectionAdapter,
+  type NativePropertyAdapter,
+  type NativePropertyMode,
+  type NativeSlotAdapter,
+} from './adapters'
+
+export {
   createControls,
   native,
   type NativeCommonProps,
@@ -59,16 +69,61 @@ export {
 } from './navigation'
 
 export {
+  createListViewControl,
+  createListViewScrollTarget,
+  type ListViewControlBindings,
+  type ListViewInstance,
+  type ListViewProps,
+  type ListViewScrollTarget,
+  type ListViewSelectionProps,
+} from './list-view'
+
+export {
   createFontIcon,
   createSymbolIcon,
   type FontIconOptions,
 } from './icons'
 
 export {
+  boxNullable,
+  createBitmapIcon,
+  createBitmapImage,
+  createFontFamily,
+  createReferenceBoxing,
+  createRelativeUri,
+  createSolidColorBrush,
+  createUri,
+  unboxReference,
+  type BitmapIconOptions,
+  type BitmapImageOptions,
+  type FontFamilyConstructor,
+  type ReferenceBoxing,
+  type ReferenceType,
+  type RelativeUriConstructor,
+  type SolidColorBrushConstructor,
+  type UriConstructor,
+} from './values'
+
+export {
   showContentDialog,
   type ContentDialogLike,
   type ContentDialogOptions,
 } from './dialog'
+
+export {
+  createTeachingTip,
+  showFlyout,
+  showMenuFlyout,
+  type FlyoutController,
+  type FlyoutLike,
+  type FlyoutOptions,
+  type FlyoutPoint,
+  type MenuFlyoutLike,
+  type MenuFlyoutOptions,
+  type TeachingTipController,
+  type TeachingTipLike,
+  type TeachingTipOptions,
+} from './overlays'
 
 export {
   createFocusTarget,
@@ -106,6 +161,8 @@ export {
 } from './renderer'
 
 export {
+  createAttachedPropertySetters,
+  createWinUIAttachedPropertyRegistrations,
   createWinUIRenderer,
   color,
   cornerRadius,
@@ -114,6 +171,8 @@ export {
   type WinUIColor,
   type WinUICornerRadius,
   type WinUIBindings,
+  type AttachedPropertyRegistration,
+  type AttachedPropertyRegistrations,
   type WinUIThickness,
 } from './winui'
 

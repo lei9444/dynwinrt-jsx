@@ -41,6 +41,27 @@ function Invoke-WinApp([string[]]$Arguments, [switch]$Capture) {
     }
 }
 
+function Read-SharedText([string]$Path) {
+    $stream = [IO.FileStream]::new(
+        $Path,
+        [IO.FileMode]::Open,
+        [IO.FileAccess]::Read,
+        [IO.FileShare]::ReadWrite
+    )
+    try {
+        $reader = [IO.StreamReader]::new($stream)
+        try {
+            return $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 function Get-ToggleState([string]$Selector) {
     $json = Invoke-WinApp @(
         "ui", "inspect", $Selector,
@@ -58,6 +79,22 @@ function Get-FocusedElement {
         "--json"
     ) -Capture
     return Get-ObjectProperty ($json | ConvertFrom-Json) "element"
+}
+
+function Test-SelectorHasKeyboardFocus([string]$Selector) {
+    $output = & $WinAppPath @(
+        "ui", "get-property", $Selector,
+        "-w", "$WindowHandle",
+        "--property", "HasKeyboardFocus",
+        "--json"
+    ) 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+    $result = $output -join "`n" | ConvertFrom-Json
+    return (
+        (Get-ObjectProperty $result.properties "HasKeyboardFocus") -eq "True"
+    )
 }
 
 function Wait-ForFocusedElement(
@@ -82,6 +119,15 @@ function Wait-ForFocusedElement(
             )
         ) {
             return $focused
+        }
+        $selector = if ($AutomationId) {
+            $AutomationId
+        }
+        else {
+            $Name
+        }
+        if ($selector -and (Test-SelectorHasKeyboardFocus $selector)) {
+            return @{ selector = $selector }
         }
         Start-Sleep -Milliseconds 100
     }
@@ -305,6 +351,8 @@ try {
     $dashboardSelector = Require-AutomationSelector $inspectionObject "DashboardNavItem"
     $tasksSelector = Require-AutomationSelector $inspectionObject "TasksNavItem"
     $diagnosticsSelector = Require-AutomationSelector $inspectionObject "DiagnosticsNavItem"
+    $flyoutSelector = Require-AutomationSelector $inspectionObject "ShowFlyoutButton"
+    $teachingTipSelector = Require-AutomationSelector $inspectionObject "ShowTeachingTipButton"
     Invoke-WinApp @(
         "ui", "focus", $dashboardSelector,
         "-w", "$WindowHandle"
@@ -372,6 +420,41 @@ try {
         "--output", $initialScreenshot
     )
 
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", $flyoutSelector,
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @("ui", "invoke", $flyoutSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "Phase2FlyoutContent",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @("ui", "invoke", "CloseFlyoutButton", "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "Phase2FlyoutContent",
+        "-w", "$WindowHandle",
+        "--gone",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", $teachingTipSelector,
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @("ui", "invoke", $teachingTipSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", "Phase2TeachingTipContent",
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Phase2TeachingTipContent",
+        "-w", "$WindowHandle",
+        "--gone",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+
     Invoke-WinApp @("ui", "invoke", $tasksSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "TasksPageHeading",
@@ -398,8 +481,28 @@ try {
     Start-Sleep -Milliseconds 500
     Invoke-WinApp @("ui", "invoke", $addTaskSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
-        "ui", "wait-for", "TaskCheck4",
+        "ui", "wait-for", "Remove UI automation task",
         "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $afterAddInspection = Invoke-WinApp @(
+        "ui", "inspect",
+        "-w", "$WindowHandle",
+        "--interactive",
+        "--json"
+    ) -Capture | ConvertFrom-Json
+    $addedTaskItem = Find-UniqueElement `
+        $afterAddInspection `
+        "ListItem" `
+        "UI automation task"
+    $addedTaskSelector = Get-ObjectProperty $addedTaskItem "selector"
+    $addedTaskAutomationId = Get-ObjectProperty $addedTaskItem "automationId"
+    Invoke-WinApp @("ui", "invoke", $addedTaskSelector, "-w", "$WindowHandle")
+    Invoke-WinApp @(
+        "ui", "wait-for", $addedTaskSelector,
+        "-w", "$WindowHandle",
+        "--property", "IsSelected",
+        "--value", "True",
         "--timeout", "$TimeoutMilliseconds"
     )
     Invoke-WinApp @(
@@ -454,11 +557,11 @@ try {
         $afterRemoveInspection.windows |
             ForEach-Object { Get-FlattenedElements $_.elements } |
             Where-Object {
-                (Get-ObjectProperty $_ "automationId") -eq "TaskCheck4"
+                (Get-ObjectProperty $_ "automationId") -eq $addedTaskAutomationId
             }
     )
     if ($removedTask.Count -ne 0) {
-        throw "Confirmed task removal left TaskCheck4 in the UIA tree."
+        throw "Confirmed task removal left the added task in the UIA tree."
     }
     Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
 
@@ -545,13 +648,13 @@ if ($cleanupError) {
 $stdoutPath = Join-Path $dashboardRoot ".winapp\dashboard.stdout.log"
 $stderrPath = Join-Path $dashboardRoot ".winapp\dashboard.stderr.log"
 $stdout = if (Test-Path $stdoutPath) {
-    [IO.File]::ReadAllText($stdoutPath)
+    Read-SharedText $stdoutPath
 }
 else {
     ""
 }
 $stderr = if (Test-Path $stderrPath) {
-    [IO.File]::ReadAllText($stderrPath)
+    Read-SharedText $stderrPath
 }
 else {
     ""
