@@ -133,6 +133,7 @@ class TestElement {
     this.resources = new TestResourceDictionary(
       TestElement.initialResources,
     )
+    this.originalResources = this.resources
     this.requestedTheme = 'Default'
     this.actualTheme = 'Dark'
     this.foreground = null
@@ -600,5 +601,23 @@ test('resource overrides use the configured custom resolver', () => {
     'theme:CustomBrushSource',
   )
   assert.equal(resolvedTarget, element)
+  handle.dispose()
+})
+
+test('empty resource overrides do not wrap the element dictionary', () => {
+  const UI = createControls({ Element: TestElement })
+  const handle = createWinUIRenderer(
+    createBindings(new TestResourceDictionary()),
+  ).render(
+    UI.Element({
+      resourceOverrides: {},
+    }),
+    new TestWindow(),
+  )
+
+  assert.equal(
+    TestElement.current.resources,
+    TestElement.current.originalResources,
+  )
   handle.dispose()
 })

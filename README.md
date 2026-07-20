@@ -89,6 +89,7 @@ an independently consumable framework.
 - Signal-backed event handlers and one/two-way binding props
 - WinUI resources, attached properties, nullable Boolean boxing, and value helpers
 - Typed theme resources with effective-element resolution and scoped overrides
+- Typed design tokens, signal-backed style recipes, and centralized theme transitions
 - Whole-root hot refresh and explicit `RenderHandle.update()`
 - Revisioned host/client state bridge for Worker and `MessagePort` endpoints
 - Native lifecycle diagnostics and deterministic disposal
@@ -225,6 +226,69 @@ template:
 Overrides update transactionally, preserve existing local values, and restore
 them when the owning JSX scope is disposed. Prefer theme references inside
 overrides; literal brushes do not adapt to High Contrast automatically.
+
+### Design tokens and style recipes
+
+Use `tokens` for shared spacing, typography, radius, and elevation values:
+
+```tsx
+<UI.StackPanel
+  padding={thickness(tokens.spacing.xl)}
+  spacing={tokens.spacing.lg}
+>
+  <UI.TextBlock
+    {...styles.heading({ level: 'title' })}
+    text="Workspace"
+  />
+</UI.StackPanel>
+```
+
+`tokens.elevation` contains typed Z-translation values. Pair them with an
+explicit native `Shadow` when a visible shadow is required; recipes do not
+create projected shadow objects at module initialization.
+
+Built-in recipes return normal JSX property bags:
+
+```tsx
+<UI.Border {...styles.card({ surface: 'layer' })}>
+  <UI.Button {...styles.button({ variant: 'accent' })}>
+    Save
+  </UI.Button>
+</UI.Border>
+```
+
+Variant selections can be signals. The affected native properties update
+without remounting the component:
+
+```tsx
+const tone = signal<'attention' | 'success'>('attention')
+
+<UI.Border {...styles.status({ tone })}>
+  <UI.TextBlock text="Build status" />
+</UI.Border>
+```
+
+Create application-specific recipes with `createStyleRecipe()`. Every property
+changed by a variant must have a base value so signal-driven variant changes
+can reset it deterministically.
+
+Use `createWinUIThemeController()` to keep application, subtree, and title-bar
+themes synchronized from one state signal:
+
+```ts
+const controller = createWinUIThemeController({
+  isDark: model.darkTheme,
+  setDark: model.setDarkTheme,
+  application: Application.current,
+  applicationTheme: ApplicationTheme,
+  elementTheme: ElementTheme,
+  titleBar: window.appWindow.titleBar,
+  titleBarTheme: TitleBarTheme,
+})
+```
+
+Bind `controller.requestedTheme` to the application-shell element and dispose
+the controller with its owning component.
 
 ### Grid definitions
 

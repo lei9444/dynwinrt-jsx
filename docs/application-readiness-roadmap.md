@@ -422,12 +422,12 @@ scope is active are released from `AppWindow.Closing` before XAML core teardown.
 - [x] Resolve tokens against effective element themes and scoped resources.
 - [x] Refresh token-backed properties automatically on native theme changes.
 - [x] Add subtree resource overrides that preserve control visual states.
-- [ ] Define typed spacing, typography, radius, and elevation tokens.
-- [ ] Implement a small style-recipe API with variants.
-- [ ] Support signal-backed recipe values.
+- [x] Define typed spacing, typography, radius, and elevation tokens.
+- [x] Implement a small style-recipe API with variants.
+- [x] Support signal-backed recipe values.
 - [x] Preserve native `Style`, `ResourceDictionary`, and Fluent resources.
-- [ ] Centralize Dark, Light, and High Contrast transitions.
-- [ ] Replace repeated pilot styling literals with tokens or recipes.
+- [x] Centralize Dark, Light, and High Contrast transitions.
+- [x] Replace repeated pilot styling literals with tokens or recipes.
 
 ### Phase 4: Reliability and accessibility
 

@@ -25,18 +25,22 @@ import {
   createReferenceBoxing,
   createRelativeUri,
   createSolidColorBrush,
+  createStyleRecipe,
   createSymbolIcon,
   createTeachingTip,
   createUri,
+  createWinUIThemeController,
   gridLength,
   native,
   resource,
   signal,
   showFlyout,
   showMenuFlyout,
+  styles,
   theme,
   themeResource,
   thickness,
+  tokens,
   useContext,
   type MaybeSignal,
   type Renderer,
@@ -242,6 +246,7 @@ class TypeCheckBox {
 class TypeButton {
   content: unknown = null
   isEnabled = true
+  padding = thickness(0)
 
   onClick(
     _callback: (
@@ -447,6 +452,9 @@ export const typeCheckedTree = (
     />
 
     <UI.Button
+      {...styles.button({
+        variant: signal<'standard' | 'accent'>('accent'),
+      })}
       isEnabled={enabled}
       onClick={clickHandler}
     >
@@ -506,3 +514,30 @@ export const typeCheckedTree = (
     </Portal>
   </UI.Panel>
 )
+
+const typeThemeController = createWinUIThemeController({
+  isDark: signal(false),
+  setDark() {},
+  application: { requestedTheme: 0 },
+  applicationTheme: { Light: 0, Dark: 1 },
+  elementTheme: { Light: 0, Dark: 1 },
+})
+typeThemeController.requestedTheme.value
+tokens.spacing.md
+
+const baseOnlyRecipe = createStyleRecipe({
+  base: { opacity: 1 },
+})
+baseOnlyRecipe()
+// @ts-expect-error Base-only recipes do not accept variant selections.
+baseOnlyRecipe({ tone: 'muted' })
+
+createWinUIThemeController({
+  isDark: signal(false),
+  setDark() {},
+  application: { requestedTheme: 0 },
+  applicationTheme: { Light: 0, Dark: 1 },
+  elementTheme: { Light: 0, Dark: 1 },
+  // @ts-expect-error titleBar and titleBarTheme must be provided together.
+  titleBar: { preferredTheme: 0 },
+})

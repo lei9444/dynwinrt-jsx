@@ -692,6 +692,9 @@ export function createWinUIResourceRuntime(
   ) => {
     const overrides = normalizeOverrides(value)
     let state = overrideStates.get(target)
+    if (Object.keys(overrides).length === 0 && !state) {
+      return
+    }
     if (!state) {
       state = createOverrideState(target)
       overrideStates.set(target, state)

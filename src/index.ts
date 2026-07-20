@@ -233,6 +233,27 @@ export {
   theme,
 } from './theme'
 
+export {
+  createStyleRecipe,
+  styles,
+  tokens,
+  type BaseStyleRecipe,
+  type StyleRecipe,
+  type StyleRecipeDefinition,
+  type StyleRecipeResult,
+  type StyleValues,
+  type StyleVariantDefinitions,
+  type StyleVariantSelection,
+  type WinUIElevation,
+  type WinUITypographyToken,
+} from './style'
+
+export {
+  createWinUIThemeController,
+  type WinUIThemeController,
+  type WinUIThemeControllerOptions,
+} from './theme-controller'
+
 export type {
   WinUIResourceOverrides,
 } from './winui-resources'

@@ -148,6 +148,19 @@ and fall back to application resources.
 implementations keep `key` and `fallback` as their first two arguments and can
 optionally accept `target` and resource `kind` as the third and fourth.
 
+Use `tokens` and `styles` to replace repeated styling literals. Recipes are
+plain JSX prop spreads and support signal-backed variants:
+
+```tsx
+<UI.Border {...styles.card({ surface: 'layer' })}>
+  <UI.TextBlock {...styles.heading({ level: 'subtitle' })} />
+</UI.Border>
+```
+
+Replace separate Application, root-element, and title-bar theme assignments
+with `createWinUIThemeController()`. High Contrast resource transitions remain
+automatic through the WinUI resource runtime.
+
 ## ListView selection
 
 Create list controls with `createListViewControl()` so default JSX children

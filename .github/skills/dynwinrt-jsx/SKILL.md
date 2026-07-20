@@ -172,6 +172,8 @@ control appear to work by imperatively mutating it only in an example.
   `Application.current.requestedTheme`.
 - Prefer `thickness()`, `cornerRadius()`, and `color()` over repeated raw
   struct literals.
+- Prefer `tokens` and `styles` over repeated spacing, typography, radius, and
+  control-resource property bags.
 - Reuse styling through components, native resources, and typed recipes.
 - Do not introduce CSS parsing, selectors, cascading, `className`, or DOM
   concepts.
@@ -187,6 +189,8 @@ The built-in WinUI layer currently provides:
 - Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
 - Typed theme resources with effective-element lookup, High Contrast refresh,
   and transactional `resourceOverrides`.
+- Typed design tokens, signal-backed style recipes, and a centralized WinUI
+  theme controller.
 - Canvas left and top attached setters.
 - Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.

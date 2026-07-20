@@ -1,17 +1,21 @@
 import {
   ErrorBoundary,
   Show,
-  batch,
   computed,
+  createContext,
   createControls,
   createFocusTarget,
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
+  createWinUIThemeController,
   formatRendererDiagnostics,
+  onCleanup,
   showContentDialog,
-  theme,
+  styles,
   thickness,
+  tokens,
+  useContext,
   type Child,
   type RefObject,
   type Renderer,
@@ -49,6 +53,10 @@ const Navigation = createNavigationViewControl<
   NavigationViewItem
 >({ NavigationView })
 
+const ThemeControllerContext = createContext<{
+  setDark(value: boolean): void
+} | null>(null)
+
 type NavigationInstance = InstanceType<typeof NavigationView>
 type ButtonInstance = InstanceType<typeof Button>
 type ToggleInstance = InstanceType<typeof ToggleSwitch>
@@ -67,19 +75,24 @@ function Page(props: {
   readonly onLoaded?: () => void
 }) {
   return (
-    <UI.StackPanel padding={thickness(32)} spacing={16}>
+    <UI.StackPanel
+      padding={thickness(tokens.spacing.xxl)}
+      spacing={tokens.spacing.lg}
+    >
       <UI.TextBlock
+        {...styles.heading({ level: 'title' })}
         {...(props.onLoaded ? { onLoaded: props.onLoaded } : {})}
         automationId={props.automationId}
         automationName={props.title}
         automationHeadingLevel={1}
         text={props.title}
-        fontSize={30}
-        fontWeight={{ weight: 700 }}
       />
       <UI.TextBlock
+        {...styles.heading({
+          level: 'body',
+          tone: 'secondary',
+        })}
         text="Native WinUI resources follow the effective theme."
-        foreground={theme.secondaryText}
       />
       {props.children}
     </UI.StackPanel>
@@ -119,17 +132,13 @@ function HomePage(context: AppContext) {
         context.model.status.value = 'running'
       }}
     >
-      <UI.TextBlock text={context.model.countText} fontSize={20} />
+      <UI.TextBlock
+        {...styles.heading({ level: 'subtitle' })}
+        text={context.model.countText}
+      />
       <UI.Button
+        {...styles.button({ variant: 'accent' })}
         automationId="IncrementButton"
-        resourceOverrides={{
-          ButtonBackground: theme.accent,
-          ButtonBackgroundPointerOver: theme.accentSecondary,
-          ButtonBackgroundPressed: theme.accentTertiary,
-          ButtonForeground: theme.textOnAccent,
-          ButtonForegroundPointerOver: theme.textOnAccent,
-          ButtonForegroundPressed: theme.textOnAccent,
-        }}
         onClick={() => {
           context.model.increment()
         }}
@@ -190,6 +199,7 @@ function DiagnosticsPage(context: AppContext) {
 }
 
 function SettingsPage(context: AppContext) {
+  const themeController = useContext(ThemeControllerContext)
   const toggle: RefObject<ToggleInstance> = { current: null }
   return (
     <Page title="Settings" automationId="SettingsPageHeading">
@@ -201,13 +211,10 @@ function SettingsPage(context: AppContext) {
         onToggled={() => {
           const isOn =
             toggle.current?.isOn ?? context.model.darkTheme.value
-          batch(() => {
-            context.model.setDarkTheme(isOn)
-            Application.current.requestedTheme =
-              isOn ? ApplicationTheme.Dark : ApplicationTheme.Light
-            context.window.appWindow.titleBar.preferredTheme =
-              isOn ? TitleBarTheme.Dark : TitleBarTheme.Light
-          })
+          if (!themeController) {
+            throw new Error('Theme controller is unavailable.')
+          }
+          themeController.setDark(isOn)
         }}
       />
     </Page>
@@ -227,6 +234,16 @@ function renderRoute(context: AppContext, route: AppRoute): Child {
 
 function Shell(context: AppContext) {
   const navigation: RefObject<NavigationInstance> = { current: null }
+  const themeController = createWinUIThemeController({
+    isDark: context.model.darkTheme,
+    setDark: context.model.setDarkTheme,
+    application: Application.current,
+    applicationTheme: ApplicationTheme,
+    elementTheme: ElementTheme,
+    titleBar: context.window.appWindow.titleBar,
+    titleBarTheme: TitleBarTheme,
+  })
+  onCleanup(themeController.dispose)
   const itemBindings = {
     NavigationViewItem,
     TextBlock,
@@ -258,35 +275,38 @@ function Shell(context: AppContext) {
       : routeItems.get(context.model.route.value) ?? null,
   )
   return (
-    <Navigation
-      ref={navigation}
-      automationId="AppNavigation"
-      requestedTheme={computed(() =>
-        context.model.darkTheme.value
-          ? ElementTheme.Dark
-          : ElementTheme.Light,
-      )}
-      paneTitle="dynwinrt-jsx"
-      paneDisplayMode={NavigationViewPaneDisplayMode.Left}
-      menuItems={[homeItem]}
-      footerMenuItems={[diagnosticsItem]}
-      selectedItem={selectedItem}
-      isSettingsVisible
-      onSelectionChanged={(_sender, args) => {
-        if (args.isSettingsSelected) {
-          context.model.route.value = 'settings'
-          return
-        }
-        const route = [...routeItems.entries()]
-          .find(([, item]) => item.name === args.selectedItemContainer.name)
-          ?.[0]
-        if (route) {
-          context.model.route.value = route
-        }
-      }}
-    >
-      {computed(() => renderRoute(context, context.model.route.value))}
-    </Navigation>
+    <ThemeControllerContext.Provider value={themeController}>
+      <Navigation
+        ref={navigation}
+        automationId="AppNavigation"
+        requestedTheme={themeController.requestedTheme}
+        paneTitle="dynwinrt-jsx"
+        paneDisplayMode={NavigationViewPaneDisplayMode.Left}
+        menuItems={[homeItem]}
+        footerMenuItems={[diagnosticsItem]}
+        selectedItem={selectedItem}
+        isSettingsVisible
+        onSelectionChanged={(_sender, args) => {
+          if (args.isSettingsSelected) {
+            context.model.route.value = 'settings'
+            return
+          }
+          const route = [...routeItems.entries()]
+            .find(
+              ([, item]) =>
+                item.name === args.selectedItemContainer.name,
+            )
+            ?.[0]
+          if (route) {
+            context.model.route.value = route
+          }
+        }}
+      >
+        {computed(() =>
+          renderRoute(context, context.model.route.value),
+        )}
+      </Navigation>
+    </ThemeControllerContext.Provider>
   )
 }
 
@@ -296,8 +316,9 @@ export function renderApp(context: AppContext): Child {
       reset={context.model.hotVersion}
       fallback={(error) => (
         <UI.TextBlock
+          {...styles.heading({ level: 'subtitle' })}
           text={`App failed: ${String(error)}`}
-          margin={thickness(24)}
+          margin={thickness(tokens.spacing.xl)}
           textWrapping={1}
         />
       )}

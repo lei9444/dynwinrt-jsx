@@ -106,8 +106,10 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     path.join(target, 'src', 'app.tsx'),
     'utf8',
   )
-  assert.match(appSource, /theme\.secondaryText/)
-  assert.match(appSource, /resourceOverrides=/)
+  assert.match(appSource, /styles\.heading/)
+  assert.match(appSource, /styles\.button/)
+  assert.match(appSource, /tokens\.spacing/)
+  assert.match(appSource, /createWinUIThemeController/)
   const controls = manifest.winapp.jsBindings.additionalWinmds
     .find((entry) =>
       entry.namespace === 'Microsoft.UI.Xaml.Controls'

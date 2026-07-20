@@ -2,9 +2,7 @@ import {
   ErrorBoundary,
   For,
   Show,
-  batch,
   computed,
-  cornerRadius,
   createContext,
   createControls,
   createFocusTarget,
@@ -14,6 +12,7 @@ import {
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
+  createWinUIThemeController,
   formatRendererDiagnostics,
   gridLength,
   onCleanup,
@@ -21,8 +20,9 @@ import {
   showContentDialog,
   showFlyout,
   signal,
+  styles,
   thickness,
-  theme,
+  tokens,
   useContext,
   type Child,
   type ReadonlySignal,
@@ -139,6 +139,9 @@ interface TeachingTipService {
 
 const TeachingTipServiceContext =
   createContext<TeachingTipService | null>(null)
+const ThemeControllerContext = createContext<{
+  setDark(value: boolean): void
+} | null>(null)
 
 function Page(props: PageProps) {
   return (
@@ -147,22 +150,23 @@ function Page(props: PageProps) {
       verticalScrollBarVisibility={ScrollBarVisibility.Auto}
     >
       <UI.StackPanel
-        padding={thickness(24)}
-        spacing={18}
+        padding={thickness(tokens.spacing.xl)}
+        spacing={tokens.spacing.lg}
       >
         <UI.TextBlock
+          {...styles.heading({ level: 'title' })}
           {...(props.onLoaded ? { onLoaded: props.onLoaded } : {})}
           automationId={props.automationId}
           automationName={props.title}
           automationHeadingLevel={1}
           text={props.title}
-          fontSize={28}
-          fontWeight={{ weight: 700 }}
         />
         <UI.TextBlock
+          {...styles.heading({
+            level: 'body',
+            tone: 'secondary',
+          })}
           text={props.subtitle}
-          fontSize={13}
-          foreground={theme.secondaryText}
         />
         {props.children}
       </UI.StackPanel>
@@ -173,14 +177,10 @@ function Page(props: PageProps) {
 function Card(props: { readonly children: Child; readonly gridColumn?: number }) {
   return (
     <UI.Border
+      {...styles.card()}
       {...(props.gridColumn === undefined
         ? {}
         : { gridColumn: props.gridColumn })}
-      padding={thickness(18)}
-      cornerRadius={cornerRadius(12)}
-      borderThickness={thickness(1)}
-      background={theme.cardBackground}
-      borderBrush={theme.cardStroke}
     >
       {props.children}
     </UI.Border>
@@ -198,20 +198,23 @@ function MetricCard(props: {
     <Card gridColumn={props.column}>
       <UI.StackPanel spacing={6}>
         <UI.TextBlock
+          {...styles.heading({
+            level: 'caption',
+            tone: 'secondary',
+          })}
           automationId={props.automationId}
           text={props.label.toUpperCase()}
-          fontSize={11}
-          fontWeight={{ weight: 700 }}
-          foreground={theme.secondaryText}
         />
         <UI.TextBlock
+          {...styles.heading({ level: 'title' })}
           text={props.value}
-          fontSize={28}
-          fontWeight={{ weight: 700 }}
         />
         <UI.TextBlock
+          {...styles.heading({
+            level: 'caption',
+            tone: 'secondary',
+          })}
           text={props.detail}
-          fontSize={12}
         />
       </UI.StackPanel>
     </Card>
@@ -238,46 +241,15 @@ function OverlayShowcase(context: DashboardAppContext) {
     <Card>
       <UI.StackPanel spacing={10}>
         <UI.TextBlock
+          {...styles.heading({
+            level: 'subtitle',
+            tone: 'accent',
+          })}
           text="Scoped guidance"
-          fontSize={18}
-          fontWeight={{ weight: 700 }}
           fontFamily={headingFont}
-          foreground={theme.accent}
         />
         <UI.StackPanel orientation={1} spacing={10}>
-          <UI.Button
-            ref={flyoutTarget}
-            automationId="ShowFlyoutButton"
-            onClick={() => {
-              const target = flyoutTarget.current
-              if (!target) {
-                throw new Error('Flyout target is not mounted.')
-              }
-              flyoutSession?.dispose()
-              flyoutSession = showFlyout(
-                context.renderer,
-                new Flyout(),
-                target,
-                <UI.StackPanel spacing={8}>
-                  <UI.TextBlock
-                    automationId="Phase2FlyoutContent"
-                    text="Renderer-owned Flyout content"
-                  />
-                  <UI.Button
-                    automationId="CloseFlyoutButton"
-                    onClick={() => {
-                      flyoutSession?.hide()
-                    }}
-                  >
-                    Close flyout
-                  </UI.Button>
-                </UI.StackPanel>,
-                { observeClose: false },
-              )
-            }}
-          >
-            Show flyout
-          </UI.Button>
+
           <UI.Button
             ref={teachingTipTarget}
             automationId="ShowTeachingTipButton"
@@ -357,9 +329,8 @@ function DashboardPage(context: DashboardAppContext) {
         <Card gridColumn={0}>
           <UI.StackPanel spacing={12}>
             <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
               text="Pilot application shell"
-              fontSize={18}
-              fontWeight={{ weight: 700 }}
             />
             <UI.TextBlock text="✓ NavigationView collection adapter" />
             <UI.TextBlock text="✓ Scoped ContentDialog lifecycle" />
@@ -370,9 +341,8 @@ function DashboardPage(context: DashboardAppContext) {
         <Card gridColumn={1}>
           <UI.StackPanel spacing={10}>
             <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
               text="Runtime health"
-              fontSize={18}
-              fontWeight={{ weight: 700 }}
             />
             <UI.TextBlock
               text={computed(() =>
@@ -457,11 +427,7 @@ function TaskRow(props: TaskRowProps) {
     FocusState.Programmatic,
   )
   return (
-    <UI.Border
-      padding={thickness(12)}
-      cornerRadius={cornerRadius(8)}
-      background={theme.layerFill}
-    >
+    <UI.Border padding={thickness(tokens.spacing.md)}>
       <UI.StackPanel
         orientation={1}
         spacing={12}
@@ -480,11 +446,16 @@ function TaskRow(props: TaskRowProps) {
         />
         <UI.StackPanel width={560} spacing={2}>
           <UI.TextBlock
+            {...styles.heading({ level: 'bodyStrong' })}
             text={props.task.title}
-            fontSize={13}
-            fontWeight={{ weight: 600 }}
           />
-          <UI.TextBlock text={props.task.detail} fontSize={11} />
+          <UI.TextBlock
+            {...styles.heading({
+              level: 'caption',
+              tone: 'secondary',
+            })}
+            text={props.task.detail}
+          />
         </UI.StackPanel>
         <UI.Button
           ref={removeButton}
@@ -551,17 +522,9 @@ function TasksPage(context: DashboardAppContext) {
           placeholderText="Add a task"
         />
         <UI.Button
+          {...styles.button({ variant: 'accent' })}
           ref={addButton}
           automationId="AddTaskButton"
-          resourceOverrides={{
-            ButtonBackground: theme.accent,
-            ButtonBackgroundPointerOver: theme.accentSecondary,
-            ButtonBackgroundPressed: theme.accentTertiary,
-            ButtonBackgroundDisabled: theme.accentDisabled,
-            ButtonForeground: theme.textOnAccent,
-            ButtonForegroundPointerOver: theme.textOnAccent,
-            ButtonForegroundPressed: theme.textOnAccent,
-          }}
           onClick={addTask}
         >
           Add task
@@ -580,10 +543,10 @@ function TasksPage(context: DashboardAppContext) {
         }}
         header={
           <UI.TextBlock
+            {...styles.heading({ level: 'bodyStrong' })}
             text={computed(() =>
               `${context.model.tasks.value.length} sprint tasks`,
             )}
-            fontWeight={{ weight: 600 }}
           />
         }
         footer={
@@ -605,6 +568,7 @@ function TasksPage(context: DashboardAppContext) {
               automationId={`TaskItem${task.id}`}
               automationName={task.title}
               horizontalContentAlignment={HorizontalAlignment.Stretch}
+              padding={thickness(0)}
             >
               <TaskRow
                 context={context}
@@ -625,6 +589,15 @@ function TasksPage(context: DashboardAppContext) {
 }
 
 function DiagnosticsPage(context: DashboardAppContext) {
+  const hotTone = computed<
+    'attention' | 'critical' | 'success'
+  >(() =>
+      context.model.hotStatus.value === 'error'
+        ? 'critical'
+        : context.model.hotStatus.value === 'ready'
+          ? 'success'
+          : 'attention',
+  )
   return (
     <Page
       title="Diagnostics"
@@ -633,14 +606,15 @@ function DiagnosticsPage(context: DashboardAppContext) {
     >
       <Card>
         <UI.StackPanel spacing={12}>
-          <UI.TextBlock
-            automationId="HotReloadStatus"
-            text={computed(() =>
-              `Hot reload ${context.model.hotStatus.value}; version ${context.model.hotVersion.value}`,
-            )}
-            fontSize={18}
-            fontWeight={{ weight: 700 }}
-          />
+          <UI.Border {...styles.status({ tone: hotTone })}>
+            <UI.TextBlock
+              {...styles.heading({ level: 'bodyStrong' })}
+              automationId="HotReloadStatus"
+              text={computed(() =>
+                `Hot reload ${context.model.hotStatus.value}; version ${context.model.hotVersion.value}`,
+              )}
+            />
+          </UI.Border>
           <UI.TextBlock
             text={computed(() =>
               formatRendererDiagnostics(context.model.diagnostics.value),
@@ -668,6 +642,7 @@ function DiagnosticsPage(context: DashboardAppContext) {
 }
 
 function SettingsPage(context: DashboardAppContext) {
+  const themeController = useContext(ThemeControllerContext)
   const themeToggle: RefObject<ToggleSwitchInstance> = {
     current: null,
   }
@@ -691,13 +666,10 @@ function SettingsPage(context: DashboardAppContext) {
               if (isOn === context.model.darkTheme.value) {
                 return
               }
-              batch(() => {
-                context.model.setDarkTheme(isOn)
-                Application.current.requestedTheme =
-                  isOn ? ApplicationTheme.Dark : ApplicationTheme.Light
-                context.window.appWindow.titleBar.preferredTheme =
-                  isOn ? TitleBarTheme.Dark : TitleBarTheme.Light
-              })
+              if (!themeController) {
+                throw new Error('Theme controller is unavailable.')
+              }
+              themeController.setDark(isOn)
             }}
           />
           <UI.TextBlock text="Application state survives TSX hot reloads." />
@@ -728,11 +700,16 @@ function ApplicationShell(context: DashboardAppContext) {
   const navigation: RefObject<NavigationViewInstance> = {
     current: null,
   }
-  const requestedTheme = computed(() =>
-    context.model.darkTheme.value
-      ? ElementTheme.Dark
-      : ElementTheme.Light,
-  )
+  const themeController = createWinUIThemeController({
+    isDark: context.model.darkTheme,
+    setDark: context.model.setDarkTheme,
+    application: Application.current,
+    applicationTheme: ApplicationTheme,
+    elementTheme: ElementTheme,
+    titleBar: context.window.appWindow.titleBar,
+    titleBarTheme: TitleBarTheme,
+  })
+  onCleanup(themeController.dispose)
   const teachingTip: RefObject<TeachingTip> = { current: null }
   const teachingTipOpen = signal(false)
   let teachingTipTarget: ButtonInstance | null = null
@@ -833,11 +810,12 @@ function ApplicationShell(context: DashboardAppContext) {
     return routeItems.get(context.model.route.value) ?? null
   })
   return (
-    <TeachingTipServiceContext.Provider value={teachingTipService}>
+    <ThemeControllerContext.Provider value={themeController}>
+      <TeachingTipServiceContext.Provider value={teachingTipService}>
         <AppNavigation
           ref={navigation}
           automationId="AppNavigation"
-          requestedTheme={requestedTheme}
+          requestedTheme={themeController.requestedTheme}
           paneTitle="DynWinRT JSX"
           paneDisplayMode={NavigationViewPaneDisplayMode.Left}
           isSettingsVisible
@@ -899,6 +877,7 @@ function ApplicationShell(context: DashboardAppContext) {
           </UI.Grid>
         </AppNavigation>
     </TeachingTipServiceContext.Provider>
+    </ThemeControllerContext.Provider>
   )
 }
 
@@ -911,9 +890,8 @@ export function renderDashboardApp(
       fallback={(error) => (
         <UI.StackPanel padding={thickness(24)} spacing={12}>
           <UI.TextBlock
+            {...styles.heading({ level: 'subtitle' })}
             text="Dashboard render failed"
-            fontSize={24}
-            fontWeight={{ weight: 700 }}
           />
           <UI.TextBlock
             text={
