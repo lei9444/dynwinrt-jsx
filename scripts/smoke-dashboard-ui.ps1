@@ -475,6 +475,16 @@ try {
         throw "TaskInput did not expose its labeled accessible name."
     }
     Invoke-WinApp @(
+        "ui", "focus", $inputSelector,
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "send-keys", "tab",
+        "-w", "$WindowHandle",
+        "--via", "send-input"
+    )
+    Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
+    Invoke-WinApp @(
         "ui", "set-value", $inputSelector, "UI automation task",
         "-w", "$WindowHandle"
     )

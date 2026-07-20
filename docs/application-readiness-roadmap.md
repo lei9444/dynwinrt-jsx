@@ -39,7 +39,7 @@ The implementation is currently best described as:
 | Simple dashboard/settings UI | Ready for a pilot |
 | Complex WinUI authoring | Pilot control set is covered; broader recipes remain |
 | Styling developer experience | Typed theme resources and scoped overrides are ready; recipes remain |
-| Accessibility | Needs end-to-end application coverage |
+| Accessibility | Automated x64 matrix is covered; Narrator and ARM64 native runs remain |
 | Native reliability | Needs a broader machine and lifecycle matrix |
 | Packaging and servicing | Not included in the generated app |
 | Independent package consumption | Needs a reliable artifact source and clean-machine coverage |
@@ -140,7 +140,7 @@ The current source-workspace path has been exercised with:
 | Component | Verified version |
 |---|---|
 | Architecture | Windows x64 |
-| Node.js | 24.12.0 x64 |
+| Node.js | 24.18.0 x64 |
 | TypeScript | 5.9.2 |
 | Rust | 1.95.0, `x86_64-pc-windows-msvc` |
 | .NET SDK | 10.0.302 |
@@ -431,19 +431,26 @@ scope is active are released from `AppWindow.Closing` before XAML core teardown.
 
 ### Phase 4: Reliability and accessibility
 
-- [ ] Add a real WinUI in-process verification tier.
+- [x] Add a real WinUI in-process verification tier.
 - [x] Add a cross-process UI Automation E2E tier.
-- [ ] Exercise every supported x64 and ARM64 configuration.
+- [x] Exercise the supported x64 native configuration.
+- [ ] Exercise the ARM64 native UI configuration.
 - [ ] Exercise every supported Node.js and Windows configuration.
 - [x] Cover repeated startup, close, restart, and theme transitions.
-- [ ] Cover large keyed reorders, dialogs, flyouts, and Worker failures.
+- [x] Cover large keyed reorders, dialogs, flyouts, and Worker failures.
 - [x] Measure native memory and COM object growth across repeated cycles.
-- [ ] Verify property, event, effect, startup, and Worker error propagation.
+- [x] Verify property, event, effect, startup, and Worker error propagation.
 - [x] Make Automation IDs, names, roles, and relationships usable from TSX.
-- [ ] Add reactive automation and focus reference relationships.
-- [ ] Verify keyboard navigation and focus order.
-- [ ] Verify text scaling, High Contrast, screen readers, and reduced motion.
+- [x] Add reactive automation and focus reference relationships.
+- [x] Verify keyboard navigation and focus order.
+- [x] Verify text scaling, High Contrast, and reduced motion.
+- [ ] Complete the manual Narrator/screen-reader pass.
 - [x] Add actionable application startup and failure logging.
+
+The accessibility matrix temporarily applies High Contrast, 150% text scale,
+and reduced motion, runs native and UIA verification, then restores the
+original user settings. The manual Narrator and ARM64 native passes remain
+external release gates.
 
 ### Phase 5: Packaging and servicing
 

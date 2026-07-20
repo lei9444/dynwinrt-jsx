@@ -59,7 +59,7 @@ function assertLifetimeTeardownSource(workerSource) {
   )
   assert.match(
     workerSource,
-    /if \(firstError === undefined\) \{\s*exitCode = 0\s*\}/s,
+    /if \(firstError === undefined\) \{\s*exitCode = (?:0|requestedExitCode)\s*\}/s,
   )
   assert.match(
     workerSource,
@@ -253,6 +253,75 @@ test('dashboard and template include Phase 2 and theme WinMD roots', () => {
         )
       }
     }
+  }
+})
+
+test('repository keeps the real WinUI native selftest wired', () => {
+  const mainSource = fs.readFileSync(
+    path.join(__dirname, '..', 'examples', 'dashboard', 'main.js'),
+    'utf8',
+  )
+  const workerSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'dashboard',
+      'src',
+      'winui-worker.tsx',
+    ),
+    'utf8',
+  )
+  const manifest = readManifest(
+    path.join(__dirname, '..', 'examples', 'dashboard'),
+  )
+
+  assert.match(mainSource, /DYNWINRT_JSX_SELFTEST/)
+  assert.match(mainSource, /DYNWINRT_JSX_NATIVE_SELFTEST/)
+  assert.match(workerSource, /createNativeSelfTest/)
+  assert.match(workerSource, /Intentional native selftest Worker failure/)
+  assert.ok(
+    generatedClasses(
+      manifest,
+      'Windows.UI.ViewManagement',
+    ).includes('UISettings'),
+  )
+  assert.ok(
+    fs.existsSync(
+      path.join(
+        __dirname,
+        '..',
+        'scripts',
+        'run-native-selftest.ps1',
+      ),
+    ),
+  )
+  assert.ok(
+    fs.existsSync(
+      path.join(
+        __dirname,
+        '..',
+        'scripts',
+        'run-accessibility-matrix.ps1',
+      ),
+    ),
+  )
+})
+
+test('CI covers pinned Windows and ARM64 source matrices', () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, '..', '.github', 'workflows', 'ci.yml'),
+    'utf8',
+  )
+  for (const expected of [
+    'windows-2022',
+    'windows-2025',
+    'windows-11-arm',
+    '22.23.1',
+    '24.18.0',
+    'architecture: arm64',
+  ]) {
+    assert.match(workflow, new RegExp(expected.replaceAll('.', '\\.')))
   }
 })
 

@@ -282,10 +282,16 @@ npm run typecheck
 npm test
 npm run check
 npm pack --quiet
+.\scripts\run-native-selftest.ps1
+.\scripts\run-accessibility-matrix.ps1 -IncludeUIA
 ```
 
 Use `npm run check` for source or behavior changes. `npm pack --quiet` runs the
 prepack checks and refreshes the local tarball.
+Use `run-native-selftest.ps1` for real WinUI property, event, keyed identity,
+error propagation, automation, focus, cleanup, and Worker failure evidence.
+Use `run-accessibility-matrix.ps1 -IncludeUIA` for reversible High Contrast,
+150% text scale, reduced-motion, keyboard, and full dashboard UIA evidence.
 
 Create an application from sibling repositories:
 

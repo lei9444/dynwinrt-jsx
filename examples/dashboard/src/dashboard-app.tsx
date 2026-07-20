@@ -249,7 +249,39 @@ function OverlayShowcase(context: DashboardAppContext) {
           fontFamily={headingFont}
         />
         <UI.StackPanel orientation={1} spacing={10}>
-
+          <UI.Button
+            ref={flyoutTarget}
+            automationId="ShowFlyoutButton"
+            onClick={() => {
+              const target = flyoutTarget.current
+              if (!target) {
+                throw new Error('Flyout target is not mounted.')
+              }
+              flyoutSession?.dispose()
+              flyoutSession = showFlyout(
+                context.renderer,
+                new Flyout(),
+                target,
+                <UI.StackPanel spacing={8}>
+                  <UI.TextBlock
+                    automationId="Phase2FlyoutContent"
+                    text="Renderer-owned Flyout content"
+                  />
+                  <UI.Button
+                    automationId="CloseFlyoutButton"
+                    onClick={() => {
+                      flyoutSession?.hide()
+                    }}
+                  >
+                    Close flyout
+                  </UI.Button>
+                </UI.StackPanel>,
+                { observeClose: false },
+              )
+            }}
+          >
+            Show flyout
+          </UI.Button>
           <UI.Button
             ref={teachingTipTarget}
             automationId="ShowTeachingTipButton"

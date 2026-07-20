@@ -40,6 +40,11 @@ import {
 import type {
   DashboardAppContext,
 } from './dashboard-app'
+import {
+  createNativeSelfTest,
+  type NativeSelfTest,
+  type NativeSelfTestResult,
+} from './native-selftest'
 
 interface ParentPort {
   postMessage(message: unknown): void
@@ -87,6 +92,8 @@ const {
     statePort: StatePort
     hotStatePath: string | null
     initialState: DashboardState
+    selfTest: boolean
+    selfTestFailure: string | null
   }
 }
 
@@ -96,6 +103,9 @@ if (!parentPort) {
 
 roInitialize(0)
 parentPort.postMessage({ type: 'startup-stage', stage: 'ro-initialized' })
+if (workerData.selfTestFailure === 'worker') {
+  throw new Error('Intentional native selftest Worker failure.')
+}
 
 const stateBridge = createStateBridge<DashboardState>(
   createMessageTransport(workerData.statePort),
@@ -165,6 +175,7 @@ let projectionLifetime:
   | ReturnType<typeof createProjectedLifetimeScope>
   | undefined
 let exitCode = 1
+let requestedExitCode = 1
 
 parentPort.postMessage({ type: 'startup-stage', stage: 'application-starting' })
 Application.start(() => {
@@ -212,52 +223,65 @@ Application.start(() => {
           },
         }
 
+        let nativeSelfTest: NativeSelfTest | undefined
         let initialTree: Child
-        try {
-          initialTree = loadAppModule(false).renderDashboardApp(context)
-        } catch (error) {
-          model.hotStatus.value = 'error'
-          model.lastError.value =
-            error instanceof Error ? error.stack ?? error.message : String(error)
-          initialTree = errorTree(error)
+        if (workerData.selfTest) {
+          nativeSelfTest = createNativeSelfTest({
+            renderer,
+            window,
+            failureMode: workerData.selfTestFailure,
+          })
+          initialTree = nativeSelfTest.tree
+        }
+        else {
+          try {
+            initialTree = loadAppModule(false).renderDashboardApp(context)
+          } catch (error) {
+            model.hotStatus.value = 'error'
+            model.lastError.value =
+              error instanceof Error ? error.stack ?? error.message : String(error)
+            initialTree = errorTree(error)
+          }
         }
 
         renderHandle = renderer.render(initialTree, window)
-        hotSession = createHotReloadSession(renderHandle, {
-          fallback: errorTree,
-          onReload(version) {
-            if (!model) {
-              return
-            }
-            model.hotStatus.value = 'ready'
-            model.hotVersion.value = version
-            model.lastError.value = null
-            model.diagnostics.value = renderer.diagnostics
-            parentPort.postMessage({
-              type: 'hot-reload',
-              status: 'applied',
-              version,
-            })
-          },
-          onError(error, version) {
-            if (!model) {
-              return
-            }
-            model.hotStatus.value = 'error'
-            model.hotVersion.value = version
-            model.lastError.value =
-              error instanceof Error
-                ? error.stack ?? error.message
-                : String(error)
-            model.diagnostics.value = renderer.diagnostics
-            parentPort.postMessage({
-              type: 'hot-reload',
-              status: 'error',
-              version,
-              message: model.lastError.value,
-            })
-          },
-        })
+        if (!nativeSelfTest) {
+          hotSession = createHotReloadSession(renderHandle, {
+            fallback: errorTree,
+            onReload(version) {
+              if (!model) {
+                return
+              }
+              model.hotStatus.value = 'ready'
+              model.hotVersion.value = version
+              model.lastError.value = null
+              model.diagnostics.value = renderer.diagnostics
+              parentPort.postMessage({
+                type: 'hot-reload',
+                status: 'applied',
+                version,
+              })
+            },
+            onError(error, version) {
+              if (!model) {
+                return
+              }
+              model.hotStatus.value = 'error'
+              model.hotVersion.value = version
+              model.lastError.value =
+                error instanceof Error
+                  ? error.stack ?? error.message
+                  : String(error)
+              model.diagnostics.value = renderer.diagnostics
+              parentPort.postMessage({
+                type: 'hot-reload',
+                status: 'error',
+                version,
+                message: model.lastError.value,
+              })
+            },
+          })
+        }
 
         const handleHotMessage = (message: WorkerMessage) => {
           const version = message.version ?? 0
@@ -279,7 +303,7 @@ Application.start(() => {
             return loadAppModule(true).renderDashboardApp(context)
           })
         }
-        if (workerData.hotStatePath) {
+        if (workerData.hotStatePath && !nativeSelfTest) {
           reloadTimer = window.dispatcherQueue.createTimer()
           reloadTimer.interval = { duration: 2_500_000n }
           reloadTimer.isRepeating = true
@@ -411,7 +435,7 @@ Application.start(() => {
             })
           }
           if (firstError === undefined) {
-            exitCode = 0
+            exitCode = requestedExitCode
           }
         })
         closeSubscription = window.onClosed(() => {
@@ -424,7 +448,106 @@ Application.start(() => {
           }
         })
         window.activate()
+        requestedExitCode = 0
         exitCode = 0
+        if (nativeSelfTest) {
+          const closeSelfTestWindow = () => {
+            try {
+              window.close()
+            }
+            catch (error) {
+              requestedExitCode = 1
+              exitCode = 1
+              parentPort.postMessage({
+                type: 'error',
+                message:
+                  error instanceof Error
+                    ? error.stack ?? error.message
+                    : String(error),
+              })
+              Application.current.exit()
+            }
+          }
+          nativeSelfTest.run(
+            (result: NativeSelfTestResult) => {
+              const cleanupStarted = Date.now()
+              let completedResult: NativeSelfTestResult
+              try {
+                renderHandle?.dispose()
+                renderHandle = undefined
+                const diagnostics = renderer.diagnostics
+                assertRendererIdle(
+                  diagnostics,
+                  'Native selftest root cleanup',
+                )
+                completedResult = {
+                  ...result,
+                  cases: [
+                    ...result.cases,
+                    {
+                      name: 'root-render-cleanup',
+                      passed: true,
+                      durationMs: Date.now() - cleanupStarted,
+                    },
+                  ],
+                  diagnostics,
+                }
+              }
+              catch (error) {
+                completedResult = {
+                  ...result,
+                  passed: false,
+                  cases: [
+                    ...result.cases,
+                    {
+                      name: 'root-render-cleanup',
+                      passed: false,
+                      durationMs: Date.now() - cleanupStarted,
+                      error:
+                        error instanceof Error
+                          ? error.stack ?? error.message
+                          : String(error),
+                    },
+                  ],
+                  diagnostics: renderer.diagnostics,
+                }
+              }
+              parentPort.postMessage({
+                type: 'native-selftest',
+                value: completedResult,
+              })
+              if (!completedResult.passed) {
+                requestedExitCode = 1
+                exitCode = 1
+              }
+              closeSelfTestWindow()
+            },
+            (error: unknown) => {
+              requestedExitCode = 1
+              exitCode = 1
+              parentPort.postMessage({
+                type: 'native-selftest',
+                value: {
+                  passed: false,
+                  cases: [],
+                  environment: {
+                    highContrast: false,
+                    highContrastScheme: '',
+                    textScaleFactor: 1,
+                    animationsEnabled: true,
+                    advancedEffectsEnabled: true,
+                  },
+                  diagnostics: renderer.diagnostics,
+                  error:
+                    error instanceof Error
+                      ? error.stack ?? error.message
+                      : String(error),
+                },
+              })
+              closeSelfTestWindow()
+            },
+          )
+        }
       } catch (error) {
         parentPort.postMessage({
           type: 'error',

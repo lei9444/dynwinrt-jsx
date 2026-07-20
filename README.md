@@ -53,6 +53,29 @@ Use development hot reload after setup:
 npm run dev
 ```
 
+Run the repository's real WinUI in-process verification tier:
+
+```powershell
+.\scripts\run-native-selftest.ps1
+```
+
+The runner compiles the framework and dashboard, executes native property,
+effect, DispatcherQueue event, keyed identity, ErrorBoundary, automation,
+focus, and cleanup assertions, then runs an intentional Worker startup failure.
+It writes structured evidence to
+`examples\dashboard\.winapp\native-selftest\summary.json`.
+
+Run the reversible accessibility settings matrix:
+
+```powershell
+.\scripts\run-accessibility-matrix.ps1 -IncludeUIA
+```
+
+This temporarily enables High Contrast, applies 150% text scale, and disables
+animations. Original user settings are restored in `finally`. See
+[`docs/accessibility-verification.md`](docs/accessibility-verification.md) for
+the automated evidence and manual Narrator checklist.
+
 The generated app keeps its Window, Worker, and model state alive while
 reloading `src/app.tsx`. Changes to the Worker, model, generated bindings, or
 native runtime require a restart.

@@ -90,6 +90,9 @@ const stateBridge = createStateBridge(
   },
 )
 const hotEnabled = process.env.DYNWINRT_JSX_HOT === '1'
+const selfTestEnabled = process.env.DYNWINRT_JSX_SELFTEST === '1'
+const selfTestFailure =
+  process.env.DYNWINRT_JSX_SELFTEST_FAILURE ?? null
 const hotStatePath = path.join(
   os.tmpdir(),
   `dynwinrt-jsx-hot-${process.pid}.json`,
@@ -107,6 +110,8 @@ const worker = new Worker(
       statePort: port2,
       hotStatePath: hotEnabled ? hotStatePath : null,
       initialState,
+      selfTest: selfTestEnabled,
+      selfTestFailure,
     },
     transferList: [port2],
   },
@@ -245,6 +250,13 @@ worker.on('message', (message) => {
     )))
     if (message.message) {
       console.error(message.message)
+    }
+  } else if (message?.type === 'native-selftest') {
+    console.log(
+      `DYNWINRT_JSX_NATIVE_SELFTEST ${JSON.stringify(message.value)}`,
+    )
+    if (!message.value?.passed) {
+      process.exitCode = 1
     }
   } else if (message?.type === 'state-initialized') {
     console.log(formatDiagnosticRecord(createDiagnosticRecord(
