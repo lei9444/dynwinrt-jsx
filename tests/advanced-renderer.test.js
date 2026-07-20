@@ -212,6 +212,7 @@ test('ErrorBoundary catches mount and reactive property failures', () => {
   const nativeRenderer = renderer()
   const window = new FakeWindow()
   const source = signal('safe')
+  const fontSize = signal(14)
   const reset = signal(0)
 
   function Broken() {
@@ -240,6 +241,7 @@ test('ErrorBoundary catches mount and reactive property failures', () => {
         }),
       children: jsx(ErrorUI.TextBlock, {
         text: source,
+        fontSize,
       }),
     }),
     reactiveWindow,

@@ -7,6 +7,10 @@ import {
   type Renderer,
   type RendererOptions,
 } from './renderer'
+import {
+  createWinUIResourceRuntime,
+  type WinUIResourceBindings,
+} from './winui-resources'
 
 interface ProjectedCollection {
   as(interfaceType: unknown): NativeCollection
@@ -29,28 +33,12 @@ interface ReferenceBooleanType {
   from(value: unknown): unknown
 }
 
-interface ResourceMap {
-  lookup(key: unknown): unknown
-}
-
-interface ResourceDictionary {
-  as(interfaceType: unknown): ResourceMap
-}
-
-interface ApplicationType {
-  readonly current: {
-    readonly resources: ResourceDictionary
-  } | null
-}
-
-export interface WinUIBindings {
+export interface WinUIBindings extends WinUIResourceBindings {
   readonly IVector_UIElement?: unknown
   readonly TextBlock?: TextBlockConstructor
   readonly Grid?: object
   readonly Canvas?: object
   readonly AutomationProperties?: object
-  readonly Application?: ApplicationType
-  readonly IMap_Object_Object?: unknown
   readonly PropertyValue?: PropertyValueType
   readonly IReference_Boolean?: ReferenceBooleanType
 }
@@ -305,54 +293,77 @@ export function color(
   return { a, r, g, b }
 }
 
-function createResourceResolver(
-  bindings: WinUIBindings,
-): RendererOptions['resolveResource'] | undefined {
-  if (
-    !bindings.Application ||
-    !bindings.IMap_Object_Object ||
-    !bindings.PropertyValue
-  ) {
-    return undefined
-  }
-
-  return (key, fallback) => {
-    const application = bindings.Application?.current
-    if (!application) {
-      if (fallback !== undefined) {
-        return fallback
-      }
-      throw new Error(`Application.current is unavailable while resolving "${key}".`)
-    }
-
-    const resources = application.resources.as(
-      bindings.IMap_Object_Object,
-    )
-
-    try {
-      return resources.lookup(
-        bindings.PropertyValue?.createString(key),
-      )
-    } catch (error) {
-      if (fallback !== undefined) {
-        return fallback
-      }
-      throw error
-    }
-  }
-}
-
 export function createWinUIRenderer(
   bindings: WinUIBindings,
   options: RendererOptions & {
     attachedProperties?: AttachedPropertyRegistrations
   } = {},
 ): Renderer {
+  const resourceRuntime = createWinUIResourceRuntime(
+    bindings,
+    options.resolveResource,
+  )
+  const observeResourceChanges =
+    resourceRuntime || options.observeResourceChanges
+      ? (
+          target: object,
+          callback: () => void,
+          kind: 'static' | 'theme',
+        ) => {
+          const cleanups: Array<() => void> = []
+          try {
+            for (const observe of [
+              resourceRuntime?.observeResourceChanges,
+              options.observeResourceChanges,
+            ]) {
+              const cleanup = observe?.(target, callback, kind)
+              if (typeof cleanup === 'function') {
+                cleanups.push(cleanup)
+              }
+            }
+          }
+          catch (error) {
+            let cleanupError: unknown
+            for (const cleanup of cleanups.reverse()) {
+              try {
+                cleanup()
+              }
+              catch (failure) {
+                cleanupError ??= failure
+              }
+            }
+            if (cleanupError !== undefined) {
+              throw new AggregateError(
+                [error, cleanupError],
+                'Resource observers failed to initialize and roll back.',
+              )
+            }
+            throw error
+          }
+          return () => {
+            let firstError: unknown
+            for (const cleanup of cleanups.reverse()) {
+              try {
+                cleanup()
+              }
+              catch (error) {
+                firstError ??= error
+              }
+            }
+            if (firstError !== undefined) {
+              throw firstError
+            }
+          }
+        }
+      : undefined
   const propertySetters = {
     ...createAttachedPropertySetters({
       ...createWinUIAttachedPropertyRegistrations(bindings),
       ...options.attachedProperties,
     }),
+    ...(resourceRuntime
+      ? { resourceOverrides: resourceRuntime.resourceOverridesSetter }
+      : {}),
     ...options.propertySetters,
   }
   const propertyConverters = {
@@ -392,6 +403,22 @@ export function createWinUIRenderer(
         : undefined),
     resolveResource:
       options.resolveResource ??
-      createResourceResolver(bindings),
+      resourceRuntime?.resolveResource,
+    observeResourceChanges:
+      observeResourceChanges,
+    getResourceObservationKind:
+      resourceRuntime || options.getResourceObservationKind
+        ? (property, value, target) =>
+            resourceRuntime?.getResourceObservationKind(
+              property,
+              value,
+              target,
+            ) ??
+            options.getResourceObservationKind?.(
+              property,
+              value,
+              target,
+            )
+        : undefined,
   })
 }

@@ -88,6 +88,7 @@ an independently consumable framework.
 - `Portal` for rendering into another native host
 - Signal-backed event handlers and one/two-way binding props
 - WinUI resources, attached properties, nullable Boolean boxing, and value helpers
+- Typed theme resources with effective-element resolution and scoped overrides
 - Whole-root hot refresh and explicit `RenderHandle.update()`
 - Revisioned host/client state bridge for Worker and `MessagePort` endpoints
 - Native lifecycle diagnostics and deterministic disposal
@@ -185,6 +186,45 @@ const accent = createSolidColorBrush(
 nullable WinRT value types, combine `createReferenceBoxing()` with the matching
 `PropertyValue.createX` and generated `IReference_X` binding, then call
 `boxNullable()`.
+
+### Theme resources and scoped overrides
+
+Use typed `theme` tokens for values that should follow Light, Dark, and High
+Contrast modes:
+
+```tsx
+<UI.Border
+  background={theme.cardBackground}
+  borderBrush={theme.cardStroke}
+>
+  <UI.TextBlock foreground={theme.primaryText} text="Workspace" />
+</UI.Border>
+```
+
+`theme.ref(key, fallback?)` is the string-key escape hatch. Theme references
+resolve from the target element's nearest resource dictionaries, respect the
+nearest explicit `requestedTheme`, and update from `ActualThemeChanged` and
+High Contrast notifications. Use `resource()` for static resource lookup.
+
+Override individual WinUI control resources without replacing the native
+template:
+
+```tsx
+<UI.Button
+  resourceOverrides={{
+    ButtonBackground: theme.accent,
+    ButtonBackgroundPointerOver: theme.accentSecondary,
+    ButtonBackgroundPressed: theme.accentTertiary,
+    ButtonForeground: theme.textOnAccent,
+  }}
+>
+  Save
+</UI.Button>
+```
+
+Overrides update transactionally, preserve existing local values, and restore
+them when the owning JSX scope is disposed. Prefer theme references inside
+overrides; literal brushes do not adapt to High Contrast automatically.
 
 ### Grid definitions
 
@@ -533,7 +573,9 @@ of the preserved corrupt file.
 | `content` property | Accepts one child, such as `Button` or `Window` |
 | `items` collection | Uses ordered collection synchronization |
 
-`resource(key, fallback?)` resolves values through `Application.current.resources`.
+`resource(key, fallback?)` resolves a static resource from the target element,
+its ancestors, then `Application.current.resources`. `theme.ref()` uses the
+same lookup chain plus theme dictionaries and automatic theme refresh.
 
 ## WinUI lifecycle
 

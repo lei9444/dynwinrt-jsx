@@ -12,16 +12,19 @@ import {
 } from 'dynwinrt-jsx'
 import { roInitialize } from '@microsoft/dynwinrt'
 import {
+  AccessibilitySettings,
   Application,
   ApplicationTheme,
   AutomationProperties,
   DispatcherQueueTimer,
+  ElementTheme,
   Grid,
   IMap_Object_Object,
   IReference_Boolean,
   IVector_UIElement,
   MicaBackdrop,
   PropertyValue,
+  ResourceDictionary,
   StackPanel,
   TextBlock,
   TitleBarTheme,
@@ -105,13 +108,17 @@ const stateBridge = createStateBridge<DashboardState>(
 parentPort.postMessage({ type: 'startup-stage', stage: 'bridge-created' })
 
 const renderer = createWinUIRenderer({
+  AccessibilitySettings,
   Application,
+  ApplicationTheme,
   AutomationProperties,
+  ElementTheme,
   Grid,
   IMap_Object_Object,
   IReference_Boolean,
   IVector_UIElement,
   PropertyValue,
+  ResourceDictionary,
   TextBlock,
 })
 const FallbackUI = createControls({

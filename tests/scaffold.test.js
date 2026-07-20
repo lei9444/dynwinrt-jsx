@@ -102,6 +102,12 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     'utf8',
   )
   assertLifetimeTeardownSource(workerSource)
+  const appSource = fs.readFileSync(
+    path.join(target, 'src', 'app.tsx'),
+    'utf8',
+  )
+  assert.match(appSource, /theme\.secondaryText/)
+  assert.match(appSource, /resourceOverrides=/)
   const controls = manifest.winapp.jsBindings.additionalWinmds
     .find((entry) =>
       entry.namespace === 'Microsoft.UI.Xaml.Controls'
@@ -133,6 +139,8 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   )
   for (const [namespace, className] of [
     ['Windows.Foundation', 'Uri'],
+    ['Windows.UI.ViewManagement', 'AccessibilitySettings'],
+    ['Microsoft.UI.Xaml', 'ResourceDictionary'],
     ['Microsoft.UI.Xaml.Media', 'FontFamily'],
     ['Microsoft.UI.Xaml.Media', 'SolidColorBrush'],
     ['Microsoft.UI.Xaml.Media.Imaging', 'BitmapImage'],
@@ -206,7 +214,7 @@ test('create configures sibling repositories in local mode', (t) => {
   )
 })
 
-test('dashboard and template include Phase 2 WinMD roots', () => {
+test('dashboard and template include Phase 2 and theme WinMD roots', () => {
   const template = readManifest(
     path.join(__dirname, '..', 'templates', 'winui'),
   )
@@ -215,6 +223,8 @@ test('dashboard and template include Phase 2 WinMD roots', () => {
   )
   const expected = new Map([
     ['Windows.Foundation', ['Uri']],
+    ['Windows.UI.ViewManagement', ['AccessibilitySettings']],
+    ['Microsoft.UI.Xaml', ['ResourceDictionary']],
     ['Microsoft.UI.Xaml.Controls', [
       'BitmapIcon',
       'Flyout',

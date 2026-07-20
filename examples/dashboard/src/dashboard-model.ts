@@ -1,6 +1,5 @@
 import {
   batch,
-  color,
   computed,
   createRoot,
   effect,
@@ -9,9 +8,6 @@ import {
   type RendererDiagnostics,
   type Signal,
 } from 'dynwinrt-jsx'
-import {
-  SolidColorBrush,
-} from '#winapp/bindings'
 import {
   type DashboardState,
   type DashboardTask,
@@ -34,14 +30,6 @@ export interface DashboardBridge {
   set(value: DashboardState): void
 }
 
-export interface DashboardColors {
-  readonly blue: SolidColorBrush
-  readonly green: SolidColorBrush
-  readonly orange: SolidColorBrush
-  readonly purple: SolidColorBrush
-  readonly white: SolidColorBrush
-}
-
 export interface DashboardModel {
   readonly status: Signal<DashboardState['status']>
   readonly route: Signal<DashboardRoute>
@@ -59,7 +47,6 @@ export interface DashboardModel {
   readonly hotVersion: Signal<number>
   readonly lastError: Signal<string | null>
   readonly diagnostics: Signal<RendererDiagnostics>
-  readonly colors: DashboardColors
   updateTask(id: number, completed: boolean): void
   removeTask(id: number): void
   addTask(title: string): void
@@ -78,9 +65,6 @@ const idleDiagnostics: RendererDiagnostics = {
   listEntriesCreated: 0,
   listEntriesReused: 0,
 }
-
-const brush = (r: number, g: number, b: number, a = 255) =>
-  new SolidColorBrush(color(r, g, b, a))
 
 export function createDashboardModel(
   bridge: DashboardBridge,
@@ -115,14 +99,6 @@ export function createDashboardModel(
     const hotVersion = signal(0)
     const lastError = signal<string | null>(null)
     const diagnostics = signal(idleDiagnostics)
-    const colors: DashboardColors = {
-      blue: brush(0, 120, 212),
-      green: brush(16, 124, 16),
-      orange: brush(202, 80, 16),
-      purple: brush(136, 23, 152),
-      white: brush(255, 255, 255),
-    }
-
     const snapshot = (
       nextStatus = status.value,
     ): DashboardState => ({
@@ -160,7 +136,6 @@ export function createDashboardModel(
       hotVersion,
       lastError,
       diagnostics,
-      colors,
       updateTask(id, completed) {
         batch(() => {
           tasks.value = tasks.value.map((task) =>

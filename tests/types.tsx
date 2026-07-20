@@ -34,6 +34,8 @@ import {
   signal,
   showFlyout,
   showMenuFlyout,
+  theme,
+  themeResource,
   thickness,
   useContext,
   type MaybeSignal,
@@ -218,6 +220,7 @@ class TypeColumnDefinition {
 class TypeTextBlock {
   text = ''
   fontSize = 14
+  foreground: unknown = null
 }
 
 class TypeTextBox {
@@ -433,6 +436,11 @@ export const typeCheckedTree = (
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}
       fontSize={resource('BodyStrongFontSize', 24, enabled)}
+      foreground={theme.primaryText}
+      resourceOverrides={{
+        TextControlForeground: theme.secondaryText,
+        CustomFontSize: themeResource<number>('BodyFontSize', 14),
+      }}
       automationHeadingLevel={1}
       automationPositionInSet={1}
       automationSizeOfSet={3}

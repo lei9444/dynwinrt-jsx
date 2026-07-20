@@ -128,6 +128,26 @@ failed resource references retryable, allow ordinary cleanup errors to proceed
 to `Window.Closed`, and veto close only when projection-scope release itself
 fails.
 
+## Theme resources
+
+Use `theme.*` or `theme.ref(key)` instead of manually coupling `resource()` to
+an application theme signal. Theme references now resolve against the target
+element and its ancestors, react to `ActualThemeChanged` and High Contrast,
+and fall back to application resources.
+
+```tsx
+<UI.Border
+  background={theme.cardBackground}
+  resourceOverrides={{
+    ButtonBackground: theme.accent,
+  }}
+/>
+```
+
+`resource()` remains the static-resource API. Custom `resolveResource`
+implementations keep `key` and `fallback` as their first two arguments and can
+optionally accept `target` and resource `kind` as the third and fourth.
+
 ## ListView selection
 
 Create list controls with `createListViewControl()` so default JSX children

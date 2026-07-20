@@ -51,6 +51,7 @@
           "namespace": "Microsoft.UI.Xaml",
           "classes": [
             "Application",
+            "ResourceDictionary",
             "Window"
           ]
         },
@@ -105,6 +106,12 @@
           "namespace": "Microsoft.UI.Xaml.Media.Imaging",
           "classes": [
             "BitmapImage"
+          ]
+        },
+        {
+          "namespace": "Windows.UI.ViewManagement",
+          "classes": [
+            "AccessibilitySettings"
           ]
         }
       ]

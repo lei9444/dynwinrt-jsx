@@ -38,7 +38,7 @@ The implementation is currently best described as:
 | Renderer feature set | Ready for a pilot |
 | Simple dashboard/settings UI | Ready for a pilot |
 | Complex WinUI authoring | Pilot control set is covered; broader recipes remain |
-| Styling developer experience | Native capability exists; framework layer is limited |
+| Styling developer experience | Typed theme resources and scoped overrides are ready; recipes remain |
 | Accessibility | Needs end-to-end application coverage |
 | Native reliability | Needs a broader machine and lifecycle matrix |
 | Packaging and servicing | Not included in the generated app |
@@ -418,14 +418,14 @@ scope is active are released from `AppWindow.Closing` before XAML core teardown.
 
 ### Phase 3: Styling and themes
 
-- [ ] Add typed WinUI theme tokens with a string-key escape hatch.
-- [ ] Resolve tokens against effective element themes and scoped resources.
-- [ ] Refresh token-backed properties automatically on native theme changes.
-- [ ] Add subtree resource overrides that preserve control visual states.
+- [x] Add typed WinUI theme tokens with a string-key escape hatch.
+- [x] Resolve tokens against effective element themes and scoped resources.
+- [x] Refresh token-backed properties automatically on native theme changes.
+- [x] Add subtree resource overrides that preserve control visual states.
 - [ ] Define typed spacing, typography, radius, and elevation tokens.
 - [ ] Implement a small style-recipe API with variants.
 - [ ] Support signal-backed recipe values.
-- [ ] Preserve native `Style`, `ResourceDictionary`, and Fluent resources.
+- [x] Preserve native `Style`, `ResourceDictionary`, and Fluent resources.
 - [ ] Centralize Dark, Light, and High Contrast transitions.
 - [ ] Replace repeated pilot styling literals with tokens or recipes.
 

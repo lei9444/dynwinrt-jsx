@@ -3,7 +3,6 @@ import {
   For,
   Show,
   batch,
-  color,
   computed,
   cornerRadius,
   createContext,
@@ -15,16 +14,15 @@ import {
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
-  createSolidColorBrush,
   formatRendererDiagnostics,
   gridLength,
   onCleanup,
   onMount,
-  resource,
   showContentDialog,
   showFlyout,
   signal,
   thickness,
+  theme,
   useContext,
   type Child,
   type ReadonlySignal,
@@ -59,7 +57,6 @@ import {
   ScrollViewer,
   Selector,
   StackPanel,
-  SolidColorBrush,
   Symbol,
   SymbolIcon,
   TeachingTip,
@@ -140,27 +137,8 @@ interface TeachingTipService {
   open(target: ButtonInstance): void
 }
 
-const ThemeSignal = createContext<ReadonlySignal<boolean> | null>(null)
 const TeachingTipServiceContext =
   createContext<TeachingTipService | null>(null)
-
-function themeResource<Value = unknown>(
-  key: string,
-  fallback?: Value,
-) {
-  const theme = useContext(ThemeSignal)
-  return theme
-    ? resource(key, fallback, theme)
-    : resource(key, fallback)
-}
-
-function secondaryForeground(context: DashboardAppContext) {
-  return computed(() =>
-    context.model.darkTheme.value
-      ? context.model.colors.white
-      : context.model.colors.purple,
-  )
-}
 
 function Page(props: PageProps) {
   return (
@@ -184,6 +162,7 @@ function Page(props: PageProps) {
         <UI.TextBlock
           text={props.subtitle}
           fontSize={13}
+          foreground={theme.secondaryText}
         />
         {props.children}
       </UI.StackPanel>
@@ -200,8 +179,8 @@ function Card(props: { readonly children: Child; readonly gridColumn?: number })
       padding={thickness(18)}
       cornerRadius={cornerRadius(12)}
       borderThickness={thickness(1)}
-      background={themeResource('CardBackgroundFillColorDefaultBrush')}
-      borderBrush={themeResource('CardStrokeColorDefaultBrush')}
+      background={theme.cardBackground}
+      borderBrush={theme.cardStroke}
     >
       {props.children}
     </UI.Border>
@@ -209,7 +188,6 @@ function Card(props: { readonly children: Child; readonly gridColumn?: number })
 }
 
 function MetricCard(props: {
-  readonly context: DashboardAppContext
   readonly column: number
   readonly automationId: string
   readonly label: string
@@ -224,7 +202,7 @@ function MetricCard(props: {
           text={props.label.toUpperCase()}
           fontSize={11}
           fontWeight={{ weight: 700 }}
-          foreground={secondaryForeground(props.context)}
+          foreground={theme.secondaryText}
         />
         <UI.TextBlock
           text={props.value}
@@ -256,11 +234,6 @@ function OverlayShowcase(context: DashboardAppContext) {
     FontFamily,
     'Segoe UI Variable Text',
   )
-  const accentBrush = createSolidColorBrush(
-    SolidColorBrush,
-    color(0, 120, 212),
-  )
-
   return (
     <Card>
       <UI.StackPanel spacing={10}>
@@ -269,7 +242,7 @@ function OverlayShowcase(context: DashboardAppContext) {
           fontSize={18}
           fontWeight={{ weight: 700 }}
           fontFamily={headingFont}
-          foreground={accentBrush}
+          foreground={theme.accent}
         />
         <UI.StackPanel orientation={1} spacing={10}>
           <UI.Button
@@ -348,7 +321,6 @@ function DashboardPage(context: DashboardAppContext) {
         columnSpacing={12}
       >
         <MetricCard
-          context={context}
           column={0}
           automationId="TasksMetric"
           label="Tasks"
@@ -356,7 +328,6 @@ function DashboardPage(context: DashboardAppContext) {
           detail={context.model.taskSummary}
         />
         <MetricCard
-          context={context}
           column={1}
           automationId="CompleteMetric"
           label="Complete"
@@ -364,7 +335,6 @@ function DashboardPage(context: DashboardAppContext) {
           detail="Reactive progress"
         />
         <MetricCard
-          context={context}
           column={2}
           automationId="RuntimeMetric"
           label="Runtime"
@@ -372,7 +342,6 @@ function DashboardPage(context: DashboardAppContext) {
           detail="Window and Worker stay alive"
         />
         <MetricCard
-          context={context}
           column={3}
           automationId="BuildMetric"
           label="Build"
@@ -491,7 +460,7 @@ function TaskRow(props: TaskRowProps) {
     <UI.Border
       padding={thickness(12)}
       cornerRadius={cornerRadius(8)}
-      background={themeResource('LayerFillColorDefaultBrush')}
+      background={theme.layerFill}
     >
       <UI.StackPanel
         orientation={1}
@@ -584,7 +553,15 @@ function TasksPage(context: DashboardAppContext) {
         <UI.Button
           ref={addButton}
           automationId="AddTaskButton"
-          style={resource('AccentButtonStyle')}
+          resourceOverrides={{
+            ButtonBackground: theme.accent,
+            ButtonBackgroundPointerOver: theme.accentSecondary,
+            ButtonBackgroundPressed: theme.accentTertiary,
+            ButtonBackgroundDisabled: theme.accentDisabled,
+            ButtonForeground: theme.textOnAccent,
+            ButtonForegroundPointerOver: theme.textOnAccent,
+            ButtonForegroundPressed: theme.textOnAccent,
+          }}
           onClick={addTask}
         >
           Add task
@@ -856,8 +833,7 @@ function ApplicationShell(context: DashboardAppContext) {
     return routeItems.get(context.model.route.value) ?? null
   })
   return (
-    <ThemeSignal.Provider value={context.model.darkTheme}>
-      <TeachingTipServiceContext.Provider value={teachingTipService}>
+    <TeachingTipServiceContext.Provider value={teachingTipService}>
         <AppNavigation
           ref={navigation}
           automationId="AppNavigation"
@@ -922,8 +898,7 @@ function ApplicationShell(context: DashboardAppContext) {
             </UI.TeachingTip>
           </UI.Grid>
         </AppNavigation>
-      </TeachingTipServiceContext.Provider>
-    </ThemeSignal.Provider>
+    </TeachingTipServiceContext.Provider>
   )
 }
 

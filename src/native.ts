@@ -1,5 +1,6 @@
 import type { MaybeSignal } from './reactive'
 import type { ResourceReference } from './resource'
+import type { WinUIResourceOverrides } from './winui-resources'
 import { createVNode, type Child, type Key, type VNode } from './vnode'
 import type {
   NativeAdapter,
@@ -91,6 +92,7 @@ export interface NativeCommonProps<Value> {
   automationLiveSetting?: MaybeSignal<number>
   automationIsDialog?: MaybeSignal<boolean>
   automationControlType?: MaybeSignal<number>
+  resourceOverrides?: MaybeSignal<WinUIResourceOverrides>
 }
 
 export type NativeProps<Value> =

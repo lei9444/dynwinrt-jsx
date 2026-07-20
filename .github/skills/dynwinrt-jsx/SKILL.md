@@ -185,6 +185,8 @@ The built-in WinUI layer currently provides:
 - ListView item/slot adapters with controlled selection helpers.
 - Scoped Flyout, MenuFlyout, and TeachingTip rendering.
 - Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
+- Typed theme resources with effective-element lookup, High Contrast refresh,
+  and transactional `resourceOverrides`.
 - Canvas left and top attached setters.
 - Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.
@@ -309,7 +311,8 @@ Account for these limits when designing a feature:
 - Object-valued WinRT properties require projected objects unless a converter
   handles them.
 - Resource keys are strings and are not statically verified.
-- Resource lookup is application-level unless a custom resolver is provided.
+- Static and theme resources resolve through the target element, ancestor
+  resources, and application resources.
 - Complex collections and named content slots need explicit adapters.
 - There is no CSS-like styling system or integrated DevTools.
 - All WinUI reads and writes must remain on the UI STA.

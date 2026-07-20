@@ -9,8 +9,8 @@ import {
   createNavigationViewControl,
   createSymbolIcon,
   formatRendererDiagnostics,
-  resource,
   showContentDialog,
+  theme,
   thickness,
   type Child,
   type RefObject,
@@ -77,6 +77,10 @@ function Page(props: {
         fontSize={30}
         fontWeight={{ weight: 700 }}
       />
+      <UI.TextBlock
+        text="Native WinUI resources follow the effective theme."
+        foreground={theme.secondaryText}
+      />
       {props.children}
     </UI.StackPanel>
   )
@@ -118,7 +122,14 @@ function HomePage(context: AppContext) {
       <UI.TextBlock text={context.model.countText} fontSize={20} />
       <UI.Button
         automationId="IncrementButton"
-        style={resource('AccentButtonStyle')}
+        resourceOverrides={{
+          ButtonBackground: theme.accent,
+          ButtonBackgroundPointerOver: theme.accentSecondary,
+          ButtonBackgroundPressed: theme.accentTertiary,
+          ButtonForeground: theme.textOnAccent,
+          ButtonForegroundPointerOver: theme.textOnAccent,
+          ButtonForegroundPressed: theme.textOnAccent,
+        }}
         onClick={() => {
           context.model.increment()
         }}

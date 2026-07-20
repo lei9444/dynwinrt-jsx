@@ -74,6 +74,7 @@ export interface RendererErrorContext {
 export type NativePropertySetter = (
   target: object,
   value: unknown,
+  scope: ReactiveScope,
 ) => void
 
 export type NativePropertyConverter = (
@@ -99,7 +100,19 @@ export interface RendererOptions {
   resolveResource?: (
     key: string,
     fallback: unknown,
+    target: object,
+    kind: ResourceReference['kind'],
   ) => unknown
+  observeResourceChanges?: (
+    target: object,
+    callback: () => void,
+    kind: ResourceReference['kind'],
+  ) => void | (() => void)
+  getResourceObservationKind?: (
+    property: string,
+    value: unknown,
+    target: object,
+  ) => ResourceReference['kind'] | undefined
   onUnknownProperty?: (
     target: object,
     property: string,
@@ -1239,7 +1252,13 @@ export class Renderer {
           adapters,
           scope,
         )
+        if (scope.disposed) {
+          return
+        }
         this.applyEvents(instance, vnode.props, scope)
+        if (scope.disposed) {
+          return
+        }
         setRef(ref, instance)
 
         for (
@@ -1286,6 +1305,10 @@ export class Renderer {
           ))
         }
       })
+      if (scope.disposed) {
+        record.dispose()
+        return record
+      }
       record.setNodes([instance])
     } catch (error) {
       record.dispose()
@@ -1314,6 +1337,9 @@ export class Renderer {
     scope: ReactiveScope,
   ): void {
     for (const [property, sourceValue] of Object.entries(props)) {
+      if (scope.disposed) {
+        return
+      }
       if (
         reservedProperties.has(property) ||
         adapters?.[property]?.kind === 'slot' ||
@@ -1345,22 +1371,29 @@ export class Renderer {
           )
           continue
         }
-        runInScope(scope, () => {
-          effect(() => {
-            this.assignProperty(
-              target,
-              property,
-              this.resolvePropertyValue(
-                target,
-                property,
-                sourceValue.value,
-              ),
-              componentSetter,
-              adapters?.[property],
-              scope,
-            )
-          })
-        })
+        this.bindProperty(
+          target,
+          property,
+          () => sourceValue.value,
+          componentSetter,
+          adapters?.[property],
+          scope,
+        )
+      } else if (
+        this.getResourceObservationKind(
+          target,
+          property,
+          sourceValue,
+        )
+      ) {
+        this.bindProperty(
+          target,
+          property,
+          () => sourceValue,
+          componentSetter,
+          adapters?.[property],
+          scope,
+        )
       } else {
         this.assignProperty(
           target,
@@ -1376,6 +1409,108 @@ export class Renderer {
         )
       }
     }
+  }
+
+  private bindProperty(
+    target: object,
+    property: string,
+    readSource: () => unknown,
+    componentSetter:
+      | ((
+          instance: object,
+          property: string,
+          value: unknown,
+        ) => boolean)
+      | undefined,
+    adapter: NativeAdapter<object> | undefined,
+    scope: ReactiveScope,
+  ): void {
+    const resourceRevision = signal(0)
+    let observedKind: ResourceReference['kind'] | undefined
+    let unsubscribe: (() => void) | undefined
+    const stopObserving = (): unknown => {
+      const cleanup = unsubscribe
+      unsubscribe = undefined
+      observedKind = undefined
+      try {
+        cleanup?.()
+        return undefined
+      }
+      catch (error) {
+        return error
+      }
+    }
+
+    runInScope(scope, () => {
+      onCleanup(() => {
+        const error = stopObserving()
+        if (error !== undefined) {
+          throw error
+        }
+      })
+      effect(() => {
+        const source = readSource()
+        let observationError: unknown
+        const observationKind = this.getResourceObservationKind(
+          target,
+          property,
+          source,
+        )
+        if (observationKind) {
+          resourceRevision.value
+          if (observedKind !== observationKind) {
+            if (observedKind) {
+              observationError = stopObserving()
+            }
+            observedKind = observationKind
+            const cleanup = this.options.observeResourceChanges?.(
+              target,
+              () => {
+                resourceRevision.value =
+                  resourceRevision.peek() + 1
+              },
+              observationKind,
+            )
+            if (typeof cleanup === 'function') {
+              unsubscribe = cleanup
+            }
+          }
+        }
+        else if (observedKind) {
+          observationError = stopObserving()
+        }
+        this.assignProperty(
+          target,
+          property,
+          this.resolvePropertyValue(target, property, source),
+          componentSetter,
+          adapter,
+          scope,
+        )
+        if (observationError !== undefined && !scope.disposed) {
+          this.handleError(
+            observationError,
+            { phase: 'event', target, property },
+            scope,
+          )
+        }
+      })
+    })
+  }
+
+  private getResourceObservationKind(
+    target: object,
+    property: string,
+    value: unknown,
+  ): ResourceReference['kind'] | undefined {
+    if (isResourceReference(value)) {
+      return value.kind
+    }
+    return this.options.getResourceObservationKind?.(
+      property,
+      value,
+      target,
+    )
   }
 
   private applyEvents(
@@ -1462,7 +1597,7 @@ export class Renderer {
 
       const namedSetter = this.options.propertySetters?.[property]
       if (namedSetter) {
-        namedSetter(target, value)
+        namedSetter(target, value, scope)
         return
       }
 
@@ -1512,6 +1647,8 @@ export class Renderer {
         value = this.options.resolveResource(
           value.key,
           (value as ResourceReference).fallback,
+          target,
+          value.kind,
         )
       }
     }

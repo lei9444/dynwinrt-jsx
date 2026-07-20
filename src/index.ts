@@ -223,8 +223,19 @@ export {
 
 export {
   resource,
+  themeResource,
+  isThemeResourceReference,
   type ResourceReference,
+  type ThemeResourceReference,
 } from './resource'
+
+export {
+  theme,
+} from './theme'
+
+export type {
+  WinUIResourceOverrides,
+} from './winui-resources'
 
 export {
   Fragment,
