@@ -1,6 +1,5 @@
 import {
   assertRendererIdle,
-  type RenderHandle,
   type Renderer,
 } from 'dynwinrt-jsx'
 import type {
@@ -18,8 +17,7 @@ export interface RunDashboardSelfTestOptions {
   readonly renderer: Pick<Renderer, 'diagnostics'>
   readonly window: DashboardSelfTestWindow
   readonly parentPort: DashboardWorkerParentPort
-  readonly getRenderHandle: () => RenderHandle | undefined
-  readonly clearRenderHandle: () => void
+  readonly disposeRender: () => void
   readonly setExitCode: (value: number) => void
   readonly exitApplication: () => void
 }
@@ -49,8 +47,7 @@ export function runDashboardSelfTest(
       const cleanupStarted = Date.now()
       let completedResult: NativeSelfTestResult
       try {
-        options.getRenderHandle()?.dispose()
-        options.clearRenderHandle()
+        options.disposeRender()
         const diagnostics = options.renderer.diagnostics
         assertRendererIdle(
           diagnostics,

@@ -11,7 +11,6 @@ import {
   effect,
   flushScopeMounts,
   isSignal,
-  onCleanup,
   runInScope,
   setScopeErrorHandler,
   signal,
@@ -19,7 +18,6 @@ import {
   type Signal,
 } from './reactive'
 import {
-  isResourceReference,
   type ResourceReference,
 } from './resource'
 import {
@@ -37,25 +35,25 @@ import {
   type PortalNode,
   type VNode,
 } from './vnode'
-import type {
-  NativeAdapter,
-  NativeSlotAdapter,
-} from './adapters'
+import type { NativeAdapter } from './adapters'
+import { RendererPropertyService } from './renderer-properties'
 import {
-  replaceNativeCollection,
-  requireNativeArray,
-} from './native-collection'
+  resolveChildAdapter,
+  resolveSlotAdapter,
+  type ChildAdapter,
+  type NativeCollection,
+} from './renderer-children'
+import {
+  RecordState,
+  type MountedRecord,
+} from './renderer-lifecycle'
 
-export interface NativeCollection {
-  readonly length?: number
-  readonly size?: number
-  getAt?(index: number): unknown
-  toArray?(): unknown[]
-  insertAt(index: number, value: unknown): void
-  removeAt(index: number): void
-  append(value: unknown): void
-  clear(): void
-}
+export {
+  isNativeCollection,
+} from './renderer-children'
+export type {
+  NativeCollection,
+} from './renderer-children'
 
 export interface RendererErrorContext {
   phase:
@@ -143,20 +141,6 @@ export interface RendererDiagnostics {
   readonly listEntriesReused: number
 }
 
-interface MountedRecord {
-  readonly nodes: readonly unknown[]
-  dispose(): void
-}
-
-interface MutableMountedRecord extends MountedRecord {
-  setNodes(nodes: readonly unknown[]): void
-}
-
-interface ChildAdapter {
-  snapshot(): unknown[]
-  sync(current: unknown[], desired: readonly unknown[]): unknown[]
-}
-
 interface ChildSlot {
   nodes: readonly unknown[]
   record: MountedRecord
@@ -179,133 +163,6 @@ interface MutableRendererDiagnostics {
   activeComponents: number
   listEntriesCreated: number
   listEntriesReused: number
-}
-
-const reservedProperties = new Set([
-  'children',
-  'key',
-  'ref',
-])
-
-class RecordState implements MutableMountedRecord {
-  private currentNodes: readonly unknown[] = []
-  private disposed = false
-
-  constructor(
-    private readonly onNodesChanged: (nodes: readonly unknown[]) => void,
-    private readonly disposeCallback: () => void,
-  ) {}
-
-  get nodes(): readonly unknown[] {
-    return this.currentNodes
-  }
-
-  setNodes(nodes: readonly unknown[]): void {
-    if (this.disposed) {
-      return
-    }
-
-    if (
-      this.currentNodes.length === nodes.length &&
-      this.currentNodes.every((node, index) => node === nodes[index])
-    ) {
-      return
-    }
-
-    this.currentNodes = [...nodes]
-    this.onNodesChanged(this.currentNodes)
-  }
-
-  dispose(): void {
-    if (this.disposed) {
-      return
-    }
-
-    this.disposed = true
-    try {
-      this.disposeCallback()
-    } finally {
-      this.currentNodes = []
-      this.onNodesChanged(this.currentNodes)
-    }
-  }
-}
-
-class CollectionAdapter implements ChildAdapter {
-  constructor(readonly collection: NativeCollection) {}
-
-  snapshot(): unknown[] {
-    if (typeof this.collection.toArray === 'function') {
-      return [...this.collection.toArray()]
-    }
-
-    const length = this.collection.length ?? this.collection.size ?? 0
-    if (length === 0 || typeof this.collection.getAt !== 'function') {
-      return []
-    }
-
-    return Array.from(
-      { length },
-      (_, index) => this.collection.getAt?.(index),
-    )
-  }
-
-  sync(current: unknown[], desired: readonly unknown[]): unknown[] {
-    for (let index = 0; index < desired.length; index += 1) {
-      const desiredNode = desired[index]
-      if (current[index] === desiredNode) {
-        continue
-      }
-
-      const existingIndex = current.indexOf(desiredNode, index + 1)
-      if (existingIndex >= 0) {
-        this.collection.removeAt(existingIndex)
-        current.splice(existingIndex, 1)
-      }
-
-      if (index === current.length) {
-        this.collection.append(desiredNode)
-      } else {
-        this.collection.insertAt(index, desiredNode)
-      }
-      current.splice(index, 0, desiredNode)
-    }
-
-    while (current.length > desired.length) {
-      const index = current.length - 1
-      this.collection.removeAt(index)
-      current.pop()
-    }
-
-    return current
-  }
-}
-
-class SinglePropertyAdapter implements ChildAdapter {
-  constructor(
-    readonly owner: Record<string, unknown>,
-    readonly property: string,
-  ) {}
-
-  snapshot(): unknown[] {
-    const value = this.owner[this.property]
-    return value == null ? [] : [value]
-  }
-
-  sync(current: unknown[], desired: readonly unknown[]): unknown[] {
-    if (desired.length > 1) {
-      throw new Error(
-        `${this.owner.constructor.name}.${this.property} accepts only one JSX child.`,
-      )
-    }
-
-    const next = desired[0] ?? null
-    if (current[0] !== next || current.length !== desired.length) {
-      this.owner[this.property] = next
-    }
-
-    return next == null ? [] : [next]
-  }
 }
 
 class ChildrenController {
@@ -418,38 +275,6 @@ function flattenChildren(child: Child): Child[] {
   return [child]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-export function isNativeCollection(
-  value: unknown,
-): value is NativeCollection {
-  if (!isRecord(value)) {
-    return false
-  }
-
-  return (
-    typeof value.insertAt === 'function' &&
-    typeof value.removeAt === 'function' &&
-    typeof value.append === 'function' &&
-    typeof value.clear === 'function'
-  )
-}
-
-function isEventProperty(
-  target: Record<string, unknown>,
-  property: string,
-  value: unknown,
-): boolean {
-  const callback = isSignal(value) ? value.peek() : value
-  return (
-    property.startsWith('on') &&
-    typeof callback === 'function' &&
-    typeof target[property] === 'function'
-  )
-}
-
 export class Renderer {
   private readonly counters: MutableRendererDiagnostics = {
     nativeCreated: 0,
@@ -461,8 +286,16 @@ export class Renderer {
     listEntriesCreated: 0,
     listEntriesReused: 0,
   }
+  private readonly propertyService: RendererPropertyService
 
-  constructor(readonly options: RendererOptions = {}) {}
+  constructor(readonly options: RendererOptions = {}) {
+    this.propertyService = new RendererPropertyService(
+      options,
+      (error, context, scope) => {
+        this.handleError(error, context, scope)
+      },
+    )
+  }
 
   get diagnostics(): RendererDiagnostics {
     return { ...this.counters }
@@ -478,7 +311,10 @@ export class Renderer {
 
   render(child: Child, container: object): RenderHandle {
     const scope = createScope()
-    const adapter = this.resolveChildAdapter(container)
+    const adapter = resolveChildAdapter(
+      this.options,
+      container,
+    )
 
     if (!adapter) {
       scope.dispose()
@@ -1055,7 +891,10 @@ export class Renderer {
           return
         }
 
-        const adapter = this.resolveChildAdapter(nextTarget)
+        const adapter = resolveChildAdapter(
+          this.options,
+          nextTarget,
+        )
         if (!adapter) {
           throw new Error(
             `${nextTarget.constructor.name} cannot host portal children.`,
@@ -1245,7 +1084,7 @@ export class Renderer {
 
     try {
       runInScope(scope, () => {
-        this.applyProperties(
+        this.propertyService.applyProperties(
           instance,
           vnode.props,
           metadata.options.setProperty,
@@ -1255,7 +1094,11 @@ export class Renderer {
         if (scope.disposed) {
           return
         }
-        this.applyEvents(instance, vnode.props, scope)
+        this.propertyService.applyEvents(
+          instance,
+          vnode.props,
+          scope,
+        )
         if (scope.disposed) {
           return
         }
@@ -1271,7 +1114,8 @@ export class Renderer {
           ) {
             continue
           }
-          const slotAdapter = this.resolveSlotAdapter(
+          const slotAdapter = resolveSlotAdapter(
+            this.options,
             instance,
             descriptor,
           )
@@ -1290,8 +1134,12 @@ export class Renderer {
 
         if (vnode.props.children != null) {
           const childAdapter = metadata.options.children
-            ? this.resolveSlotAdapter(instance, metadata.options.children)
-            : this.resolveChildAdapter(instance)
+            ? resolveSlotAdapter(
+                this.options,
+                instance,
+                metadata.options.children,
+              )
+            : resolveChildAdapter(this.options, instance)
           if (!childAdapter) {
             throw new Error(
               `${component.displayName} does not support JSX children.`,
@@ -1321,402 +1169,6 @@ export class Renderer {
     return record
   }
 
-  private applyProperties(
-    target: object,
-    props: Record<string, unknown>,
-    componentSetter:
-      | ((
-          instance: object,
-          property: string,
-          value: unknown,
-        ) => boolean)
-      | undefined,
-    adapters:
-      | Record<string, NativeAdapter<object> | undefined>
-      | undefined,
-    scope: ReactiveScope,
-  ): void {
-    for (const [property, sourceValue] of Object.entries(props)) {
-      if (scope.disposed) {
-        return
-      }
-      if (
-        reservedProperties.has(property) ||
-        adapters?.[property]?.kind === 'slot' ||
-        isEventProperty(
-          target as Record<string, unknown>,
-          property,
-          sourceValue,
-        )
-      ) {
-        continue
-      }
-
-      if (isSignal(sourceValue)) {
-        if (
-          adapters?.[property]?.kind === 'property' &&
-          adapters[property].mode === 'initialOnly'
-        ) {
-          this.assignProperty(
-            target,
-            property,
-            this.resolvePropertyValue(
-              target,
-              property,
-              sourceValue.peek(),
-            ),
-            componentSetter,
-            adapters[property],
-            scope,
-          )
-          continue
-        }
-        this.bindProperty(
-          target,
-          property,
-          () => sourceValue.value,
-          componentSetter,
-          adapters?.[property],
-          scope,
-        )
-      } else if (
-        this.getResourceObservationKind(
-          target,
-          property,
-          sourceValue,
-        )
-      ) {
-        this.bindProperty(
-          target,
-          property,
-          () => sourceValue,
-          componentSetter,
-          adapters?.[property],
-          scope,
-        )
-      } else {
-        this.assignProperty(
-          target,
-          property,
-          this.resolvePropertyValue(
-            target,
-            property,
-            sourceValue,
-          ),
-          componentSetter,
-          adapters?.[property],
-          scope,
-        )
-      }
-    }
-  }
-
-  private bindProperty(
-    target: object,
-    property: string,
-    readSource: () => unknown,
-    componentSetter:
-      | ((
-          instance: object,
-          property: string,
-          value: unknown,
-        ) => boolean)
-      | undefined,
-    adapter: NativeAdapter<object> | undefined,
-    scope: ReactiveScope,
-  ): void {
-    const resourceRevision = signal(0)
-    let observedKind: ResourceReference['kind'] | undefined
-    let unsubscribe: (() => void) | undefined
-    const stopObserving = (): unknown => {
-      const cleanup = unsubscribe
-      unsubscribe = undefined
-      observedKind = undefined
-      try {
-        cleanup?.()
-        return undefined
-      }
-      catch (error) {
-        return error
-      }
-    }
-
-    runInScope(scope, () => {
-      onCleanup(() => {
-        const error = stopObserving()
-        if (error !== undefined) {
-          throw error
-        }
-      })
-      effect(() => {
-        const source = readSource()
-        let observationError: unknown
-        const observationKind = this.getResourceObservationKind(
-          target,
-          property,
-          source,
-        )
-        if (observationKind) {
-          resourceRevision.value
-          if (observedKind !== observationKind) {
-            if (observedKind) {
-              observationError = stopObserving()
-            }
-            observedKind = observationKind
-            const cleanup = this.options.observeResourceChanges?.(
-              target,
-              () => {
-                resourceRevision.value =
-                  resourceRevision.peek() + 1
-              },
-              observationKind,
-            )
-            if (typeof cleanup === 'function') {
-              unsubscribe = cleanup
-            }
-          }
-        }
-        else if (observedKind) {
-          observationError = stopObserving()
-        }
-        this.assignProperty(
-          target,
-          property,
-          this.resolvePropertyValue(target, property, source),
-          componentSetter,
-          adapter,
-          scope,
-        )
-        if (observationError !== undefined && !scope.disposed) {
-          this.handleError(
-            observationError,
-            { phase: 'event', target, property },
-            scope,
-          )
-        }
-      })
-    })
-  }
-
-  private getResourceObservationKind(
-    target: object,
-    property: string,
-    value: unknown,
-  ): ResourceReference['kind'] | undefined {
-    if (isResourceReference(value)) {
-      return value.kind
-    }
-    return this.options.getResourceObservationKind?.(
-      property,
-      value,
-      target,
-    )
-  }
-
-  private applyEvents(
-    target: object,
-    props: Record<string, unknown>,
-    scope: ReactiveScope,
-  ): void {
-    const record = target as Record<string, unknown>
-
-    for (const [property, callbackSource] of Object.entries(props)) {
-      if (!isEventProperty(record, property, callbackSource)) {
-        continue
-      }
-
-      try {
-        const callback = (...args: unknown[]) => {
-          const current = isSignal(callbackSource)
-            ? callbackSource.peek()
-            : callbackSource
-          return (current as (...values: unknown[]) => unknown)(...args)
-        }
-        const unsubscribe = (
-          record[property] as (handler: unknown) => unknown
-        ).call(target, callback)
-
-        if (typeof unsubscribe === 'function') {
-          runInScope(scope, () => {
-            onCleanup(unsubscribe as () => void)
-          })
-        }
-      } catch (error) {
-        this.handleError(error, {
-          phase: 'event',
-          target,
-          property,
-        }, scope)
-      }
-    }
-  }
-
-  private assignProperty(
-    target: object,
-    property: string,
-    value: unknown,
-    componentSetter:
-      | ((
-          instance: object,
-          property: string,
-          value: unknown,
-        ) => boolean)
-      | undefined,
-    adapter: NativeAdapter<object> | undefined,
-    scope: ReactiveScope,
-  ): void {
-    try {
-      if (adapter?.kind === 'collection') {
-        const values = requireNativeArray(value, property)
-        const mapped = adapter.map
-          ? values.map((item, index) =>
-              adapter.map!(item, index, target),
-            )
-          : values
-        replaceNativeCollection(
-          adapter.get(target),
-          mapped,
-          adapter.label ?? `${target.constructor.name}.${property}`,
-        )
-        return
-      }
-
-      if (adapter?.kind === 'property') {
-        if (adapter.coerce) {
-          value = adapter.coerce(value, target)
-        }
-        if (adapter.set) {
-          adapter.set(target, value)
-          return
-        }
-      }
-
-      if (componentSetter?.(target, property, value)) {
-        return
-      }
-
-      const namedSetter = this.options.propertySetters?.[property]
-      if (namedSetter) {
-        namedSetter(target, value, scope)
-        return
-      }
-
-      if (this.options.setProperty?.(target, property, value)) {
-        return
-      }
-
-      if (property in target) {
-        ;(target as Record<string, unknown>)[property] = value
-        return
-      }
-
-      if (this.options.onUnknownProperty) {
-        this.options.onUnknownProperty(target, property, value)
-        return
-      }
-
-      throw new Error(
-        `Unknown JSX property ${target.constructor.name}.${property}.`,
-      )
-    } catch (error) {
-      this.handleError(error, {
-        phase: 'property',
-        target,
-        property,
-      }, scope)
-    }
-  }
-
-  private resolvePropertyValue(
-    target: object,
-    property: string,
-    source: unknown,
-  ): unknown {
-    let value = source
-
-    if (isResourceReference(value)) {
-      if (!this.options.resolveResource) {
-        if (value.fallback !== undefined) {
-          value = value.fallback
-        } else {
-          throw new Error(
-            `No resource resolver is configured for "${value.key}".`,
-          )
-        }
-      } else {
-        value = this.options.resolveResource(
-          value.key,
-          (value as ResourceReference).fallback,
-          target,
-          value.kind,
-        )
-      }
-    }
-
-    const namedConverter = this.options.propertyConverters?.[property]
-    if (namedConverter) {
-      value = namedConverter(target, value, property)
-    }
-
-    if (this.options.convertProperty) {
-      value = this.options.convertProperty(target, value, property)
-    }
-
-    return value
-  }
-
-  private resolveChildAdapter(owner: object): ChildAdapter | null {
-    const record = owner as Record<string, unknown>
-
-    if ('children' in owner) {
-      const adapter = this.collectionAdapter(record.children, owner)
-      if (adapter) {
-        return adapter
-      }
-    }
-
-    if ('child' in owner) {
-      return new SinglePropertyAdapter(record, 'child')
-    }
-
-    if ('content' in owner) {
-      return new SinglePropertyAdapter(record, 'content')
-    }
-
-    if ('items' in owner) {
-      const adapter = this.collectionAdapter(record.items, owner)
-      if (adapter) {
-        return adapter
-      }
-    }
-
-    return null
-  }
-
-  private resolveSlotAdapter(
-    owner: object,
-    descriptor: NativeSlotAdapter<object>,
-  ): ChildAdapter | null {
-    const record = owner as Record<string, unknown>
-    if (descriptor.strategy === 'single') {
-      return new SinglePropertyAdapter(record, descriptor.property)
-    }
-    return this.collectionAdapter(
-      record[descriptor.property],
-      owner,
-    )
-  }
-
-  private collectionAdapter(
-    value: unknown,
-    owner: object,
-  ): CollectionAdapter | null {
-    const projected =
-      this.options.asCollection?.(value, owner) ??
-      (isNativeCollection(value) ? value : null)
-
-    return projected ? new CollectionAdapter(projected) : null
-  }
 }
 
 export function createRenderer(options: RendererOptions = {}): Renderer {

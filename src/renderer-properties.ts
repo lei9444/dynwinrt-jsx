@@ -1,0 +1,417 @@
+import type {
+  NativeAdapter,
+} from './adapters'
+import {
+  effect,
+  isSignal,
+  onCleanup,
+  runInScope,
+  signal,
+  type ReactiveScope,
+} from './reactive'
+import {
+  isResourceReference,
+  type ResourceReference,
+} from './resource'
+import {
+  replaceNativeCollection,
+  requireNativeArray,
+} from './native-collection'
+import type {
+  RendererErrorContext,
+  RendererOptions,
+} from './renderer'
+
+type ComponentPropertySetter = (
+  instance: object,
+  property: string,
+  value: unknown,
+) => boolean
+
+type RendererErrorHandler = (
+  error: unknown,
+  context: RendererErrorContext,
+  scope: ReactiveScope,
+) => void
+
+const reservedProperties = new Set([
+  'children',
+  'key',
+  'ref',
+])
+
+function isEventProperty(
+  target: Record<string, unknown>,
+  property: string,
+  value: unknown,
+): boolean {
+  const callback = isSignal(value) ? value.peek() : value
+  return (
+    property.startsWith('on') &&
+    typeof callback === 'function' &&
+    typeof target[property] === 'function'
+  )
+}
+
+export class RendererPropertyService {
+  constructor(
+    private readonly options: RendererOptions,
+    private readonly handleError: RendererErrorHandler,
+  ) {}
+
+  applyProperties(
+    target: object,
+    props: Record<string, unknown>,
+    componentSetter: ComponentPropertySetter | undefined,
+    adapters:
+      | Record<string, NativeAdapter<object> | undefined>
+      | undefined,
+    scope: ReactiveScope,
+  ): void {
+    for (const [property, sourceValue] of Object.entries(props)) {
+      if (scope.disposed) {
+        return
+      }
+      if (
+        reservedProperties.has(property) ||
+        adapters?.[property]?.kind === 'slot' ||
+        isEventProperty(
+          target as Record<string, unknown>,
+          property,
+          sourceValue,
+        )
+      ) {
+        continue
+      }
+
+      if (isSignal(sourceValue)) {
+        if (
+          adapters?.[property]?.kind === 'property' &&
+          adapters[property].mode === 'initialOnly'
+        ) {
+          this.assignProperty(
+            target,
+            property,
+            this.resolvePropertyValue(
+              target,
+              property,
+              sourceValue.peek(),
+            ),
+            componentSetter,
+            adapters[property],
+            scope,
+          )
+          continue
+        }
+        this.bindProperty(
+          target,
+          property,
+          () => sourceValue.value,
+          componentSetter,
+          adapters?.[property],
+          scope,
+        )
+      }
+      else if (
+        this.getResourceObservationKind(
+          target,
+          property,
+          sourceValue,
+        )
+      ) {
+        this.bindProperty(
+          target,
+          property,
+          () => sourceValue,
+          componentSetter,
+          adapters?.[property],
+          scope,
+        )
+      }
+      else {
+        this.assignProperty(
+          target,
+          property,
+          this.resolvePropertyValue(
+            target,
+            property,
+            sourceValue,
+          ),
+          componentSetter,
+          adapters?.[property],
+          scope,
+        )
+      }
+    }
+  }
+
+  applyEvents(
+    target: object,
+    props: Record<string, unknown>,
+    scope: ReactiveScope,
+  ): void {
+    const record = target as Record<string, unknown>
+
+    for (const [property, callbackSource] of Object.entries(props)) {
+      if (!isEventProperty(record, property, callbackSource)) {
+        continue
+      }
+
+      try {
+        const callback = (...args: unknown[]) => {
+          const current = isSignal(callbackSource)
+            ? callbackSource.peek()
+            : callbackSource
+          return (current as (...values: unknown[]) => unknown)(...args)
+        }
+        const unsubscribe = (
+          record[property] as (handler: unknown) => unknown
+        ).call(target, callback)
+
+        if (typeof unsubscribe === 'function') {
+          runInScope(scope, () => {
+            onCleanup(unsubscribe as () => void)
+          })
+        }
+      }
+      catch (error) {
+        this.handleError(error, {
+          phase: 'event',
+          target,
+          property,
+        }, scope)
+      }
+    }
+  }
+
+  private bindProperty(
+    target: object,
+    property: string,
+    readSource: () => unknown,
+    componentSetter: ComponentPropertySetter | undefined,
+    adapter: NativeAdapter<object> | undefined,
+    scope: ReactiveScope,
+  ): void {
+    const resourceRevision = signal(0)
+    let observedKind: ResourceReference['kind'] | undefined
+    let unsubscribe: (() => void) | undefined
+    const stopObserving = (): unknown => {
+      const cleanup = unsubscribe
+      unsubscribe = undefined
+      observedKind = undefined
+      try {
+        cleanup?.()
+        return undefined
+      }
+      catch (error) {
+        return error
+      }
+    }
+
+    runInScope(scope, () => {
+      onCleanup(() => {
+        const error = stopObserving()
+        if (error !== undefined) {
+          throw error
+        }
+      })
+      effect(() => {
+        const source = readSource()
+        let observationError: unknown
+        const observationKind = this.getResourceObservationKind(
+          target,
+          property,
+          source,
+        )
+        if (observationKind) {
+          resourceRevision.value
+          if (observedKind !== observationKind) {
+            if (observedKind) {
+              observationError = stopObserving()
+            }
+            observedKind = observationKind
+            const cleanup = this.options.observeResourceChanges?.(
+              target,
+              () => {
+                resourceRevision.value =
+                  resourceRevision.peek() + 1
+              },
+              observationKind,
+            )
+            if (typeof cleanup === 'function') {
+              unsubscribe = cleanup
+            }
+          }
+        }
+        else if (observedKind) {
+          observationError = stopObserving()
+        }
+        this.assignProperty(
+          target,
+          property,
+          this.resolvePropertyValue(
+            target,
+            property,
+            source,
+          ),
+          componentSetter,
+          adapter,
+          scope,
+        )
+        if (
+          observationError !== undefined &&
+          !scope.disposed
+        ) {
+          this.handleError(
+            observationError,
+            { phase: 'event', target, property },
+            scope,
+          )
+        }
+      })
+    })
+  }
+
+  private getResourceObservationKind(
+    target: object,
+    property: string,
+    value: unknown,
+  ): ResourceReference['kind'] | undefined {
+    if (isResourceReference(value)) {
+      return value.kind
+    }
+    return this.options.getResourceObservationKind?.(
+      property,
+      value,
+      target,
+    )
+  }
+
+  private assignProperty(
+    target: object,
+    property: string,
+    value: unknown,
+    componentSetter: ComponentPropertySetter | undefined,
+    adapter: NativeAdapter<object> | undefined,
+    scope: ReactiveScope,
+  ): void {
+    try {
+      if (adapter?.kind === 'collection') {
+        const values = requireNativeArray(value, property)
+        const mapped = adapter.map
+          ? values.map((item, index) =>
+              adapter.map!(item, index, target),
+            )
+          : values
+        replaceNativeCollection(
+          adapter.get(target),
+          mapped,
+          adapter.label ??
+            `${target.constructor.name}.${property}`,
+        )
+        return
+      }
+
+      if (adapter?.kind === 'property') {
+        if (adapter.coerce) {
+          value = adapter.coerce(value, target)
+        }
+        if (adapter.set) {
+          adapter.set(target, value)
+          return
+        }
+      }
+
+      if (componentSetter?.(target, property, value)) {
+        return
+      }
+
+      const namedSetter =
+        this.options.propertySetters?.[property]
+      if (namedSetter) {
+        namedSetter(target, value, scope)
+        return
+      }
+
+      if (
+        this.options.setProperty?.(
+          target,
+          property,
+          value,
+        )
+      ) {
+        return
+      }
+
+      if (property in target) {
+        ;(target as Record<string, unknown>)[property] = value
+        return
+      }
+
+      if (this.options.onUnknownProperty) {
+        this.options.onUnknownProperty(
+          target,
+          property,
+          value,
+        )
+        return
+      }
+
+      throw new Error(
+        `Unknown JSX property ${target.constructor.name}.${property}.`,
+      )
+    }
+    catch (error) {
+      this.handleError(error, {
+        phase: 'property',
+        target,
+        property,
+      }, scope)
+    }
+  }
+
+  private resolvePropertyValue(
+    target: object,
+    property: string,
+    source: unknown,
+  ): unknown {
+    let value = source
+
+    if (isResourceReference(value)) {
+      if (!this.options.resolveResource) {
+        if (value.fallback !== undefined) {
+          value = value.fallback
+        }
+        else {
+          throw new Error(
+            `No resource resolver is configured for "${value.key}".`,
+          )
+        }
+      }
+      else {
+        value = this.options.resolveResource(
+          value.key,
+          value.fallback,
+          target,
+          value.kind,
+        )
+      }
+    }
+
+    const namedConverter =
+      this.options.propertyConverters?.[property]
+    if (namedConverter) {
+      value = namedConverter(target, value, property)
+    }
+
+    if (this.options.convertProperty) {
+      value = this.options.convertProperty(
+        target,
+        value,
+        property,
+      )
+    }
+
+    return value
+  }
+}

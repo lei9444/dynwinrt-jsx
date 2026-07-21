@@ -481,6 +481,64 @@ identity, and manifest dependencies in a provenance document.
 - [ ] Maintain generated and representative compatibility applications.
 - [ ] Complete an upgrade using only consumer-facing documentation.
 
+### Framework evolution checklist
+
+#### Immediate architecture priorities
+
+- [x] Extract shared Worker Window teardown, projection retry, diagnostics, and
+      file hot reload into `dynwinrt-jsx/worker`.
+- [x] Add a typed `runWinUIWorkerApp()` API that owns
+      `Application.start/create`, Window setup, renderer/model composition,
+      startup errors, activation, and exit.
+- [ ] Split `src/renderer.ts` into focused mount, property, event, children,
+      boundary, and lifecycle services without changing public behavior.
+  - [x] Extract property conversion, reactive binding, resource observation,
+        assignment, events, and cleanup into `renderer-properties.ts`.
+  - [x] Extract collection, single-child, items, and named-slot adapter
+        resolution into `renderer-children.ts`.
+  - [x] Extract mounted-record node tracking and idempotent disposal into
+        `renderer-lifecycle.ts`.
+  - [ ] Extract dynamic/list/portal mount orchestration from the core Renderer.
+  - [ ] Extract ErrorBoundary ownership and fallback replacement into a focused
+        boundary service.
+- [ ] Add a reusable controlled-value adapter foundation with native echo
+      suppression, coercion classification, and transactional rollback.
+- [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
+      `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
+- [ ] Add native `ItemsRepeater` virtualization with dynamic item size,
+      element recycling, stable keys, and bounded native control counts.
+
+#### State and development workflow
+
+- [ ] Add schema validation to the Worker state bridge.
+- [ ] Support typed incremental state patches instead of cloning complete
+      state for every update.
+- [ ] Add revision-conflict diagnostics, typed commands/events, and optional
+      message compression.
+- [ ] Support page or boundary-level hot reload that preserves unaffected
+      native identity and component-local signals.
+
+#### Performance and package size
+
+- [ ] Prune generated WinRT bindings to runtime-reachable dependencies.
+- [ ] Exclude declarations and other development-only files from application
+      runtime packages.
+- [ ] Evaluate bundling application and Worker JavaScript to reduce cold file
+      lookup and module parsing.
+- [ ] Profile and optimize renderer property, collection, and disposal hot
+      paths.
+- [ ] Keep non-first-screen pages and adapters outside the startup critical
+      path.
+
+#### Diagnostics and application models
+
+- [ ] Add a structured runtime inspector for native trees, signal/effect
+      graphs, event subscriptions, resource lookup, and lifecycle ownership.
+- [ ] Expose the inspector through stable APIs usable by local tooling and
+      coding agents.
+- [ ] Add multi-Window renderer and projection scopes with independent state,
+      errors, closing, and secondary-window lifecycle.
+
 ### Release gates
 
 - [ ] **Pilot-ready:** the primary workflow is used daily and closes cleanly.

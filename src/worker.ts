@@ -35,6 +35,374 @@ export interface WinUIWorkerApplication {
   }
 }
 
+export interface WinUIWorkerApplicationHost
+  extends WinUIWorkerApplication {
+  start(callback: () => void): void
+  create(callback: () => void): void
+}
+
+export interface WinUIWorkerActivatableWindow<
+  AppWindow extends WinUIWorkerAppWindow,
+> extends WinUIWorkerWindow {
+  readonly appWindow: AppWindow
+  activate(): void
+}
+
+export interface WinUIWorkerAppContext<
+  Window extends WinUIWorkerWindow,
+  AppWindow extends WinUIWorkerAppWindow,
+  ProjectionScope,
+> {
+  readonly window: Window
+  readonly appWindow: AppWindow
+  readonly renderer: Renderer
+  readonly projectionScope: ProjectionScope | undefined
+}
+
+export interface WinUIWorkerRenderedContext<
+  Window extends WinUIWorkerWindow,
+  AppWindow extends WinUIWorkerAppWindow,
+  ProjectionScope,
+> extends WinUIWorkerAppContext<
+  Window,
+  AppWindow,
+  ProjectionScope
+> {
+  readonly renderHandle: RenderHandle
+  getRenderHandle(): RenderHandle | undefined
+  disposeRender(): void
+  setExitCode(value: number): void
+  exitApplication(): void
+}
+
+export interface WinUIWorkerRenderedHooks {
+  readonly disposeBeforeRender?: () => void
+}
+
+export interface WinUIWorkerMountedApp<
+  Window extends WinUIWorkerWindow,
+  AppWindow extends WinUIWorkerAppWindow,
+  ProjectionScope,
+> {
+  readonly child: Child
+  readonly beforeClose?: () => void
+  readonly disposeAfterRender?: () => void
+  readonly onProjectionDisposed?: () => void
+  readonly afterRender?: (
+    context: WinUIWorkerRenderedContext<
+      Window,
+      AppWindow,
+      ProjectionScope
+    >,
+  ) => WinUIWorkerRenderedHooks | void
+  readonly afterActivate?: (
+    context: WinUIWorkerRenderedContext<
+      Window,
+      AppWindow,
+      ProjectionScope
+    >,
+  ) => void
+}
+
+export interface RunWinUIWorkerAppOptions<
+  Window extends WinUIWorkerActivatableWindow<AppWindow>,
+  AppWindow extends WinUIWorkerAppWindow,
+  ProjectionScope extends { dispose(): void },
+> {
+  readonly application: WinUIWorkerApplicationHost
+  readonly createRenderer: () => Renderer
+  readonly createWindow: () => Window
+  readonly configureWindow?: (
+    context: WinUIWorkerAppContext<
+      Window,
+      AppWindow,
+      ProjectionScope
+    >,
+  ) => void
+  readonly createProjectionScope?: (
+    context: WinUIWorkerAppContext<
+      Window,
+      AppWindow,
+      ProjectionScope
+    >,
+  ) => ProjectionScope
+  readonly mount: (
+    context: WinUIWorkerAppContext<
+      Window,
+      AppWindow,
+      ProjectionScope
+    >,
+  ) => WinUIWorkerMountedApp<
+    Window,
+    AppWindow,
+    ProjectionScope
+  >
+  readonly onDiagnostics?: (
+    diagnostics: RendererDiagnostics,
+  ) => void
+  readonly onError: (error: unknown) => void
+  readonly onStage?: (
+    stage:
+      | 'renderer-created'
+      | 'application-starting'
+      | 'window-created'
+      | 'projection-created'
+      | 'tree-rendered'
+      | 'window-activated',
+  ) => void
+}
+
+export function runWinUIWorkerApp<
+  Window extends WinUIWorkerActivatableWindow<AppWindow>,
+  AppWindow extends WinUIWorkerAppWindow,
+  ProjectionScope extends { dispose(): void },
+>(
+  options: RunWinUIWorkerAppOptions<
+    Window,
+    AppWindow,
+    ProjectionScope
+  >,
+): number {
+  let renderer: Renderer
+  try {
+    renderer = options.createRenderer()
+    options.onStage?.('renderer-created')
+  }
+  catch (error) {
+    options.onError(error)
+    return 1
+  }
+
+  let exitCode = 1
+  let requestedExitCode = 1
+  let window: Window | undefined
+  let appWindow: AppWindow | undefined
+  let projectionScope: ProjectionScope | undefined
+  let renderHandle: RenderHandle | undefined
+  let mounted:
+    | WinUIWorkerMountedApp<
+        Window,
+        AppWindow,
+        ProjectionScope
+      >
+    | undefined
+  let renderedHooks: WinUIWorkerRenderedHooks | undefined
+  let beforeClose: (() => void) | undefined
+  let disposeBeforeRender: (() => void) | undefined
+  let disposeAfterRender: (() => void) | undefined
+  let onProjectionDisposed: (() => void) | undefined
+
+  const onceSuccessful = (
+    action: (() => void) | undefined,
+  ): (() => void) | undefined => {
+    if (!action) {
+      return undefined
+    }
+
+    let completed = false
+    return () => {
+      if (completed) {
+        return
+      }
+      action()
+      completed = true
+    }
+  }
+
+  const onceAttempted = (
+    action: (() => void) | undefined,
+  ): (() => void) | undefined => {
+    if (!action) {
+      return undefined
+    }
+    let attempted = false
+    return () => {
+      if (attempted) {
+        return
+      }
+      attempted = true
+      action()
+    }
+  }
+
+  const reportError = (error: unknown) => {
+    exitCode = 1
+    requestedExitCode = 1
+    options.onError(error)
+  }
+
+  const reportLifecycleError = (error: unknown) => {
+    exitCode = 1
+    options.onError(error)
+  }
+
+  const cleanupStartupFailure = () => {
+    let firstError: unknown
+    for (const cleanup of [
+      beforeClose,
+      disposeBeforeRender,
+      () => {
+        renderHandle?.dispose()
+        renderHandle = undefined
+      },
+      disposeAfterRender,
+      () => {
+        projectionScope?.dispose()
+        projectionScope = undefined
+        onProjectionDisposed?.()
+      },
+    ]) {
+      if (!cleanup) {
+        continue
+      }
+      try {
+        cleanup()
+      }
+      catch (error) {
+        firstError ??= error
+      }
+    }
+    if (firstError !== undefined) {
+      options.onError(firstError)
+    }
+  }
+
+  try {
+    options.onStage?.('application-starting')
+    options.application.start(() => {
+      try {
+        options.application.create(() => {
+          try {
+            window = options.createWindow()
+            appWindow = window.appWindow
+            options.onStage?.('window-created')
+
+            const baseContext: WinUIWorkerAppContext<
+              Window,
+              AppWindow,
+              ProjectionScope
+            > = {
+              window,
+              appWindow,
+              renderer,
+              projectionScope,
+            }
+            options.configureWindow?.(baseContext)
+            projectionScope =
+              options.createProjectionScope?.(baseContext)
+            if (projectionScope) {
+              options.onStage?.('projection-created')
+            }
+
+            const mountedContext: WinUIWorkerAppContext<
+              Window,
+              AppWindow,
+              ProjectionScope
+            > = {
+              window,
+              appWindow,
+              renderer,
+              projectionScope,
+            }
+            mounted = options.mount(mountedContext)
+            beforeClose = onceAttempted(
+              mounted.beforeClose,
+            )
+            disposeAfterRender = onceSuccessful(
+              mounted.disposeAfterRender,
+            )
+            onProjectionDisposed = onceSuccessful(
+              mounted.onProjectionDisposed,
+            )
+            renderHandle = renderer.render(
+              mounted.child,
+              window,
+            )
+            options.onStage?.('tree-rendered')
+
+            const renderedContext:
+              WinUIWorkerRenderedContext<
+                Window,
+                AppWindow,
+                ProjectionScope
+              > = {
+                ...mountedContext,
+                renderHandle,
+                getRenderHandle() {
+                  return renderHandle
+                },
+                disposeRender() {
+                  renderHandle?.dispose()
+                  renderHandle = undefined
+                },
+                setExitCode(value) {
+                  requestedExitCode = value
+                  exitCode = value
+                },
+                exitApplication() {
+                  options.application.current.exit()
+                },
+              }
+            renderedHooks =
+              mounted.afterRender?.(renderedContext) ??
+              undefined
+            disposeBeforeRender = onceSuccessful(
+              renderedHooks?.disposeBeforeRender,
+            )
+
+            installWinUIWindowLifecycle({
+              application: options.application,
+              window,
+              appWindow,
+              renderer,
+              beforeClose,
+              disposeBeforeRender,
+              disposeRender() {
+                renderHandle?.dispose()
+                renderHandle = undefined
+              },
+              disposeAfterRender,
+              disposeProjection() {
+                projectionScope?.dispose()
+                projectionScope = undefined
+                onProjectionDisposed?.()
+              },
+              onDiagnostics: options.onDiagnostics,
+              onError: reportLifecycleError,
+              getRequestedExitCode() {
+                return requestedExitCode
+              },
+              setExitCode(value) {
+                exitCode = value
+              },
+            })
+
+            window.activate()
+            requestedExitCode = 0
+            exitCode = 0
+            options.onStage?.('window-activated')
+            mounted.afterActivate?.(renderedContext)
+          }
+          catch (error) {
+            reportError(error)
+            cleanupStartupFailure()
+            options.application.current.exit()
+          }
+        })
+      }
+      catch (error) {
+        reportError(error)
+        options.application.current.exit()
+      }
+    })
+  }
+  catch (error) {
+    reportError(error)
+  }
+
+  return exitCode
+}
+
 export interface WinUIWindowLifecycleOptions {
   readonly application: WinUIWorkerApplication
   readonly window: WinUIWorkerWindow

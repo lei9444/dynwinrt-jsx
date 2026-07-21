@@ -7,7 +7,7 @@ The UI Worker is composed from focused modules:
 | File | Responsibility |
 |---|---|
 | `src/winui-worker.tsx` | STA entry, Worker data, state bridge, startup timing, exit |
-| `src/worker/application.tsx` | Application/Window setup, model, render, lifecycle composition |
+| `src/worker/application.tsx` | `runWinUIWorkerApp` configuration, model, render, selftest composition |
 | `src/worker/hot-reload.tsx` | app module loading, fallback UI, file-backed hot reload |
 | `src/worker/selftest.ts` | native selftest result, root cleanup, and close flow |
 | `src/worker/contracts.ts` | Worker message and data contracts |

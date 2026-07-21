@@ -8,6 +8,7 @@ assert.equal(require.resolve('dynwinrt-jsx/worker'), workerPath)
 const {
   createFileHotReloadController,
   installWinUIWindowLifecycle,
+  runWinUIWorkerApp,
 } = require('dynwinrt-jsx/worker')
 
 const idleDiagnostics = {
@@ -178,6 +179,430 @@ test('window lifecycle cancels projection failure and permits retry', () => {
     harness.order.includes('closing-unsubscribe'),
     true,
   )
+})
+
+test('worker app owns startup, mount, activation, and close order', () => {
+  const order = []
+  const errors = []
+  let projectionCreated = false
+  let closing
+  let closed
+  const appWindow = {
+    onClosing(callback) {
+      closing = callback
+      return () => order.push('closing-unsubscribe')
+    },
+  }
+  const window = {
+    get appWindow() {
+      assert.equal(projectionCreated, false)
+      order.push('app-window')
+      return appWindow
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => order.push('closed-unsubscribe')
+    },
+    activate() {
+      order.push('activate')
+    },
+  }
+  const renderHandle = {
+    container: window,
+    roots: [],
+    disposed: false,
+    update() {},
+    dispose() {
+      order.push('render-dispose')
+    },
+  }
+
+  const exitCode = runWinUIWorkerApp({
+    application: {
+      current: {
+        exit() {
+          order.push('application-exit')
+        },
+      },
+      start(callback) {
+        order.push('application-start')
+        callback()
+      },
+      create(callback) {
+        order.push('application-create')
+        callback()
+      },
+    },
+    createRenderer() {
+      order.push('renderer-create')
+      return {
+        diagnostics: idleDiagnostics,
+        render(child, container) {
+          order.push(`render:${child}`)
+          assert.equal(container, window)
+          return renderHandle
+        },
+      }
+    },
+    createWindow() {
+      order.push('window-create')
+      return window
+    },
+    configureWindow() {
+      order.push('window-configure')
+    },
+    createProjectionScope() {
+      projectionCreated = true
+      order.push('projection-create')
+      return {
+        dispose() {
+          order.push('projection-dispose')
+        },
+      }
+    },
+    mount() {
+      order.push('mount')
+      return {
+        child: 'tree',
+        beforeClose() {
+          order.push('before-close')
+        },
+        disposeAfterRender() {
+          order.push('after-render')
+        },
+        afterRender() {
+          order.push('after-render-hook')
+          return {
+            disposeBeforeRender() {
+              order.push('before-render')
+            },
+          }
+        },
+        onProjectionDisposed() {
+          order.push('projection-disposed')
+        },
+        afterActivate(context) {
+          order.push('after-activate')
+          context.setExitCode(7)
+          closing(undefined, { cancel: false })
+          closed()
+        },
+      }
+    },
+    onDiagnostics() {
+      order.push('diagnostics')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(exitCode, 7)
+  assert.deepEqual(errors, [])
+  assert.deepEqual(order, [
+    'renderer-create',
+    'application-start',
+    'application-create',
+    'window-create',
+    'app-window',
+    'window-configure',
+    'projection-create',
+    'mount',
+    'render:tree',
+    'after-render-hook',
+    'activate',
+    'after-activate',
+    'before-close',
+    'before-render',
+    'render-dispose',
+    'after-render',
+    'diagnostics',
+    'projection-dispose',
+    'projection-disposed',
+    'closing-unsubscribe',
+    'closed-unsubscribe',
+    'application-exit',
+  ])
+})
+
+test('worker app cleans projection scope after mount failure', () => {
+  const order = []
+  const failure = new Error('mount failed')
+  const errors = []
+
+  const exitCode = runWinUIWorkerApp({
+    application: {
+      current: {
+        exit() {
+          order.push('application-exit')
+        },
+      },
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          throw new Error('render should not run')
+        },
+      }
+    },
+    createWindow() {
+      return {
+        appWindow: {
+          onClosing() {
+            return () => {}
+          },
+        },
+        onClosed() {
+          return () => {}
+        },
+        activate() {},
+      }
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          order.push('projection-dispose')
+        },
+      }
+    },
+    mount() {
+      throw failure
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(exitCode, 1)
+  assert.deepEqual(errors, [failure])
+  assert.deepEqual(order, [
+    'projection-dispose',
+    'application-exit',
+  ])
+})
+
+test('worker app does not repeat successful cleanup after activation failure', () => {
+  const failure = new Error('after activate failed')
+  const errors = []
+  const counts = {
+    beforeRender: 0,
+    afterRender: 0,
+    projection: 0,
+  }
+  let closing
+  let closed
+  let exiting = false
+
+  const exitCode = runWinUIWorkerApp({
+    application: {
+      current: {
+        exit() {
+          if (exiting) {
+            return
+          }
+          exiting = true
+          closing(undefined, { cancel: false })
+          closed()
+        },
+      },
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          return {
+            container: {},
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {},
+          }
+        },
+      }
+    },
+    createWindow() {
+      const appWindow = {
+        onClosing(callback) {
+          closing = callback
+          return () => {}
+        },
+      }
+      return {
+        appWindow,
+        onClosed(callback) {
+          closed = callback
+          return () => {}
+        },
+        activate() {},
+      }
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          counts.projection += 1
+        },
+      }
+    },
+    mount() {
+      return {
+        child: 'tree',
+        disposeAfterRender() {
+          counts.afterRender += 1
+        },
+        afterRender() {
+          return {
+            disposeBeforeRender() {
+              counts.beforeRender += 1
+            },
+          }
+        },
+        afterActivate() {
+          throw failure
+        },
+      }
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(exitCode, 1)
+  assert.deepEqual(errors, [failure])
+  assert.deepEqual(counts, {
+    beforeRender: 1,
+    afterRender: 1,
+    projection: 1,
+  })
+})
+
+test('worker app runs beforeClose once across projection retry', () => {
+  let closing
+  let closed
+  let beforeCloseCount = 0
+  let projectionAttempts = 0
+  const errors = []
+
+  const exitCode = runWinUIWorkerApp({
+    application: {
+      current: { exit() {} },
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          return {
+            container: {},
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {},
+          }
+        },
+      }
+    },
+    createWindow() {
+      return {
+        appWindow: {
+          onClosing(callback) {
+            closing = callback
+            return () => {}
+          },
+        },
+        onClosed(callback) {
+          closed = callback
+          return () => {}
+        },
+        activate() {},
+      }
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          projectionAttempts += 1
+          if (projectionAttempts === 1) {
+            throw new Error('projection retry')
+          }
+        },
+      }
+    },
+    mount() {
+      return {
+        child: 'tree',
+        beforeClose() {
+          beforeCloseCount += 1
+        },
+        afterActivate() {
+          const first = { cancel: false }
+          closing(undefined, first)
+          assert.equal(first.cancel, true)
+          const second = { cancel: false }
+          closing(undefined, second)
+          assert.equal(second.cancel, false)
+          closed()
+        },
+      }
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(exitCode, 0)
+  assert.equal(beforeCloseCount, 1)
+  assert.equal(projectionAttempts, 2)
+  assert.equal(errors.length, 1)
+  assert.match(errors[0].message, /projection retry/)
+})
+
+test('worker app reports renderer creation failure without starting', () => {
+  const failure = new Error('renderer failed')
+  const errors = []
+  let started = false
+
+  const exitCode = runWinUIWorkerApp({
+    application: {
+      current: { exit() {} },
+      start() {
+        started = true
+      },
+      create() {},
+    },
+    createRenderer() {
+      throw failure
+    },
+    createWindow() {
+      throw new Error('window should not be created')
+    },
+    mount() {
+      throw new Error('mount should not run')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(exitCode, 1)
+  assert.equal(started, false)
+  assert.deepEqual(errors, [failure])
 })
 
 test('file hot reload controller applies versions and disposes once', async () => {

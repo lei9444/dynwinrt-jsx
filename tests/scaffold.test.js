@@ -35,6 +35,20 @@ function generatedClasses(manifest, namespace) {
 
 function assertLifetimeTeardownSource(workerSource) {
   assert.match(workerSource, /createProjectedLifetimeScope/)
+  if (/runWinUIWorkerApp/.test(workerSource)) {
+    assert.match(workerSource, /createProjectionScope\(\)/)
+    assert.match(workerSource, /beforeClose\(\)/)
+    assert.match(workerSource, /disposeAfterRender\(\)/)
+    assert.match(
+      workerSource,
+      /disposeBeforeRender\(\) \{[\s\S]*hotReloadController\?\.dispose\(\)/s,
+    )
+    assert.match(
+      workerSource,
+      /onDiagnostics\(diagnostics\) \{[\s\S]*type: 'diagnostics'/s,
+    )
+    return
+  }
   assert.match(workerSource, /installWinUIWindowLifecycle/)
   assert.match(
     workerSource,

@@ -77,7 +77,10 @@ adoption map.
 | VNode and JSX descriptors | `src/vnode.ts`, `src/jsx-runtime.ts` |
 | Native control typing and factories | `src/native.ts` |
 | Adapter descriptors and child strategies | `src/adapters.ts` |
-| Mounting, updates, child adapters, disposal | `src/renderer.ts` |
+| Mounting and control-flow orchestration | `src/renderer.ts` |
+| Native property, resource, and event updates | `src/renderer-properties.ts` |
+| Native child shapes and adapters | `src/renderer-children.ts` |
+| Mounted record lifetime | `src/renderer-lifecycle.ts` |
 | WinUI resources, converters, attached props | `src/winui.ts` |
 | URI, image, brush, font, icon, and nullable values | `src/values.ts` |
 | Grid definitions and track helpers | `src/grid.ts` |

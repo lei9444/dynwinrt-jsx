@@ -104,11 +104,14 @@ reload without copying the lifecycle implementation:
 import {
   createFileHotReloadController,
   installWinUIWindowLifecycle,
+  runWinUIWorkerApp,
 } from 'dynwinrt-jsx/worker'
 ```
 
 Applications still provide their generated `Application`, `Window`,
 projection-scope factory, renderer, model, and render callbacks.
+`runWinUIWorkerApp()` is the preferred high-level path; the lower-level
+lifecycle and hot-reload helpers remain available for custom hosts.
 
 For sibling source repositories under one work directory:
 
