@@ -44,6 +44,27 @@ npm run package:sea
 See [`docs/sea-packaging.md`](../../docs/sea-packaging.md) for the complete
 command-by-command build and runtime flow.
 
+Run the versioned x64 servicing E2E with a trusted certificate:
+
+```powershell
+npm run package:sea:servicing -- `
+  -BaseVersion 1.0.20.0 `
+  -UpgradeVersion 1.0.21.0 `
+  -CertificatePath C:\secure\test-signing.pfx
+```
+
+It verifies install, state mutation, upgrade, rollback, uninstall, state
+preservation, reinstall, and zero-residual renderer cleanup. Evidence is written
+under `.winapp\sea-package\servicing`.
+
+On an external clean Windows machine, run the package-only native gate without
+Node.js, winappCli, or build tools:
+
+```powershell
+.\scripts\test-sea-clean-machine.ps1 `
+  -PackagePath .\DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+```
+
 The signed development package and certificate are written under
 `.winapp\sea-package`. Trust the generated certificate once from an elevated
 terminal, then install the package:

@@ -32,6 +32,7 @@ The default output is:
 ```text
 .winapp\sea-package\artifacts\
   DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+  DynWinRTJSXDashboard_1.0.0.0_x64_sea.provenance.json
 ```
 
 All downloads, temporary files, certificates, package layouts, and output
@@ -61,6 +62,25 @@ The Node ZIP is extracted to:
 
 The extracted `node.exe` is also checked independently and must have an x64 PE
 machine type. The staged `dynwinrt.node` native addon must be x64 as well.
+
+Every package writes a provenance document containing:
+
+- the MSIX and SEA executable SHA256 values;
+- Node and postject versions and SHA256 values;
+- package and generated-binding hashes;
+- the signing certificate subject and thumbprint;
+- exact dynwinrt-jsx, dynwinrt, and winappCli commits;
+- source repository clean/dirty state;
+- manifest dependencies.
+
+For a release build, reject dirty source repositories:
+
+```powershell
+npm run package:sea -- `
+  -Version 1.0.0.1 `
+  -CertificatePath C:\secure\release.pfx `
+  -RequireCleanSources
+```
 
 ## 1. Build the application JavaScript
 
@@ -278,7 +298,8 @@ $env:DYNWINRT_JSX_CERT_PASSWORD = '<certificate password>'
 npm run package:sea -- `
   -Version 1.0.0.1 `
   -Publisher 'CN=Your Publisher' `
-  -CertificatePath C:\secure\release.pfx
+  -CertificatePath C:\secure\release.pfx `
+  -RequireCleanSources
 ```
 
 Do not store a release certificate or password in the repository.
@@ -392,15 +413,100 @@ A development certificate is only suitable for local testing. Public
 distribution requires a trusted signing certificate or Microsoft Store
 signing.
 
+## Servicing contract
+
+The x64 servicing workflow uses two versioned packages and an isolated state
+file:
+
+```powershell
+npm run package:sea:servicing -- `
+  -BaseVersion 1.0.20.0 `
+  -UpgradeVersion 1.0.21.0 `
+  -CertificatePath C:\secure\test-signing.pfx
+```
+
+Use `-InstallCertificate` for a generated development certificate when it has
+not already been trusted.
+
+The workflow:
+
+1. installs the base package;
+2. starts the real packaged application;
+3. adds a task through UI Automation and waits for atomic persistence;
+4. upgrades to the higher package version;
+5. verifies the task and renderer cleanup;
+6. rolls back with `Add-AppxPackage -ForceUpdateFromAnyVersion`;
+7. verifies the task again;
+8. uninstalls the package;
+9. verifies that externally owned user state remains;
+10. reinstalls the higher version and verifies recovery.
+
+The servicing contract is:
+
+- package upgrades and explicit rollbacks preserve application state;
+- uninstall removes the MSIX registration and immutable package files;
+- uninstall does not delete `%LOCALAPPDATA%\dynwinrt-jsx` state;
+- reinstall reads the preserved state;
+- every tested version must close with zero active native and component
+  diagnostics.
+
+Each run writes evidence to:
+
+```text
+.winapp\sea-package\servicing\run-*\summary.json
+```
+
+The summary records every version transition, whether state survived uninstall,
+the final installed version, whether the original machine package state was
+restored, and any failure. Per-phase stdout and stderr logs record startup and
+renderer disposal. Unless `-KeepUpgradeInstalled` is passed, the script restores
+the package version that was installed before the test.
+
+The isolated state is written under:
+
+```text
+%LOCALAPPDATA%\dynwinrt-jsx\servicing\run-*\
+```
+
+The final state is copied into the run evidence directory, then the temporary
+LocalAppData directory is removed.
+
+## Clean-machine gate
+
+Copy the signed MSIX and `test-sea-clean-machine.ps1` to a Windows machine that
+does not contain this repository, Node.js, winappCli, Visual Studio, or an
+existing dashboard installation. Trust a development certificate separately
+when the package is not Store/CA signed, then run:
+
+```powershell
+.\test-sea-clean-machine.ps1 `
+  -PackagePath .\DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+```
+
+The script only uses built-in Windows PowerShell and AppX commands. It:
+
+1. installs the MSIX;
+2. launches the packaged SEA executable in native selftest mode;
+3. verifies the real WinUI property, event, keyed identity, automation, focus,
+   failure propagation, and cleanup result;
+4. records Windows and framework dependency versions;
+5. uninstalls the package.
+
+Evidence is written beside the package under `clean-machine-*\summary.json`.
+Use `-KeepInstalled` only when the clean machine should retain the package.
+
 ## Current scope
 
-The checked-in workflow currently produces an x64 package. ARM64 still
-requires:
+The checked-in workflow produces and services an x64 package. Remaining release
+gates are:
 
 - an ARM64 Node binary and pinned checksums;
 - an ARM64 `dynwinrt.node`;
 - an ARM64 native UI validation environment;
 - a multi-architecture MSIX bundle.
+- a trusted production signing certificate or Store signing;
+- execution of `test-sea-clean-machine.ps1` on an external clean Windows
+  machine.
 
 The SEA approach also assumes Worker threads. Code that depends on
 `child_process.fork()` needs separate validation because `process.execPath`

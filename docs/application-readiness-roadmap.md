@@ -457,10 +457,16 @@ external release gates.
 - [x] Add package identity, manifest capabilities, and visual assets.
 - [ ] Produce x64 and ARM64 MSIX packages.
 - [ ] Sign release packages.
-- [ ] Define install, upgrade, rollback, and uninstall behavior.
+- [x] Define install, upgrade, rollback, and uninstall behavior.
 - [x] Keep unpackaged startup available for development.
-- [ ] Build release artifacts only from pinned dependencies.
+- [x] Build release artifacts only from pinned dependencies.
 - [ ] Install, launch, upgrade, and uninstall on a clean machine.
+
+The x64 SEA servicing E2E installs a base package, mutates isolated application
+state through UIA, upgrades, rolls back, uninstalls, verifies state preservation,
+reinstalls, and checks zero-residual renderer cleanup for every launch. Each
+artifact records pinned tool/package hashes, source commits, certificate
+identity, and manifest dependencies in a provenance document.
 
 ### Phase 6: Independent framework consumption
 

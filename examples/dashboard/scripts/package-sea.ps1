@@ -9,7 +9,8 @@ param(
     [string]$CertificatePath,
     [string]$CertificatePassword = $env:DYNWINRT_JSX_CERT_PASSWORD,
     [string]$WinAppPath,
-    [switch]$InstallCertificate
+    [switch]$InstallCertificate,
+    [switch]$RequireCleanSources
 )
 
 Set-StrictMode -Version Latest
@@ -24,6 +25,9 @@ $postjectApiSha256 = "88931f26b4d3e99e08dc8219a45f576986952fad4d0c78444d27048232
 $seaExecutableName = "DynWinRTJSXDashboard.exe"
 
 $dashboardRoot = Split-Path $PSScriptRoot -Parent
+$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $dashboardRoot "..\.."))
+$dynwinrtRoot = [IO.Path]::GetFullPath((Join-Path $dashboardRoot "..\..\..\dynwinrt"))
+$winappRepositoryRoot = [IO.Path]::GetFullPath((Join-Path $dashboardRoot "..\..\..\winappCli"))
 $packagingRoot = Join-Path $dashboardRoot "packaging"
 $stateRoot = Join-Path $dashboardRoot ".winapp\sea-package"
 $cacheRoot = Join-Path $stateRoot "cache"
@@ -49,6 +53,18 @@ function Invoke-Checked(
     if ($LASTEXITCODE -ne 0) {
         throw "$Description failed with exit code $LASTEXITCODE."
     }
+}
+
+function Invoke-Captured(
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$Description
+) {
+    $output = @(& $FilePath @Arguments)
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE."
+    }
+    return $output
 }
 
 function Resolve-WinAppExecutable {
@@ -89,6 +105,38 @@ function Get-Sha256([string]$Path) {
     }
     finally {
         $stream.Dispose()
+    }
+}
+
+function Get-GitRepositoryInfo(
+    [string]$Name,
+    [string]$Path
+) {
+    if (-not (Test-Path $Path)) {
+        throw "Required source repository was not found: $Path"
+    }
+
+    $commit = @(
+        Invoke-Captured "git" @("-C", $Path, "rev-parse", "HEAD") "$Name commit"
+    )[0].Trim()
+    $status = @(
+        Invoke-Captured "git" @(
+            "-C", $Path,
+            "status", "--porcelain", "--untracked-files=normal"
+        ) "$Name status"
+    )
+    $remote = @(
+        Invoke-Captured "git" @(
+            "-C", $Path,
+            "remote", "get-url", "origin"
+        ) "$Name remote"
+    )[0].Trim()
+
+    return [ordered]@{
+        name = $Name
+        remote = $remote
+        commit = $commit
+        clean = $status.Count -eq 0
     }
 }
 
@@ -204,6 +252,22 @@ public static class DynWinRTJsxSeaPe
 }
 
 $winapp = Resolve-WinAppExecutable
+$sourceRepositories = @(
+    Get-GitRepositoryInfo "dynwinrt-jsx" $repositoryRoot
+    Get-GitRepositoryInfo "dynwinrt" $dynwinrtRoot
+    Get-GitRepositoryInfo "winappCli" $winappRepositoryRoot
+)
+if ($RequireCleanSources) {
+    $dirtyRepositories = @(
+        $sourceRepositories | Where-Object { -not $_.clean }
+    )
+    if ($dirtyRepositories.Count -gt 0) {
+        throw "Release packaging requires clean source repositories: $(
+            ($dirtyRepositories | ForEach-Object { $_.name }) -join ", "
+        )."
+    }
+}
+
 $nodeArchive = Join-Path $cacheRoot $nodeArchiveName
 $nodeDirectory = Join-Path $cacheRoot "node-v$nodeVersion-win-x64"
 $nodeExecutable = Join-Path $nodeDirectory "node.exe"
@@ -382,6 +446,116 @@ Invoke-Checked $winapp @(
     "--quiet"
 ) "MSIX packaging"
 
+$dashboardPackage = Get-Content `
+    -LiteralPath (Join-Path $dashboardRoot "package.json") `
+    -Raw |
+    ConvertFrom-Json
+$jsxPackage = Get-Content `
+    -LiteralPath (Join-Path $jsxPackageRoot "package.json") `
+    -Raw |
+    ConvertFrom-Json
+$dynwinrtPackage = Get-Content `
+    -LiteralPath (Join-Path $dynwinrtPackageRoot "package.json") `
+    -Raw |
+    ConvertFrom-Json
+$typescriptPackage = Get-Content `
+    -LiteralPath (Join-Path $dashboardRoot "node_modules\typescript\package.json") `
+    -Raw |
+    ConvertFrom-Json
+$winappPackage = Get-Content `
+    -LiteralPath (Join-Path $winappRepositoryRoot "src\winapp-npm\package.json") `
+    -Raw |
+    ConvertFrom-Json
+$winappVersion = (
+    Invoke-Captured $winapp @("--version") "winapp version"
+) -join "`n"
+$signingCertificate = New-Object `
+    -TypeName Security.Cryptography.X509Certificates.X509Certificate2 `
+    -ArgumentList @(
+        $CertificatePath,
+        $CertificatePassword,
+        [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+    )
+try {
+    $signature = [ordered]@{
+        subject = $signingCertificate.Subject
+        thumbprint = $signingCertificate.Thumbprint
+        notBefore = $signingCertificate.NotBefore.ToUniversalTime().ToString("O")
+        notAfter = $signingCertificate.NotAfter.ToUniversalTime().ToString("O")
+    }
+}
+finally {
+    $signingCertificate.Reset()
+}
+
+$manifestDependencies = @(
+    $manifest.Package.Dependencies.PackageDependency |
+        ForEach-Object {
+            [ordered]@{
+                name = $_.Name
+                publisher = $_.Publisher
+                minVersion = $_.MinVersion
+            }
+        }
+)
+$provenancePath = Join-Path `
+    $artifactRoot `
+    "DynWinRTJSXDashboard_${Version}_x64_sea.provenance.json"
+$provenance = [ordered]@{
+    schemaVersion = 1
+    generatedAt = [DateTime]::UtcNow.ToString("O")
+    package = [ordered]@{
+        name = $manifest.Package.Identity.Name
+        version = $Version
+        publisher = $Publisher
+        architecture = "x64"
+        file = [IO.Path]::GetFileName($msixPath)
+        size = (Get-Item -LiteralPath $msixPath).Length
+        sha256 = Get-Sha256 $msixPath
+    }
+    executable = [ordered]@{
+        file = $seaExecutableName
+        size = (Get-Item -LiteralPath $seaExecutable).Length
+        sha256 = Get-Sha256 $seaExecutable
+        signature = $signature
+    }
+    inputs = [ordered]@{
+        node = [ordered]@{
+            version = $nodeVersion
+            archive = $nodeArchiveName
+            archiveSha256 = $nodeArchiveSha256
+            executableSha256 = $nodeExeSha256
+        }
+        postject = [ordered]@{
+            version = $postjectVersion
+            apiSha256 = $postjectApiSha256
+        }
+        packages = [ordered]@{
+            dashboard = $dashboardPackage.version
+            dynwinrtJsx = $jsxPackage.version
+            dynwinrt = $dynwinrtPackage.version
+            typescript = $typescriptPackage.version
+            winappCliPackage = $winappPackage.version
+            winappCliExecutable = $winappVersion.Trim()
+        }
+        dynwinrtAddonSha256 = Get-Sha256 $dynwinrtAddon
+        bindingsIndexSha256 = Get-Sha256 (Join-Path $bindingsRoot "index.js")
+        packageLockSha256 = Get-Sha256 (Join-Path $dashboardRoot "package-lock.json")
+    }
+    manifest = [ordered]@{
+        sha256 = Get-Sha256 $manifestPath
+        dependencies = $manifestDependencies
+    }
+    sourceRepositories = $sourceRepositories
+    allSourcesClean = @(
+        $sourceRepositories | Where-Object { -not $_.clean }
+    ).Count -eq 0
+}
+$provenance |
+    ConvertTo-Json -Depth 10 |
+    Set-Content -LiteralPath $provenancePath -Encoding UTF8
+
 Write-Output "SEA MSIX: $msixPath"
+Write-Output "Provenance: $provenancePath"
 Write-Output "Certificate: $CertificatePath"
 Write-Output "Install: Add-AppxPackage `"$msixPath`""

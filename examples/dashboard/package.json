@@ -11,6 +11,8 @@
     "generate": "winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
     "package:sea": "npm run build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-sea.ps1",
+    "package:sea:clean-machine": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sea-clean-machine.ps1",
+    "package:sea:servicing": "npm run build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sea-servicing.ps1",
     "dev": "node dev.js",
     "start": "npm run build && node main.js"
   },
