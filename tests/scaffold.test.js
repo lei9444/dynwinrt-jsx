@@ -35,35 +35,30 @@ function generatedClasses(manifest, namespace) {
 
 function assertLifetimeTeardownSource(workerSource) {
   assert.match(workerSource, /createProjectedLifetimeScope/)
-  assert.match(workerSource, /appWindow\.onClosing/)
+  assert.match(workerSource, /installWinUIWindowLifecycle/)
   assert.match(
     workerSource,
-    /if \(attempt\(\(\) => \{\s*hotSession\?\.dispose\(\)\s*\}\)\) \{\s*hotSession = undefined\s*\}/s,
+    /disposeBeforeRender\(\) \{[\s\S]*hotReloadController\?\.dispose\(\)[\s\S]*hotReloadController = undefined/s,
   )
   assert.match(
     workerSource,
-    /if \(attempt\(\(\) => \{\s*renderHandle\?\.dispose\(\)\s*\}\)\) \{\s*renderHandle = undefined\s*\}/s,
+    /disposeRender\(\) \{[\s\S]*renderHandle\?\.dispose\(\)[\s\S]*renderHandle = undefined/s,
   )
   assert.match(
     workerSource,
-    /if \(attempt\(\(\) => \{\s*model\?\.dispose\(\)\s*\}\)\) \{\s*model = undefined\s*\}/s,
-  )
-  assert.match(workerSource, /let projectionError: unknown/)
-  assert.match(
-    workerSource,
-    /if \(projectionError === undefined\) \{[\s\S]*projectionLifetime = undefined[\s\S]*\} else \{\s*args\.cancel = true\s*\}/,
-  )
-  assert.doesNotMatch(
-    workerSource,
-    /args\.cancel = true[\s\S]{0,80}throw/,
+    /disposeAfterRender\(\) \{[\s\S]*model\?\.dispose\(\)[\s\S]*model = undefined/s,
   )
   assert.match(
     workerSource,
-    /if \(firstError === undefined\) \{\s*exitCode = (?:0|requestedExitCode)\s*\}/s,
+    /disposeProjection\(\) \{[\s\S]*projectionLifetime\?\.dispose\(\)[\s\S]*projectionLifetime = undefined/s,
   )
   assert.match(
     workerSource,
-    /try \{\s*unsubscribe\?\.\(\)\s*\} finally \{\s*Application\.current\.exit\(\)\s*\}/s,
+    /onDiagnostics\(diagnostics\) \{[\s\S]*type: 'diagnostics'/s,
+  )
+  assert.match(
+    workerSource,
+    /setExitCode\(value\) \{\s*exitCode = value\s*\}/s,
   )
 }
 
@@ -173,7 +168,8 @@ test('dashboard and template keep lifetime teardown retry-safe', () => {
       'examples',
       'dashboard',
       'src',
-      'winui-worker.tsx',
+      'worker',
+      'application.tsx',
     ),
   ]) {
     assertLifetimeTeardownSource(fs.readFileSync(workerPath, 'utf8'))
@@ -272,13 +268,38 @@ test('repository keeps the real WinUI native selftest wired', () => {
     ),
     'utf8',
   )
+  const workerApplicationSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'dashboard',
+      'src',
+      'worker',
+      'application.tsx',
+    ),
+    'utf8',
+  )
+  const workerSelfTestSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'dashboard',
+      'src',
+      'worker',
+      'selftest.ts',
+    ),
+    'utf8',
+  )
   const manifest = readManifest(
     path.join(__dirname, '..', 'examples', 'dashboard'),
   )
 
   assert.match(mainSource, /DYNWINRT_JSX_SELFTEST/)
   assert.match(mainSource, /DYNWINRT_JSX_NATIVE_SELFTEST/)
-  assert.match(workerSource, /createNativeSelfTest/)
+  assert.match(workerApplicationSource, /createNativeSelfTest/)
+  assert.match(workerSelfTestSource, /nativeSelfTest\.run/)
   assert.match(workerSource, /Intentional native selftest Worker failure/)
   assert.ok(
     generatedClasses(

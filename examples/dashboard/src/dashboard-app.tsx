@@ -93,10 +93,6 @@ const LayoutGrid = createGridControl({
   RowDefinition,
   ColumnDefinition,
 })
-const TaskList = createListViewControl({
-  ListView,
-  selectedIndexProperty: Selector.selectedIndexProperty,
-})
 const AppNavigation = createNavigationViewControl<
   NavigationView,
   NavigationViewItem
@@ -515,6 +511,10 @@ function TaskRow(props: TaskRowProps) {
 }
 
 function TasksPage(context: DashboardAppContext) {
+  const TaskList = createListViewControl({
+    ListView,
+    selectedIndexProperty: Selector.selectedIndexProperty,
+  })
   const input: RefObject<TextBoxInstance> = { current: null }
   const inputLabel = signal<TextBlockInstance | null>(null)
   const addButton = createFocusTarget<ButtonInstance>(

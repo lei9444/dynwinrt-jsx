@@ -2,6 +2,19 @@
 
 This example renders a native WinUI 3 workspace dashboard from TSX. It exercises a NavigationView application shell, scoped ContentDialog rendering, deterministic signals, refs, Fluent resources, stable keyed lists, error recovery, theme switching, diagnostics, and native window lifecycle.
 
+The UI Worker is composed from focused modules:
+
+| File | Responsibility |
+|---|---|
+| `src/winui-worker.tsx` | STA entry, Worker data, state bridge, startup timing, exit |
+| `src/worker/application.tsx` | Application/Window setup, model, render, lifecycle composition |
+| `src/worker/hot-reload.tsx` | app module loading, fallback UI, file-backed hot reload |
+| `src/worker/selftest.ts` | native selftest result, root cleanup, and close flow |
+| `src/worker/contracts.ts` | Worker message and data contracts |
+
+Shared closing, projection, diagnostics, and hot polling behavior comes from
+`dynwinrt-jsx/worker`.
+
 Its metric and task surfaces use `createGridControl()` with typed
 `gridLength.auto()`, `gridLength.pixel()`, and `gridLength.star()` definitions.
 The UI smoke records Grid column positions in `.winapp\smoke\grid-layout.json`.

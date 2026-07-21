@@ -13,7 +13,7 @@ const {
   createDiagnosticRecord,
   createJsonStateStore,
   formatDiagnosticRecord,
-} = require('dynwinrt-jsx')
+} = require('dynwinrt-jsx/host')
 const {
   createDefaultPersistedAppState,
   isPersistedAppState,

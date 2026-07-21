@@ -90,6 +90,7 @@ adoption map.
 | Context | `src/context.ts` |
 | One-way and two-way props | `src/binding.ts` |
 | Worker state synchronization | `src/bridge.ts` |
+| Worker Window lifecycle and file hot reload | `src/worker.ts` |
 | Validated atomic JSON persistence | `src/persistence.ts` |
 | Root replacement | `src/hot.ts` |
 | Public exports | `src/index.ts` |

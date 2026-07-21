@@ -1,22 +1,25 @@
 import {
-  assertRendererIdle,
   createControls,
-  createHotReloadSession,
   createMessageTransport,
   createStateBridge,
   createWinUIRenderer,
   thickness,
   type Child,
-  type HotReloadSession,
   type RenderHandle,
 } from 'dynwinrt-jsx'
+import {
+  createFileHotReloadController,
+  installWinUIWindowLifecycle,
+  type FileHotReloadController,
+  type FileHotReloadFileSystem,
+  type FileHotReloadMessage,
+} from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
 import {
   AccessibilitySettings,
   Application,
   ApplicationTheme,
   AutomationProperties,
-  DispatcherQueueTimer,
   ElementTheme,
   Grid,
   IMap_Object_Object,
@@ -46,15 +49,6 @@ interface NodeRequire {
   (id: string): unknown
   readonly cache: Record<string, unknown>
   resolve(id: string): string
-}
-interface FileSystem {
-  existsSync(path: string): boolean
-  readFileSync(path: string, encoding: 'utf8'): string
-}
-interface HotMessage {
-  readonly type?: string
-  readonly version?: number
-  readonly message?: string
 }
 interface AppModule {
   renderApp(context: AppContext): Child
@@ -102,7 +96,7 @@ const renderer = createWinUIRenderer({
 const FallbackUI = createControls({ StackPanel, TextBlock })
 const moduleId = './app.js'
 const modulePath = require.resolve(moduleId)
-const fs = require('node:fs') as FileSystem
+const fs = require('node:fs') as FileHotReloadFileSystem
 const loadApp = (invalidate: boolean): AppModule => {
   if (invalidate) {
     delete require.cache[modulePath]
@@ -122,11 +116,7 @@ const errorTree = (error: unknown): Child => (
 
 let model: AppModel | undefined
 let renderHandle: RenderHandle | undefined
-let hotSession: HotReloadSession | undefined
-let timer: DispatcherQueueTimer | undefined
-let timerSubscription: (() => void) | undefined
-let closingSubscription: (() => void) | undefined
-let closeSubscription: (() => void) | undefined
+let hotReloadController: FileHotReloadController | undefined
 let projectionLifetime:
   | ReturnType<typeof createProjectedLifetimeScope>
   | undefined
@@ -167,8 +157,29 @@ Application.start(() => {
           tree = errorTree(error)
         }
         renderHandle = renderer.render(tree, window)
-        hotSession = createHotReloadSession(renderHandle, {
+        hotReloadController = createFileHotReloadController({
+          statePath: workerData.hotStatePath,
+          dispatcherQueue: window.dispatcherQueue,
+          fileSystem: fs,
+          renderHandle,
           fallback: errorTree,
+          beforeReload(message) {
+            if (!model) {
+              return
+            }
+            model.hotStatus.value =
+              message.type === 'hot-build-error'
+                ? 'build error'
+                : 'reloading'
+          },
+          load(message: FileHotReloadMessage) {
+            if (message.type === 'hot-build-error') {
+              throw new Error(
+                message.message ?? 'TypeScript build failed.',
+              )
+            }
+            return loadApp(true).renderApp(context)
+          },
           onReload(version) {
             if (!model) return
             model.hotStatus.value = 'ready'
@@ -196,146 +207,70 @@ Application.start(() => {
               message: model.lastError.value,
             })
           },
-        })
-        if (workerData.hotStatePath) {
-          timer = window.dispatcherQueue.createTimer()
-          timer.interval = { duration: 2_500_000n }
-          timerSubscription = timer.onTick(() => {
-            if (
-              !workerData.hotStatePath ||
-              !fs.existsSync(workerData.hotStatePath)
-            ) {
-              return
-            }
-            const message = JSON.parse(
-              fs.readFileSync(workerData.hotStatePath, 'utf8'),
-            ) as HotMessage
-            const version = message.version ?? 0
-            if (!hotSession || !model || version <= hotSession.version) {
-              return
-            }
-            model.hotStatus.value =
-              message.type === 'hot-build-error'
-                ? 'build error'
-                : 'reloading'
-            void hotSession.reload(version, () => {
-              if (message.type === 'hot-build-error') {
-                throw new Error(message.message ?? 'TypeScript build failed.')
-              }
-              return loadApp(true).renderApp(context)
+          onPollError(error, version) {
+            parentPort.postMessage({
+              type: 'hot-reload',
+              status: 'error',
+              version,
+              message:
+                error instanceof Error
+                  ? error.stack ?? error.message
+                  : String(error),
             })
-          })
-          timer.start()
-        }
-        closingSubscription = appWindow.onClosing((_sender, args) => {
-          // App-owned closing handlers mount before this final teardown handler.
-          if (args.cancel) {
-            return
-          }
-          let firstError: unknown
-          const attempt = (action: () => void) => {
-            try {
-              action()
-              return true
-            } catch (error) {
-              firstError ??= error
-              return false
-            }
-          }
-          attempt(() => {
+          },
+        })
+
+        installWinUIWindowLifecycle({
+          application: Application,
+          window,
+          appWindow,
+          renderer,
+          beforeClose() {
             bridge.set(
               model?.snapshot('closed') ?? {
                 ...workerData.initialState,
                 status: 'closed',
               },
             )
-          })
-          if (attempt(() => {
-            timer?.stop()
-          })) {
-            timer = undefined
-          }
-          if (attempt(() => {
-            timerSubscription?.()
-          })) {
-            timerSubscription = undefined
-          }
-          if (attempt(() => {
-            hotSession?.dispose()
-          })) {
-            hotSession = undefined
-          }
-          if (attempt(() => {
+          },
+          disposeBeforeRender() {
+            hotReloadController?.dispose()
+            hotReloadController = undefined
+          },
+          disposeRender() {
             renderHandle?.dispose()
-          })) {
             renderHandle = undefined
-          }
-          if (attempt(() => {
+          },
+          disposeAfterRender() {
             model?.dispose()
-          })) {
             model = undefined
-          }
-          const diagnostics = renderer.diagnostics
-          attempt(() => {
-            assertRendererIdle(diagnostics)
-          })
-          attempt(() => {
+          },
+          disposeProjection() {
+            projectionLifetime?.dispose()
+            projectionLifetime = undefined
+          },
+          onDiagnostics(diagnostics) {
             parentPort.postMessage({
               type: 'diagnostics',
               value: diagnostics,
             })
-          })
-          let projectionError: unknown
-          try {
-            projectionLifetime?.dispose()
-          } catch (error) {
-            projectionError = error
-            firstError ??= error
-          }
-          if (projectionError === undefined) {
-            projectionLifetime = undefined
-            if (attempt(() => {
-              closingSubscription?.()
-            })) {
-              closingSubscription = undefined
-            }
-          } else {
-            args.cancel = true
-          }
-          if (firstError !== undefined) {
+          },
+          onError(error) {
             exitCode = 1
             parentPort.postMessage({
               type: 'error',
               message:
-                firstError instanceof Error
-                  ? firstError.stack
-                  : String(firstError),
+                error instanceof Error
+                  ? error.stack
+                  : String(error),
             })
-          }
-          if (
-            projectionError !== undefined &&
-            projectionError !== firstError
-          ) {
-            parentPort.postMessage({
-              type: 'error',
-              message:
-                projectionError instanceof Error
-                  ? projectionError.stack
-                  : String(projectionError),
-            })
-          }
-          if (firstError === undefined) {
-            exitCode = 0
-          }
-        })
-        closeSubscription = window.onClosed(() => {
-          const unsubscribe = closeSubscription
-          closeSubscription = undefined
-          try {
-            unsubscribe?.()
-          } finally {
-            Application.current.exit()
-          }
+          },
+          getRequestedExitCode() {
+            return 0
+          },
+          setExitCode(value) {
+            exitCode = value
+          },
         })
         window.activate()
         exitCode = 0

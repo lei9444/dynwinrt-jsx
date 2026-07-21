@@ -393,6 +393,55 @@ Normal application state remains at:
 The MSIX installation directory is immutable. Runtime state and diagnostics
 must not be written beside the executable.
 
+## Startup timing
+
+The packaged dashboard emits structured startup milestones:
+
+```text
+dashboard-startup/main.entered
+dashboard-startup/host-api.loaded
+dashboard-startup/state.loaded
+dashboard-startup/bridge.created
+dashboard-startup/worker.created
+dashboard-worker/startup.ro-initialized
+dashboard-worker/startup.bridge-created
+dashboard-worker/startup.renderer-created
+dashboard-worker/startup.application-starting
+dashboard-worker/startup.window-created
+dashboard-worker/startup.state-initialized
+dashboard-worker/startup.app-module-loaded
+dashboard-worker/startup.native-selftest-loaded
+dashboard-worker/startup.tree-rendered
+dashboard-worker/startup.hot-session-created
+dashboard-worker/startup.window-activated
+```
+
+Worker milestones include elapsed time from the SEA bootstrap and from Worker
+module execution. Selftest and hot-session milestones are emitted only when
+those modes are enabled. This separates package/Node startup, Worker module
+loading, WinUI initialization, application module loading, rendering, and
+activation.
+
+The main process imports its bridge, persistence, and diagnostics APIs from
+`dynwinrt-jsx/host`, which avoids loading renderer and WinUI authoring modules.
+Native selftest code is loaded only when `DYNWINRT_JSX_SELFTEST=1`, and the
+Tasks/ListView adapter is initialized when the Tasks page is rendered instead
+of during application module loading.
+
+On the current x64 development machine, a 15-run warm-start A/B comparison
+against the previous package measured:
+
+| Metric | Previous | Optimized |
+|---|---:|---:|
+| Median process start to `application.ready` | 1083.4ms | 1040.3ms |
+| Trimmed average | 1169.5ms | 1123.4ms |
+
+The stable improvement is approximately 43-46ms, or 4%. First launch after an
+install or upgrade remains dominated by Windows file paging, signature and
+antivirus inspection, Node/V8 startup, and native framework loading before the
+first Worker milestone. Treat one first-launch sample as diagnostic evidence,
+not a stable benchmark.
+
 ## Install a development package
 
 Trust the generated development certificate once from an elevated terminal:

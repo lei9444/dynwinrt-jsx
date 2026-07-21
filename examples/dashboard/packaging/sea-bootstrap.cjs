@@ -1,5 +1,7 @@
 'use strict'
 
+process.env.DYNWINRT_JSX_STARTUP_STARTED_AT = String(performance.now())
+
 const fs = require('node:fs')
 const path = require('node:path')
 const util = require('node:util')

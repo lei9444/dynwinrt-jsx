@@ -31,6 +31,16 @@
       "require": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./host": {
+      "types": "./dist/host.d.ts",
+      "require": "./dist/host.js",
+      "default": "./dist/host.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "require": "./dist/worker.js",
+      "default": "./dist/worker.js"
+    },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
       "require": "./dist/jsx-runtime.js",

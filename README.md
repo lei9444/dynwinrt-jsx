@@ -86,6 +86,30 @@ location with `DYNWINRT_JSX_STATE_PATH`. Invalid JSON or schema data is renamed
 to a timestamped `.corrupt-*` file, the default state is restored, and the
 recovery error remains visible in Diagnostics.
 
+Main-process hosts can import bridge, persistence, and diagnostics APIs from
+`dynwinrt-jsx/host` without loading renderer or WinUI authoring modules:
+
+```js
+const {
+  createMessageTransport,
+  createStateBridge,
+  createJsonStateStore,
+} = require('dynwinrt-jsx/host')
+```
+
+Worker entry points can reuse deterministic Window teardown and file-backed hot
+reload without copying the lifecycle implementation:
+
+```ts
+import {
+  createFileHotReloadController,
+  installWinUIWindowLifecycle,
+} from 'dynwinrt-jsx/worker'
+```
+
+Applications still provide their generated `Application`, `Window`,
+projection-scope factory, renderer, model, and render callbacks.
+
 For sibling source repositories under one work directory:
 
 ```powershell

@@ -1,5 +1,30 @@
 'use strict'
 
+const startupCandidate = Number(
+  process.env.DYNWINRT_JSX_STARTUP_STARTED_AT,
+)
+const startupStartedAt = Number.isFinite(startupCandidate)
+  ? startupCandidate
+  : performance.now()
+const startupEpochMs = performance.timeOrigin + startupStartedAt
+
+function recordStartup(event, details = {}) {
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    source: 'dashboard-startup',
+    event,
+    level: 'info',
+    details: {
+      elapsedMs: Math.round(
+        (performance.now() - startupStartedAt) * 10,
+      ) / 10,
+      ...details,
+    },
+  }))
+}
+
+recordStartup('main.entered')
+
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -7,13 +32,19 @@ const {
   MessageChannel,
   Worker,
 } = require('node:worker_threads')
+const hostApiStartedAt = performance.now()
 const {
   createMessageTransport,
   createStateBridge,
   createDiagnosticRecord,
   createJsonStateStore,
   formatDiagnosticRecord,
-} = require('dynwinrt-jsx')
+} = require('dynwinrt-jsx/host')
+recordStartup('host-api.loaded', {
+  durationMs: Math.round(
+    (performance.now() - hostApiStartedAt) * 10,
+  ) / 10,
+})
 const {
   createDefaultPersistedDashboardState,
   isPersistedDashboardState,
@@ -63,7 +94,14 @@ const stateStore = createJsonStateStore({
   defaultState: createDefaultPersistedDashboardState,
   validate: isPersistedDashboardState,
 })
+const stateLoadStartedAt = performance.now()
 const loadedState = stateStore.load()
+recordStartup('state.loaded', {
+  durationMs: Math.round(
+    (performance.now() - stateLoadStartedAt) * 10,
+  ) / 10,
+  recovered: loadedState.error !== null,
+})
 const initialState = {
   ...loadedState.state,
   status: 'starting',
@@ -91,6 +129,7 @@ const stateBridge = createStateBridge(
     initial: initialState,
   },
 )
+recordStartup('bridge.created')
 const hotEnabled = process.env.DYNWINRT_JSX_HOT === '1'
 const selfTestEnabled = process.env.DYNWINRT_JSX_SELFTEST === '1'
 const selfTestFailure =
@@ -105,6 +144,7 @@ if (hotEnabled) {
     JSON.stringify({ type: 'ready', version: 0 }),
   )
 }
+const workerCreationStartedAt = performance.now()
 const worker = new Worker(
   path.join(__dirname, 'dist', 'winui-worker.js'),
   {
@@ -114,10 +154,16 @@ const worker = new Worker(
       initialState,
       selfTest: selfTestEnabled,
       selfTestFailure,
+      startupEpochMs,
     },
     transferList: [port2],
   },
 )
+recordStartup('worker.created', {
+  durationMs: Math.round(
+    (performance.now() - workerCreationStartedAt) * 10,
+  ) / 10,
+})
 const hotWatchedFiles = []
 let hotVersion = 0
 
@@ -270,6 +316,7 @@ worker.on('message', (message) => {
     console.log(formatDiagnosticRecord(createDiagnosticRecord(
       'dashboard-worker',
       `startup.${message.stage}`,
+      message.value ?? {},
     )))
   }
 })
