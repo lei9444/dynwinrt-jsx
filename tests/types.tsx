@@ -295,6 +295,20 @@ const ControlledTypeList = native<
     }),
   },
 })
+adapter.controlled<TypeListView>({
+  changeProperty: 'onSelectedIndexChange',
+  read: (instance) => instance.selectedIndex,
+  write: (instance, value) => {
+    instance.selectedIndex = value as number
+  },
+  subscribe: (instance, callback) =>
+    instance.onSelectionChanged(callback),
+  echo: 'deferred',
+  // @ts-expect-error Deferred controlled writes cannot provide transactional rollback.
+  rollback: (instance: TypeListView, previous: unknown) => {
+    instance.selectedIndex = previous as number
+  },
+})
 const LayoutGrid = createGridControl({
   Grid: TypeGrid,
   RowDefinition: TypeRowDefinition,

@@ -80,13 +80,17 @@ class FakeListView {
   }
 
   set selectedIndex(value) {
-    this._selectedIndex = value
+    this._selectedIndex = this.coerceSelectedIndex(value)
     for (const listener of [...this.listeners]) {
       listener(this, { addedItems: [], removedItems: [] })
     }
     for (const [property, callback] of this.propertyHandlers.values()) {
       callback(this, property)
     }
+  }
+
+  coerceSelectedIndex(value) {
+    return value
   }
 
   onSelectionChanged(callback) {
@@ -112,6 +116,12 @@ class FakeListView {
 
   scrollIntoView(item, alignment) {
     this.scrollCalls.push([item, alignment])
+  }
+}
+
+class CoercingFakeListView extends FakeListView {
+  coerceSelectedIndex(value) {
+    return value > 1 ? -1 : value
   }
 }
 
@@ -344,6 +354,67 @@ test('ListView can observe selectedIndex without the projected event', () => {
   const mounted = control
   handle.dispose()
   assert.equal(mounted.propertyHandlers.size, 0)
+})
+
+test('ListView suppresses dependency-property echoes after native coercion', () => {
+  const selectedIndexProperty = {}
+  const ListView = createListViewControl({
+    ListView: CoercingFakeListView,
+    selectedIndexProperty,
+  })
+  const selectedIndex = signal(0)
+  const changes = []
+  let control
+
+  const handle = renderer().render(
+    ListView({
+      ref(value) {
+        control = value
+      },
+      selectedIndex,
+      onSelectedIndexChange(index) {
+        changes.push(index)
+      },
+    }),
+    new FakePanel(),
+  )
+
+  selectedIndex.value = 99
+
+  assert.equal(control.selectedIndex, -1)
+  assert.deepEqual(changes, [])
+  handle.dispose()
+})
+
+test('ListView reasserts selectedIndex when a native change is rejected', () => {
+  const selectedIndexProperty = {}
+  const ListView = createListViewControl({
+    ListView: FakeListView,
+    selectedIndexProperty,
+  })
+  const selectedIndex = signal(0)
+  const changes = []
+  let control
+
+  const handle = renderer().render(
+    ListView({
+      ref(value) {
+        control = value
+      },
+      selectedIndex,
+      onSelectedIndexChange(index) {
+        changes.push(index)
+      },
+    }),
+    new FakePanel(),
+  )
+
+  control.selectedIndex = 1
+
+  assert.equal(selectedIndex.value, 0)
+  assert.equal(control.selectedIndex, 0)
+  assert.deepEqual(changes, [1])
+  handle.dispose()
 })
 
 test('ListView instances work with the generic focus target helper', () => {

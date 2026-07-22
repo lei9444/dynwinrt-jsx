@@ -120,6 +120,21 @@ class FailingControl extends SynchronousControl {
   }
 }
 
+class ReassertFailingControl extends SynchronousControl {
+  failValue = undefined
+
+  set value(value) {
+    if (Object.is(value, this.failValue)) {
+      throw new Error('reassert failed')
+    }
+    super.value = value
+  }
+
+  get value() {
+    return super.value
+  }
+}
+
 function controlledComponent(Control, echo) {
   return native(Control, {
     adapters: {
@@ -167,9 +182,37 @@ test('controlled adapter suppresses synchronous writes and forwards user changes
   assert.equal(changes.length, 1)
   assert.equal(changes[0][0], 3)
   assert.equal(changes[0][1], instance)
+  assert.equal(instance.value, 2)
 
   handle.dispose()
   assert.equal(instance.listeners.size, 0)
+})
+
+test('controlled adapter keeps accepted native changes', () => {
+  const Control = controlledComponent(
+    SynchronousControl,
+    'synchronous',
+  )
+  const value = signal(1)
+  const changes = []
+  const window = new FakeWindow()
+  createRenderer().render(
+    jsx(Control, {
+      value,
+      onValueChange(next) {
+        changes.push(next)
+        value.value = next
+      },
+    }),
+    window,
+  )
+  const instance = window.content
+
+  instance.change(2)
+
+  assert.equal(value.value, 2)
+  assert.equal(instance.value, 2)
+  assert.deepEqual(changes, [2])
 })
 
 test('controlled adapter counts deferred echo bursts', () => {
@@ -200,6 +243,128 @@ test('controlled adapter counts deferred echo bursts', () => {
 
   instance.change(5)
   assert.deepEqual(changes, [5])
+})
+
+test('controlled adapter reasserts rejected deferred changes without leaking echoes', () => {
+  const Control = controlledComponent(
+    DeferredControl,
+    'deferred',
+  )
+  const value = signal(1)
+  const changes = []
+  const window = new FakeWindow()
+  createRenderer().render(
+    jsx(Control, {
+      value,
+      onValueChange(next) {
+        changes.push(next)
+      },
+    }),
+    window,
+  )
+  const instance = window.content
+  instance.flush()
+
+  instance.change(2)
+
+  assert.equal(value.value, 1)
+  assert.equal(instance.value, 1)
+  assert.deepEqual(changes, [2])
+
+  instance.flush()
+  assert.deepEqual(changes, [2])
+})
+
+test('controlled adapter reports callback errors after restoring the model', () => {
+  const Control = controlledComponent(
+    SynchronousControl,
+    'synchronous',
+  )
+  const errors = []
+  const window = new FakeWindow()
+  createRenderer({
+    onError(error, context) {
+      errors.push([error, context])
+    },
+  }).render(
+    jsx(Control, {
+      value: 1,
+      onValueChange() {
+        throw new Error('callback failed')
+      },
+    }),
+    window,
+  )
+  const instance = window.content
+
+  instance.change(2)
+
+  assert.equal(instance.value, 1)
+  assert.equal(errors.length, 1)
+  assert.match(errors[0][0].message, /callback failed/)
+  assert.equal(errors[0][1].phase, 'event')
+  assert.equal(errors[0][1].property, 'onValueChange')
+})
+
+test('controlled adapter reports rejected-change reassertion failures', () => {
+  const Control = controlledComponent(
+    ReassertFailingControl,
+    'synchronous',
+  )
+  const errors = []
+  const window = new FakeWindow()
+  createRenderer({
+    onError(error, context) {
+      errors.push([error, context])
+    },
+  }).render(
+    jsx(Control, {
+      value: 1,
+      onValueChange() {},
+    }),
+    window,
+  )
+  const instance = window.content
+  instance.failValue = 1
+
+  instance.change(2)
+
+  assert.equal(instance.value, 2)
+  assert.equal(errors.length, 1)
+  assert.match(errors[0][0].message, /reassert failed/)
+  assert.equal(errors[0][1].phase, 'property')
+  assert.equal(errors[0][1].property, 'value')
+})
+
+test('controlled adapter aggregates callback and reassertion failures', () => {
+  const Control = controlledComponent(
+    ReassertFailingControl,
+    'synchronous',
+  )
+  const errors = []
+  const window = new FakeWindow()
+  createRenderer({
+    onError(error) {
+      errors.push(error)
+    },
+  }).render(
+    jsx(Control, {
+      value: 1,
+      onValueChange() {
+        throw new Error('callback failed')
+      },
+    }),
+    window,
+  )
+  const instance = window.content
+  instance.failValue = 1
+
+  instance.change(2)
+
+  assert.equal(errors.length, 1)
+  assert.ok(errors[0] instanceof AggregateError)
+  assert.equal(errors[0].errors.length, 2)
+  assert.match(errors[0].message, /callback and model reassertion failed/)
 })
 
 test('controlled adapter does not arm deferred echo for no-op writes', () => {

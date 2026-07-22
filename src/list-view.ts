@@ -145,7 +145,7 @@ export function createListViewControl<Instance extends ListViewInstance>(
                 )
               }
             },
-            echo: 'synchronous',
+            echo: 'setterScope',
             maxPendingWrites: maxPendingSelections,
           },
           coerceSelectedIndex,

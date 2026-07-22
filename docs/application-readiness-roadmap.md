@@ -503,8 +503,12 @@ identity, and manifest dependencies in a provenance document.
         boundary service.
 - [x] Add a reusable controlled-value adapter foundation with native echo
       suppression, coercion classification, and transactional rollback.
+  - [x] Reassert the latest model value when a native change callback rejects
+        an update.
+  - [x] Restrict rollback to synchronous and setter-scope echo modes.
 - [x] Migrate ListView controlled `selectedIndex` to the shared foundation when
       the generated dependency property binding is available.
+  - [x] Suppress dependency-property callbacks across native coercion.
 - [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
       `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
 - [ ] Add native `ItemsRepeater` virtualization with dynamic item size,

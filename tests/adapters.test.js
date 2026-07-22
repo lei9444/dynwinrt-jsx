@@ -119,6 +119,30 @@ test('property adapters classify initial/coercing/reference behavior', () => {
   handle.dispose()
 })
 
+test('controlled adapters reject deferred transactional rollback', () => {
+  const controlled = {
+    changeProperty: 'onValueChange',
+    read: (instance) => instance.value,
+    write: (instance, value) => {
+      instance.value = value
+    },
+    subscribe: () => () => {},
+    rollback: (instance, previous) => {
+      instance.value = previous
+    },
+    echo: 'deferred',
+  }
+
+  assert.throws(
+    () => adapter.controlled(controlled),
+    /rollback requires synchronous or setterScope/,
+  )
+  assert.throws(
+    () => adapter.coercing((value) => value, controlled),
+    /rollback requires synchronous or setterScope/,
+  )
+})
+
 test('collection adapters replace transactionally and roll back', () => {
   const items = signal([1, 2])
   let control

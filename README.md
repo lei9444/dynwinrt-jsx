@@ -236,7 +236,16 @@ const ControlledSlider = native(Slider, {
 
 Echo modes are `synchronous`, `deferred`, and `setterScope`. Controlled
 descriptors may provide `equals`, `maxPendingWrites`, and a transactional
-`rollback` callback for partial native writes.
+`rollback` callback for partial native writes. Rollback requires
+`synchronous` or `setterScope` echo mode because a failed deferred write cannot
+reliably distinguish its queued echo from the rollback echo.
+
+The model remains authoritative after a genuine native change. If the change
+callback leaves the source signal unchanged, the renderer reapplies the latest
+resolved and coerced model value without leaking another change callback.
+`setterScope` suppresses every callback raised inside the setter, including
+native coercion readback; coerce the model value first when the model must
+exactly match the native result.
 
 ### WinUI object values
 

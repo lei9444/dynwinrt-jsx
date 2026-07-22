@@ -2,6 +2,7 @@ import {
   ErrorBoundary,
   For,
   createControls,
+  createListViewControl,
   native,
   signal,
   type Child,
@@ -14,6 +15,8 @@ import {
   AutomationProperties,
   Button,
   FocusState,
+  ListView,
+  Selector,
   StackPanel,
   TextBlock,
   TextBox,
@@ -68,6 +71,11 @@ const UI = createControls({
   TextBox,
 })
 
+const SelfTestListView = createListViewControl({
+  ListView,
+  selectedIndexProperty: Selector.selectedIndexProperty,
+})
+
 const ExplodingText = native<
   TextBlock,
   { readonly explode?: boolean }
@@ -112,6 +120,9 @@ export function createNativeSelfTest(
   const firstLabelRef: RefObject<TextBlock> = { current: null }
   const secondLabelRef: RefObject<TextBlock> = { current: null }
   const inputRef: RefObject<TextBox> = { current: null }
+  const selectionRef: RefObject<ListView> = { current: null }
+  const selectedIndex = signal(0)
+  const selectionChanges: number[] = []
   const labeledBy = signal<TextBlock | null>(null)
   const itemRefs = new Map<number, TextBlock>()
   let capturedBoundaryError: unknown
@@ -176,6 +187,16 @@ export function createNativeSelfTest(
       >
         Focus target
       </UI.Button>
+      <SelfTestListView
+        ref={selectionRef}
+        selectedIndex={selectedIndex}
+        onSelectedIndexChange={(index) => {
+          selectionChanges.push(index)
+        }}
+      >
+        <UI.TextBlock text="Selection zero" />
+        <UI.TextBlock text="Selection one" />
+      </SelfTestListView>
       <ErrorBoundary
         fallback={(error) => {
           capturedBoundaryError = error
@@ -250,6 +271,34 @@ export function createNativeSelfTest(
         status.value = 'updated'
         if (String(statusRef.current?.text) !== 'updated') {
           throw new Error('Signal update did not reach the native property.')
+        }
+      })
+
+      runCase(cases, 'controlled-listview-model-authority', () => {
+        const list = selectionRef.current
+        if (!list) {
+          throw new Error('Controlled ListView did not mount.')
+        }
+
+        selectionChanges.length = 0
+        selectedIndex.value = 1
+        if (list.selectedIndex !== 1) {
+          throw new Error('Controlled ListView did not apply the model value.')
+        }
+        if (selectionChanges.length !== 0) {
+          throw new Error('Programmatic selection leaked a change callback.')
+        }
+
+        list.selectedIndex = 0
+        const observedChanges = selectionChanges.slice()
+        if (
+          observedChanges.length !== 1 ||
+          observedChanges[0] !== 0
+        ) {
+          throw new Error('Native selection did not reach the change callback.')
+        }
+        if (selectedIndex.value !== 1 || list.selectedIndex !== 1) {
+          throw new Error('Rejected native selection was not reasserted.')
         }
       })
 

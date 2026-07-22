@@ -95,6 +95,13 @@ Available descriptors classify one-way, initial-only, controlled, coercing,
 reference, collection, single-slot, and collection-slot behavior. Adapter-owned
 slots now dispose their child scopes with the native control.
 
+Controlled adapters keep the JSX source authoritative. A native change is
+forwarded once; if its callback leaves the source signal unchanged, the latest
+model value is written back to the control. Transactional `rollback` is
+available only with `synchronous` or `setterScope` echo mode. Deferred rollback
+is rejected because the failed-write and rollback echoes cannot be identified
+reliably.
+
 ## Custom attached properties
 
 Pass generated static setters through `createWinUIRenderer()`:

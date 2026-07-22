@@ -12,7 +12,14 @@ export type NativeControlledEchoMode =
   | 'deferred'
   | 'setterScope'
 
-export interface NativeControlledPropertyOptions<Instance> {
+type NativeControlledRollback<Instance> = (
+  instance: Instance,
+  previous: unknown,
+  attempted: unknown,
+  error: unknown,
+) => void
+
+interface NativeControlledPropertyBase<Instance> {
   readonly changeProperty: string
   readonly read: (instance: Instance) => unknown
   readonly write: (
@@ -23,19 +30,27 @@ export interface NativeControlledPropertyOptions<Instance> {
     instance: Instance,
     callback: () => void,
   ) => void | (() => void)
-  readonly rollback?: (
-    instance: Instance,
-    previous: unknown,
-    attempted: unknown,
-    error: unknown,
-  ) => void
-  readonly echo?: NativeControlledEchoMode
   readonly equals?: (
     expected: unknown,
     actual: unknown,
   ) => boolean
   readonly maxPendingWrites?: number
 }
+
+export type NativeControlledPropertyOptions<Instance> =
+  NativeControlledPropertyBase<Instance> & (
+    | {
+        readonly echo?: 'deferred'
+        readonly rollback?: never
+      }
+    | {
+        readonly echo: Exclude<
+          NativeControlledEchoMode,
+          'deferred'
+        >
+        readonly rollback?: NativeControlledRollback<Instance>
+      }
+  )
 
 export interface NativePropertyAdapter<Instance> {
   readonly kind: 'property'
@@ -79,6 +94,22 @@ export type NativeAdapterMap<
   Props extends object,
 > = Partial<Record<Extract<keyof Props, string>, NativeAdapter<Instance>>>
 
+function validateControlledOptions<Instance>(
+  controlled: NativeControlledPropertyBase<Instance> & {
+    readonly echo?: NativeControlledEchoMode
+    readonly rollback?: NativeControlledRollback<Instance>
+  },
+): void {
+  if (
+    controlled.rollback &&
+    (controlled.echo ?? 'deferred') === 'deferred'
+  ) {
+    throw new Error(
+      'Controlled property rollback requires synchronous or setterScope echo mode.',
+    )
+  }
+}
+
 export const adapter = {
   oneWay<Instance>(): NativePropertyAdapter<Instance> {
     return { kind: 'property', mode: 'oneWay' }
@@ -90,6 +121,9 @@ export const adapter = {
     controlled?: NativeControlledPropertyOptions<Instance>,
     coerce?: NativePropertyAdapter<Instance>['coerce'],
   ): NativePropertyAdapter<Instance> {
+    if (controlled) {
+      validateControlledOptions(controlled)
+    }
     return controlled
       ? {
           kind: 'property',
@@ -103,6 +137,9 @@ export const adapter = {
     coerce: NativePropertyAdapter<Instance>['coerce'],
     controlled?: NativeControlledPropertyOptions<Instance>,
   ): NativePropertyAdapter<Instance> {
+    if (controlled) {
+      validateControlledOptions(controlled)
+    }
     return {
       kind: 'property',
       mode: 'coercing',

@@ -35,6 +35,13 @@ type RendererErrorHandler = (
   scope: ReactiveScope,
 ) => void
 
+interface ControlledPropertyBinding {
+  readonly suppressor: ChangeEchoSuppressor<unknown>
+  desiredValue: unknown
+  hasDesiredValue: boolean
+  revision: number
+}
+
 const reservedProperties = new Set([
   'children',
   'key',
@@ -109,7 +116,7 @@ export class RendererPropertyService {
             ),
             componentSetter,
             adapters[property],
-            controlledBindings.suppressors.get(property),
+            controlledBindings.bindings.get(property),
             scope,
           )
           continue
@@ -120,7 +127,7 @@ export class RendererPropertyService {
           () => sourceValue.value,
           componentSetter,
           adapters?.[property],
-          controlledBindings.suppressors.get(property),
+          controlledBindings.bindings.get(property),
           scope,
         )
       }
@@ -137,7 +144,7 @@ export class RendererPropertyService {
           () => sourceValue,
           componentSetter,
           adapters?.[property],
-          controlledBindings.suppressors.get(property),
+          controlledBindings.bindings.get(property),
           scope,
         )
       }
@@ -152,7 +159,7 @@ export class RendererPropertyService {
           ),
           componentSetter,
           adapters?.[property],
-          controlledBindings.suppressors.get(property),
+          controlledBindings.bindings.get(property),
           scope,
         )
       }
@@ -222,7 +229,7 @@ export class RendererPropertyService {
     readSource: () => unknown,
     componentSetter: ComponentPropertySetter | undefined,
     adapter: NativeAdapter<object> | undefined,
-    suppressor: ChangeEchoSuppressor<unknown> | undefined,
+    controlledBinding: ControlledPropertyBinding | undefined,
     scope: ReactiveScope,
   ): void {
     const resourceRevision = signal(0)
@@ -289,7 +296,7 @@ export class RendererPropertyService {
           ),
           componentSetter,
           adapter,
-          suppressor,
+          controlledBinding,
           scope,
         )
         if (
@@ -327,7 +334,7 @@ export class RendererPropertyService {
     value: unknown,
     componentSetter: ComponentPropertySetter | undefined,
     adapter: NativeAdapter<object> | undefined,
-    suppressor: ChangeEchoSuppressor<unknown> | undefined,
+    controlledBinding: ControlledPropertyBinding | undefined,
     scope: ReactiveScope,
   ): void {
     try {
@@ -352,44 +359,18 @@ export class RendererPropertyService {
           value = adapter.coerce(value, target)
         }
         if (adapter.controlled) {
-          const current =
-            adapter.controlled.read(target)
-          const equals =
-            adapter.controlled.equals ?? Object.is
-          if (equals(value, current)) {
-            return
+          if (controlledBinding) {
+            controlledBinding.desiredValue = value
+            controlledBinding.hasDesiredValue = true
+            controlledBinding.revision += 1
           }
-          suppressor?.record(value)
-          try {
-            adapter.controlled.write(target, value)
-          }
-          catch (error) {
-            suppressor?.clear()
-            if (adapter.controlled.rollback) {
-              suppressor?.record(current)
-              try {
-                adapter.controlled.rollback(
-                  target,
-                  current,
-                  value,
-                  error,
-                )
-              }
-              catch (rollbackError) {
-                throw new AggregateError(
-                  [error, rollbackError],
-                  `${target.constructor.name}.${property} write and rollback failed.`,
-                )
-              }
-              finally {
-                suppressor?.finishWrite()
-              }
-            }
-            throw error
-          }
-          finally {
-            suppressor?.finishWrite()
-          }
+          this.writeControlledProperty(
+            target,
+            property,
+            value,
+            adapter.controlled,
+            controlledBinding?.suppressor,
+          )
           return
         }
         if (adapter.set) {
@@ -446,6 +427,54 @@ export class RendererPropertyService {
     }
   }
 
+  private writeControlledProperty(
+    target: object,
+    property: string,
+    value: unknown,
+    controlled: NonNullable<
+      Extract<NativeAdapter<object>, { kind: 'property' }>['controlled']
+    >,
+    suppressor: ChangeEchoSuppressor<unknown> | undefined,
+  ): void {
+    const current = controlled.read(target)
+    const equals = controlled.equals ?? Object.is
+    if (equals(value, current)) {
+      return
+    }
+
+    suppressor?.record(value)
+    try {
+      controlled.write(target, value)
+    }
+    catch (error) {
+      suppressor?.clear()
+      if (controlled.rollback) {
+        suppressor?.record(current)
+        try {
+          controlled.rollback(
+            target,
+            current,
+            value,
+            error,
+          )
+        }
+        catch (rollbackError) {
+          throw new AggregateError(
+            [error, rollbackError],
+            `${target.constructor.name}.${property} write and rollback failed.`,
+          )
+        }
+        finally {
+          suppressor?.finishWrite()
+        }
+      }
+      throw error
+    }
+    finally {
+      suppressor?.finishWrite()
+    }
+  }
+
   private resolvePropertyValue(
     target: object,
     property: string,
@@ -499,16 +528,11 @@ export class RendererPropertyService {
       | undefined,
     scope: ReactiveScope,
   ): {
-    suppressors: Map<
-      string,
-      ChangeEchoSuppressor<unknown>
-    >
+    bindings: Map<string, ControlledPropertyBinding>
     changeProperties: Set<string>
   } {
-    const suppressors = new Map<
-      string,
-      ChangeEchoSuppressor<unknown>
-    >()
+    const bindings =
+      new Map<string, ControlledPropertyBinding>()
     const changeProperties = new Set<string>()
 
     for (const [property, adapter] of Object.entries(
@@ -538,6 +562,12 @@ export class RendererPropertyService {
           equals: controlled.equals,
           maxPending: controlled.maxPendingWrites,
         })
+      const binding: ControlledPropertyBinding = {
+        suppressor,
+        desiredValue: undefined,
+        hasDesiredValue: false,
+        revision: 0,
+      }
 
       try {
         const cleanup = controlled.subscribe(
@@ -547,15 +577,81 @@ export class RendererPropertyService {
             if (suppressor.consume(value)) {
               return
             }
+            const revision = binding.revision
             const callback = isSignal(callbackSource)
               ? callbackSource.peek()
               : callbackSource
-            if (typeof callback === 'function') {
-              callback(value, target)
+            let callbackError: unknown
+            try {
+              if (typeof callback === 'function') {
+                callback(value, target)
+              }
+            }
+            catch (error) {
+              callbackError = error
+            }
+
+            let reassertError: unknown
+            if (
+              binding.hasDesiredValue &&
+              binding.revision === revision
+            ) {
+              try {
+                this.writeControlledProperty(
+                  target,
+                  property,
+                  binding.desiredValue,
+                  controlled,
+                  suppressor,
+                )
+              }
+              catch (error) {
+                reassertError = error
+              }
+            }
+
+            if (
+              callbackError !== undefined &&
+              reassertError !== undefined
+            ) {
+              this.handleError(
+                new AggregateError(
+                  [callbackError, reassertError],
+                  `${target.constructor.name}.${property} change callback and model reassertion failed.`,
+                ),
+                {
+                  phase: 'event',
+                  target,
+                  property: controlled.changeProperty,
+                },
+                scope,
+              )
+            }
+            else if (callbackError !== undefined) {
+              this.handleError(
+                callbackError,
+                {
+                  phase: 'event',
+                  target,
+                  property: controlled.changeProperty,
+                },
+                scope,
+              )
+            }
+            else if (reassertError !== undefined) {
+              this.handleError(
+                reassertError,
+                {
+                  phase: 'property',
+                  target,
+                  property,
+                },
+                scope,
+              )
             }
           },
         )
-        suppressors.set(property, suppressor)
+        bindings.set(property, binding)
         runInScope(scope, () => {
           onCleanup(() => {
             suppressor.clear()
@@ -572,6 +668,6 @@ export class RendererPropertyService {
       }
     }
 
-    return { suppressors, changeProperties }
+    return { bindings, changeProperties }
   }
 }
