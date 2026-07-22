@@ -90,6 +90,7 @@ adoption map.
 | Native collection transactions | `src/native-collection.ts` |
 | NavigationView and navigation items | `src/navigation.ts` |
 | ListView selection, focus, and scrolling | `src/list-view.ts` |
+| Native ItemsRepeater virtualization | `src/items-repeater.ts`, `src/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, and TeachingTip scopes | `src/overlays.ts` |
 | Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
@@ -321,8 +322,10 @@ versions unless the task is explicitly a dependency upgrade.
 Account for these limits when designing a feature:
 
 - Function components do not rerender like React components.
-- `VirtualFor` is fixed-height windowing, not native `ItemsRepeater`
-  virtualization.
+- `VirtualFor` is fixed-height application windowing; native dynamic-height
+  virtualization uses `createItemsRepeaterControl()`.
+- ItemsRepeater keeps one projected observable vector and applies keyed
+  insert/remove mutations while reusing realized hosts.
 - State bridges clone complete state and do not validate schemas.
 - `createJsonStateStore()` validates persisted state, writes atomically, and preserves corrupt inputs.
 - Object-valued WinRT properties require projected objects unless a converter

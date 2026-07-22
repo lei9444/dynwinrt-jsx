@@ -126,9 +126,11 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     .classes
   for (const control of [
     'BitmapIcon',
+    'ContentControl',
     'ContentDialog',
     'Flyout',
     'Image',
+    'ItemsRepeater',
     'ListView',
     'ListViewItem',
     'MenuFlyout',
@@ -137,6 +139,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     'NavigationView',
     'NavigationViewItem',
     'SymbolIcon',
+    'StackLayout',
     'TeachingTip',
   ]) {
     assert.ok(controls.includes(control))

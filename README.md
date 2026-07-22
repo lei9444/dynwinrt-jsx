@@ -133,7 +133,8 @@ an independently consumable framework.
 - Deterministic signals, computed values, effects, batching, roots, and scoped cleanup
 - Function components, refs, `onMount()`, and `onCleanup()`
 - Context providers scoped to native subtrees
-- `Show`, stable keyed `For`, and fixed-height `VirtualFor`
+- `Show`, stable keyed `For`, fixed-height `VirtualFor`, and native
+  `ItemsRepeater` virtualization
 - `ErrorBoundary` for mount and reactive update failures
 - `Portal` for rendering into another native host
 - Signal-backed event handlers and one/two-way binding props
@@ -242,7 +243,9 @@ reliably distinguish its queued echo from the rollback echo.
 
 The model remains authoritative after a genuine native change. If the change
 callback leaves the source signal unchanged, the renderer reapplies the latest
-resolved and coerced model value without leaking another change callback.
+resolved and coerced model value after the current reactive flush, without
+leaking another change callback. This lets collection and property effects
+settle before a rejected native value is restored.
 `setterScope` suppresses every callback raised inside the setter, including
 native coercion readback; coerce the model value first when the model must
 exactly match the native result.
@@ -632,6 +635,42 @@ Keyed entries retain their native control identity when moved. The item index is
 
 The application updates `start` from its scroll position. Spacers preserve the full logical extent.
 
+Use `createItemsRepeaterControl()` when WinUI should own realization,
+measurement, and recycling for dynamic-height rows:
+
+```tsx
+const VirtualList = createItemsRepeaterControl({
+  ItemsRepeater,
+  ContentControl,
+  IElementFactory,
+  IObservableVector_Object,
+  PropertyValue,
+  IReference_Int32,
+})
+const layout = new StackLayout()
+layout.spacing = 8
+
+<UI.ScrollViewer height={400}>
+  <VirtualList
+    each={rows}
+    key={(row) => row.id}
+    layout={layout}
+    verticalCacheLength={0.5}
+  >
+    {(row, index) => (
+      <Row value={row} index={index} />
+    )}
+  </VirtualList>
+</UI.ScrollViewer>
+```
+
+`ItemsRepeater` does not provide its own scrolling surface. Its factory keeps
+the native working set bounded, preserves the item scope when a stable key
+moves, resets the scope when the keyed item identity changes, and releases
+pooled entries with the owning renderer. Source updates mutate the projected
+observable vector in place with keyed insert/remove operations, so the native
+ItemsSource identity remains stable.
+
 ### Error boundaries and portals
 
 ```tsx
@@ -767,7 +806,8 @@ See [`docs/migration-v1.md`](docs/migration-v1.md) for examples.
 - This is not React-compatible and does not implement hooks, React reconciliation, or React DevTools.
 - Function components do not rerender as a unit; use signals for changing values.
 - `Show`, hot-root refresh, and changed keyed item objects remount their affected subtree.
-- `VirtualFor` is fixed-height windowing, not WinUI `ItemsRepeater`/`DataTemplate` virtualization.
+- `VirtualFor` remains fixed-height application-managed windowing; use
+  `createItemsRepeaterControl()` for native dynamic-height virtualization.
 - The state bridge clones complete state and does not provide schema validation or incremental patches.
 - WinRT object properties still require projected objects unless a registered converter handles that property.
 - All WinUI object creation, reads, and writes must remain on the UI STA.

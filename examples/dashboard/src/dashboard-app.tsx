@@ -8,6 +8,7 @@ import {
   createFocusTarget,
   createFontFamily,
   createGridControl,
+  createItemsRepeaterControl,
   createListViewControl,
   createNavigationItem,
   createNavigationViewControl,
@@ -37,6 +38,7 @@ import {
   Button,
   CheckBox,
   ColumnDefinition,
+  ContentControl,
   ContentDialog,
   ContentDialogButton,
   ContentDialogResult,
@@ -46,17 +48,23 @@ import {
   FontFamily,
   Grid,
   HorizontalAlignment,
+  IElementFactory,
+  IObservableVector_Object,
+  IReference_Int32,
+  ItemsRepeater,
   ListView,
   ListViewItem,
   NavigationView,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
   ProgressBar,
+  PropertyValue,
   RowDefinition,
   ScrollBarVisibility,
   ScrollViewer,
   Selector,
   StackPanel,
+  StackLayout,
   Symbol,
   SymbolIcon,
   TeachingTip,
@@ -98,6 +106,14 @@ const AppNavigation = createNavigationViewControl<
   NavigationViewItem
 >({
   NavigationView,
+})
+const VirtualizedActivity = createItemsRepeaterControl({
+  ItemsRepeater,
+  ContentControl,
+  IElementFactory,
+  IObservableVector_Object,
+  PropertyValue,
+  IReference_Int32,
 })
 
 type StackPanelInstance = InstanceType<typeof StackPanel>
@@ -301,6 +317,18 @@ function OverlayShowcase(context: DashboardAppContext) {
 }
 
 function DashboardPage(context: DashboardAppContext) {
+  const activityLayout = new StackLayout()
+  activityLayout.spacing = 8
+  const activity = Array.from(
+    { length: 200 },
+    (_, id) => ({
+      id,
+      title: `Activity ${id + 1}`,
+      detail: id % 3 === 0
+        ? 'Variable-height native row with additional detail.'
+        : 'Recycled ItemsRepeater row.',
+    }),
+  )
   return (
     <Page
       title="Dashboard"
@@ -395,6 +423,48 @@ function DashboardPage(context: DashboardAppContext) {
           </UI.StackPanel>
         </Card>
       </LayoutGrid>
+      <Card>
+        <UI.StackPanel spacing={10}>
+          <UI.TextBlock
+            {...styles.heading({ level: 'subtitle' })}
+            text="Native virtualized activity"
+          />
+          <UI.TextBlock text="ItemsRepeater realizes only the visible dynamic-height rows." />
+          <UI.ScrollViewer
+            automationId="VirtualizedActivityViewport"
+            height={240}
+            verticalScrollBarVisibility={ScrollBarVisibility.Auto}
+          >
+            <VirtualizedActivity
+              each={activity}
+              key={(item) => item.id}
+              layout={activityLayout}
+              verticalCacheLength={0.5}
+            >
+              {(item, index) => (
+                <UI.Border
+                  {...styles.card({ surface: 'layer' })}
+                  automationName={item.title}
+                  padding={thickness(10)}
+                >
+                  <UI.StackPanel spacing={4}>
+                    <UI.TextBlock
+                      {...styles.heading({ level: 'bodyStrong' })}
+                      text={computed(
+                        () => `${index.value + 1}. ${item.title}`,
+                      )}
+                    />
+                    <UI.TextBlock
+                      text={item.detail}
+                      textWrapping={1}
+                    />
+                  </UI.StackPanel>
+                </UI.Border>
+              )}
+            </VirtualizedActivity>
+          </UI.ScrollViewer>
+        </UI.StackPanel>
+      </Card>
       <OverlayShowcase {...context} />
     </Page>
   )

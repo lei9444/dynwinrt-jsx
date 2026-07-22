@@ -81,6 +81,14 @@ export {
 } from './list-view'
 
 export {
+  createItemsRepeaterControl,
+  type ItemsRepeaterControlBindings,
+  type ItemsRepeaterInstance,
+  type ItemsRepeaterItemHost,
+  type ItemsRepeaterProps,
+} from './items-repeater'
+
+export {
   createFontIcon,
   createSymbolIcon,
   type FontIconOptions,

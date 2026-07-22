@@ -1,4 +1,6 @@
 import type { NativeCollection } from './renderer'
+import type { ReadonlySignal } from './reactive'
+import type { Child, Key } from './vnode'
 
 export type NativePropertyMode =
   | 'oneWay'
@@ -84,10 +86,65 @@ export interface NativeSlotAdapter<Instance> {
   readonly property: Extract<keyof Instance, string>
 }
 
+export interface NativeItemsRepeaterData<Item = unknown> {
+  readonly readItems: () => readonly Item[]
+  readonly renderItem: (
+    item: Item,
+    index: ReadonlySignal<number>,
+  ) => Child
+  readonly getKey: (item: Item, index: number) => Key
+}
+
+export function isNativeItemsRepeaterData(
+  value: unknown,
+): value is NativeItemsRepeaterData {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const candidate =
+    value as Partial<NativeItemsRepeaterData>
+  return (
+    typeof candidate.readItems === 'function' &&
+    typeof candidate.renderItem === 'function' &&
+    typeof candidate.getKey === 'function'
+  )
+}
+
+export interface NativeItemsRepeaterFactory {
+  getElement(args: { readonly data: unknown }): object
+  recycleElement(args: {
+    readonly element: object | null | undefined
+  }): void
+}
+
+export interface NativeItemsRepeaterAdapter<Instance> {
+  readonly kind: 'itemsRepeater'
+  readonly createElementHost: () => object
+  readonly createElementFactory: (
+    factory: NativeItemsRepeaterFactory,
+  ) => unknown
+  readonly createItemsSourceValue: (key: string) => unknown
+  readonly readItemsSourceKey: (value: unknown) => string
+  readonly createItemsSource: (
+    values: readonly unknown[],
+  ) => NativeCollection & object
+  readonly setItemsSource: (
+    instance: Instance,
+    source: unknown,
+  ) => void
+  readonly setItemTemplate: (
+    instance: Instance,
+    factory: unknown,
+  ) => void
+  readonly clearItemsSource: (instance: Instance) => void
+  readonly releaseElementFactory: (factory: unknown) => void
+}
+
 export type NativeAdapter<Instance> =
   | NativePropertyAdapter<Instance>
   | NativeCollectionAdapter<Instance>
   | NativeSlotAdapter<Instance>
+  | NativeItemsRepeaterAdapter<Instance>
 
 export type NativeAdapterMap<
   Instance,
@@ -166,5 +223,13 @@ export const adapter = {
     property: Extract<keyof Instance, string>,
   ): NativeSlotAdapter<Instance> {
     return { kind: 'slot', strategy: 'collection', property }
+  },
+  itemsRepeater<Instance>(
+    options: Omit<
+      NativeItemsRepeaterAdapter<Instance>,
+      'kind'
+    >,
+  ): NativeItemsRepeaterAdapter<Instance> {
+    return { kind: 'itemsRepeater', ...options }
   },
 }

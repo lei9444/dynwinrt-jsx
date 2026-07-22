@@ -154,6 +154,7 @@ let notificationDepth = 0
 let flushing = false
 const pendingComputed = new Set<Observer>()
 const pendingEffects = new Set<Observer>()
+const pendingAfterFlush: Array<() => void> = []
 
 class Observer {
   readonly dependencies = new Set<Dependency>()
@@ -262,6 +263,10 @@ class Observer {
         )
       }
     } while (this.rerunRequested && !this.disposed)
+
+    if (pendingAfterFlush.length > 0) {
+      flushIfReady()
+    }
   }
 
   dispose(): void {
@@ -507,13 +512,31 @@ function flushPendingObservers(): void {
   flushing = true
   let firstError: unknown
   try {
-    while (pendingComputed.size > 0 || pendingEffects.size > 0) {
+    while (
+      pendingComputed.size > 0 ||
+      pendingEffects.size > 0 ||
+      pendingAfterFlush.length > 0
+    ) {
       while (pendingComputed.size > 0) {
         firstError ??= runQueuedObserver(pendingComputed, true)
       }
 
       if (pendingEffects.size > 0) {
         firstError ??= runQueuedObserver(pendingEffects)
+      }
+
+      while (
+        pendingComputed.size === 0 &&
+        pendingEffects.size === 0 &&
+        pendingAfterFlush.length > 0
+      ) {
+        const callback = pendingAfterFlush.shift()
+        try {
+          callback?.()
+        }
+        catch (error) {
+          firstError ??= error
+        }
       }
     }
   } finally {
@@ -523,6 +546,20 @@ function flushPendingObservers(): void {
   if (firstError !== undefined) {
     throw firstError
   }
+}
+
+export function afterReactiveFlush(callback: () => void): void {
+  if (
+    batchDepth === 0 &&
+    notificationDepth === 0 &&
+    !flushing &&
+    activeObservers.length === 0
+  ) {
+    callback()
+    return
+  }
+
+  pendingAfterFlush.push(callback)
 }
 
 function asScope(scope: ReactiveScope): ScopeImpl {

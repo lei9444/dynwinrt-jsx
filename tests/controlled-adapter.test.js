@@ -135,6 +135,40 @@ class ReassertFailingControl extends SynchronousControl {
   }
 }
 
+class NestedChangeControl extends SynchronousControl {
+  _trigger = 0
+  changingTrigger = false
+
+  get value() {
+    return super.value
+  }
+
+  set value(value) {
+    if (this.changingTrigger) {
+      throw new Error('value reasserted during trigger update')
+    }
+    super.value = value
+  }
+
+  get trigger() {
+    return this._trigger
+  }
+
+  set trigger(value) {
+    this._trigger = value
+    if (value === 0) {
+      return
+    }
+    this.changingTrigger = true
+    try {
+      this.change(value + 1)
+    }
+    finally {
+      this.changingTrigger = false
+    }
+  }
+}
+
 function controlledComponent(Control, echo) {
   return native(Control, {
     adapters: {
@@ -213,6 +247,38 @@ test('controlled adapter keeps accepted native changes', () => {
   assert.equal(value.value, 2)
   assert.equal(instance.value, 2)
   assert.deepEqual(changes, [2])
+})
+
+test('controlled adapter waits for nested reactive updates before reasserting', () => {
+  const Control = controlledComponent(
+    NestedChangeControl,
+    'synchronous',
+  )
+  const value = signal(1)
+  const trigger = signal(0)
+  const errors = []
+  const window = new FakeWindow()
+  createRenderer({
+    onError(error) {
+      errors.push(error)
+    },
+  }).render(
+    jsx(Control, {
+      value,
+      trigger,
+      onValueChange(next) {
+        value.value = next
+      },
+    }),
+    window,
+  )
+  const instance = window.content
+
+  trigger.value = 1
+
+  assert.equal(value.value, 2)
+  assert.equal(instance.value, 2)
+  assert.deepEqual(errors, [])
 })
 
 test('controlled adapter counts deferred echo bursts', () => {

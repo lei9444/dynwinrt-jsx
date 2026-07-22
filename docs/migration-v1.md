@@ -188,5 +188,13 @@ Use `RenderHandle.update(nextTree)` to replace a mounted root, or `createHotRoot
 - `ErrorBoundary` catches mount and reactive update errors.
 - `Portal` mounts a subtree in another native host.
 - `VirtualFor` bounds fixed-height list rendering.
+- `createItemsRepeaterControl()` provides native dynamic-height realization and
+  recycling inside a `ScrollViewer`.
 
 These primitives own their reactive work and release it when the subtree is removed.
+
+ItemsRepeater applications must generate `ItemsRepeater`, `ContentControl`,
+`StackLayout`, `PropertyValue`, `IObservableVector<Object>`, and their interface
+dependencies. The control factory accepts those generated bindings, keeps a
+bounded pool of native item hosts, applies incremental source mutations, and
+preserves a row scope while its key remains stable.

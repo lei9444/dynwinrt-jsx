@@ -17,6 +17,9 @@
 - Added depth-ordered deterministic scheduling, explicit roots, mount lifecycle, and scoped Context.
 - Preserved native identity during keyed list moves and added reactive indexes.
 - Added ErrorBoundary, Portal, and fixed-height VirtualFor.
+- Added native ItemsRepeater virtualization with dynamic row measurement,
+  bounded host recycling, stable keyed item scopes, and observable-vector
+  incremental updates.
 - Added signal-backed events, feedback-safe binding props, tracked resources, WinUI property conversion, and value helpers.
 - Added root updates, hot refresh, renderer diagnostics, and a Worker state bridge.
 - Added a dependency-free `dynwinrt-jsx create` command with exact-version and local-repository modes.

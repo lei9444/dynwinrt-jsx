@@ -26,7 +26,10 @@ import {
   type Child,
   type VNode,
 } from './vnode'
-import type { NativeAdapter } from './adapters'
+import {
+  isNativeItemsRepeaterData,
+  type NativeAdapter,
+} from './adapters'
 import { RendererPropertyService } from './renderer-properties'
 import {
   resolveChildAdapter,
@@ -40,6 +43,10 @@ import {
 } from './renderer-lifecycle'
 import { RendererBoundaryService } from './renderer-boundary'
 import { RendererControlFlowService } from './renderer-control-flow'
+import {
+  RendererItemsRepeaterService,
+  type RendererItemsRepeaterController,
+} from './renderer-items-repeater'
 
 export {
   isNativeCollection,
@@ -57,6 +64,7 @@ export interface RendererErrorContext {
     | 'component'
     | 'render'
     | 'portal'
+    | 'items-repeater'
     | 'reactive'
   target?: unknown
   property?: string
@@ -274,6 +282,8 @@ export class Renderer {
   private readonly propertyService: RendererPropertyService
   private readonly boundaryService: RendererBoundaryService
   private readonly controlFlowService: RendererControlFlowService
+  private readonly itemsRepeaterService:
+    RendererItemsRepeaterService
 
   constructor(readonly options: RendererOptions = {}) {
     this.propertyService = new RendererPropertyService(
@@ -321,6 +331,41 @@ export class Renderer {
         },
       },
     )
+    this.itemsRepeaterService =
+      new RendererItemsRepeaterService({
+        createItemController: (
+          host,
+          scope,
+          child,
+        ) => {
+          const childAdapter = resolveChildAdapter(
+            this.options,
+            host,
+          )
+          if (!childAdapter) {
+            throw new Error(
+              `${host.constructor.name} cannot host an ItemsRepeater item.`,
+            )
+          }
+          return new ChildrenController(
+            this,
+            childAdapter,
+            scope,
+            child,
+          )
+        },
+        handleError: (error, context, scope) => {
+          this.handleError(error, context, scope)
+        },
+        markNativeCreated: () => {
+          this.counters.nativeCreated += 1
+          this.counters.activeNative += 1
+        },
+        markNativeDisposed: () => {
+          this.counters.nativeDisposed += 1
+          this.counters.activeNative -= 1
+        },
+      })
   }
 
   get diagnostics(): RendererDiagnostics {
@@ -695,7 +740,9 @@ export class Renderer {
       return this.mountEmpty(onNodesChanged)
     }
 
-    const childControllers: ChildrenController[] = []
+    const childControllers: Array<
+      ChildrenController | RendererItemsRepeaterController
+    > = []
     const ref = vnode.props.ref as Ref<object> | undefined
     let nativeActive = true
 
@@ -758,10 +805,27 @@ export class Renderer {
           const [property, descriptor] of
           Object.entries(adapters ?? {})
         ) {
-          if (
-            descriptor?.kind !== 'slot' ||
-            vnode.props[property] == null
-          ) {
+          if (vnode.props[property] == null) {
+            continue
+          }
+          if (descriptor?.kind === 'itemsRepeater') {
+            const data = vnode.props[property]
+            if (!isNativeItemsRepeaterData(data)) {
+              throw new TypeError(
+                `${component.displayName}.${property} must be an ItemsRepeater data descriptor.`,
+              )
+            }
+            childControllers.push(
+              this.itemsRepeaterService.bind(
+                instance,
+                data,
+                descriptor,
+                scope,
+              ),
+            )
+            continue
+          }
+          if (descriptor?.kind !== 'slot') {
             continue
           }
           const slotAdapter = resolveSlotAdapter(

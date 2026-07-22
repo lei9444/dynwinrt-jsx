@@ -17,6 +17,7 @@ import {
   createFocusTarget,
   createFontFamily,
   createGridControl,
+  createItemsRepeaterControl,
   createJsonStateStore,
   createListViewControl,
   createListViewScrollTarget,
@@ -227,6 +228,16 @@ class TypeTextBlock {
   foreground: unknown = null
 }
 
+class TypeItemsRepeater {
+  itemsSource: unknown = null
+  itemTemplate: unknown = null
+  layout: object | null = null
+}
+
+class TypeContentControl {
+  content: unknown = null
+}
+
 class TypeTextBox {
   text = ''
 
@@ -293,6 +304,48 @@ const ControlledTypeList = native<
         instance.onSelectionChanged(callback),
       echo: 'synchronous',
     }),
+  },
+})
+const VirtualizedTypeList = createItemsRepeaterControl({
+  ItemsRepeater: TypeItemsRepeater,
+  ContentControl: TypeContentControl,
+  IElementFactory: {
+    create(getElement, recycleElement) {
+      return {
+        getElement,
+        recycleElement,
+        releaseCallbacks() {},
+      }
+    },
+  },
+  IObservableVector_Object: {
+    create(values) {
+      const items = [...values]
+      return {
+        insertAt(index: number, value: unknown) {
+          items.splice(index, 0, value)
+        },
+        removeAt(index: number) {
+          items.splice(index, 1)
+        },
+        append(value: unknown) {
+          items.push(value)
+        },
+        clear() {
+          items.length = 0
+        },
+      }
+    },
+  },
+  PropertyValue: {
+    createInt32(value) {
+      return value
+    },
+  },
+  IReference_Int32: {
+    from(value) {
+      return { value: Number(value) }
+    },
   },
 })
 adapter.controlled<TypeListView>({
@@ -479,6 +532,19 @@ export const typeCheckedTree = (
         instance.selectedIndex = index
       }}
     />
+    <VirtualizedTypeList
+      each={items}
+      key={(item) => item.id}
+      layout={{}}
+    >
+      {(item, index) => (
+        <UI.TextBlock
+          text={computed(
+            () => `${index.value}:${item.title}`,
+          )}
+        />
+      )}
+    </VirtualizedTypeList>
 
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}

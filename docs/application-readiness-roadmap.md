@@ -511,8 +511,14 @@ identity, and manifest dependencies in a provenance document.
   - [x] Suppress dependency-property callbacks across native coercion.
 - [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
       `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
-- [ ] Add native `ItemsRepeater` virtualization with dynamic item size,
+- [x] Add native `ItemsRepeater` virtualization with dynamic item size,
       element recycling, stable keys, and bounded native control counts.
+  - [x] Add a synchronous dynwinrt `IElementFactory` callback bridge with
+        explicit callback release.
+  - [x] Preserve keyed item scopes across source replacement and reset them
+        when a recycled host changes logical item.
+  - [x] Project observable-vector change notifications for incremental native
+        insert, move, and remove updates.
 
 #### State and development workflow
 

@@ -1,11 +1,14 @@
 import {
   ErrorBoundary,
   For,
+  computed,
   createControls,
+  createItemsRepeaterControl,
   createListViewControl,
   native,
   signal,
   type Child,
+  type ReadonlySignal,
   type RefObject,
   type Renderer,
   type RendererDiagnostics,
@@ -14,9 +17,17 @@ import {
   AccessibilitySettings,
   AutomationProperties,
   Button,
+  ContentControl,
   FocusState,
+  IElementFactory,
+  IObservableVector_Object,
+  IReference_Int32,
+  ItemsRepeater,
   ListView,
+  PropertyValue,
+  ScrollViewer,
   Selector,
+  StackLayout,
   StackPanel,
   TextBlock,
   TextBox,
@@ -66,6 +77,7 @@ interface NativeSelfTestContext {
 
 const UI = createControls({
   Button,
+  ScrollViewer,
   StackPanel,
   TextBlock,
   TextBox,
@@ -74,6 +86,15 @@ const UI = createControls({
 const SelfTestListView = createListViewControl({
   ListView,
   selectedIndexProperty: Selector.selectedIndexProperty,
+})
+
+const SelfTestItemsRepeater = createItemsRepeaterControl({
+  ItemsRepeater,
+  ContentControl,
+  IElementFactory,
+  IObservableVector_Object,
+  PropertyValue,
+  IReference_Int32,
 })
 
 const ExplodingText = native<
@@ -121,8 +142,30 @@ export function createNativeSelfTest(
   const secondLabelRef: RefObject<TextBlock> = { current: null }
   const inputRef: RefObject<TextBox> = { current: null }
   const selectionRef: RefObject<ListView> = { current: null }
+  const repeaterRef: RefObject<ItemsRepeater> = { current: null }
+  const repeaterScrollRef: RefObject<ScrollViewer> = {
+    current: null,
+  }
   const selectedIndex = signal(0)
   const selectionChanges: number[] = []
+  const selectionItems = signal([
+    { id: 0, label: 'Selection zero' },
+    { id: 1, label: 'Selection one' },
+  ])
+  const virtualItems = signal<SelfTestItem[]>(
+    Array.from({ length: 1000 }, (_, id) => ({
+      id,
+      label: `Virtual item ${id}`,
+    })),
+  )
+  const virtualLayout = new StackLayout()
+  virtualLayout.spacing = 2
+  let virtualMountId = 0
+  let virtualIndexChanges = 0
+  let firstVirtualMountId: number | undefined
+  const virtualMountByItem = new Map<number, number>()
+  const virtualIndexByItem =
+    new Map<number, ReadonlySignal<number>>()
   const labeledBy = signal<TextBlock | null>(null)
   const itemRefs = new Map<number, TextBlock>()
   let capturedBoundaryError: unknown
@@ -142,6 +185,25 @@ export function createNativeSelfTest(
           }
         }}
         text={props.item.label}
+      />
+    )
+  }
+
+  function VirtualItemRow(props: {
+    readonly item: SelfTestItem
+    readonly index: ReadonlySignal<number>
+  }) {
+    const mountId = virtualMountId
+    virtualMountId += 1
+    virtualMountByItem.set(props.item.id, mountId)
+    virtualIndexByItem.set(props.item.id, props.index)
+    return (
+      <UI.TextBlock
+        height={24 + (props.item.id % 3) * 12}
+        text={computed(
+          () =>
+            `${mountId}|${props.index.value}|${props.item.id}`,
+        )}
       />
     )
   }
@@ -194,9 +256,37 @@ export function createNativeSelfTest(
           selectionChanges.push(index)
         }}
       >
-        <UI.TextBlock text="Selection zero" />
-        <UI.TextBlock text="Selection one" />
+        <For
+          each={selectionItems}
+          key={(item) => item.id}
+        >
+          {(item) => (
+            <UI.TextBlock text={item.label} />
+          )}
+        </For>
       </SelfTestListView>
+      <UI.ScrollViewer
+        ref={repeaterScrollRef}
+        height={180}
+      >
+        <SelfTestItemsRepeater
+          ref={repeaterRef}
+          each={virtualItems}
+          key={(item) => item.id}
+          layout={virtualLayout}
+          verticalCacheLength={0.5}
+          onElementIndexChanged={() => {
+            virtualIndexChanges += 1
+          }}
+        >
+          {(item, index) => (
+            <VirtualItemRow
+              item={item}
+              index={index}
+            />
+          )}
+        </SelfTestItemsRepeater>
+      </UI.ScrollViewer>
       <ErrorBoundary
         fallback={(error) => {
           capturedBoundaryError = error
@@ -300,6 +390,56 @@ export function createNativeSelfTest(
         if (selectedIndex.value !== 1 || list.selectedIndex !== 1) {
           throw new Error('Rejected native selection was not reasserted.')
         }
+
+        selectionChanges.length = 0
+        selectionItems.value = [
+          { id: 0, label: 'Selection zero updated' },
+          { id: 1, label: 'Selection one updated' },
+        ]
+        if (list.selectedIndex !== selectedIndex.value) {
+          throw new Error(
+            'Selection diverged while updating ListView items.',
+          )
+        }
+      })
+
+      runCase(cases, 'native-items-repeater-initial-window', () => {
+        const repeater = repeaterRef.current
+        const scroll = repeaterScrollRef.current
+        if (!repeater || !scroll) {
+          throw new Error('ItemsRepeater did not mount.')
+        }
+        scroll.updateLayout()
+        repeater.updateLayout()
+        const realized = virtualItems.value.reduce(
+          (count, _item, index) =>
+            repeater.tryGetElement(index)
+              ? count + 1
+              : count,
+          0,
+        )
+        if (realized === 0 || realized >= 100) {
+          throw new Error(
+            `Expected a bounded initial ItemsRepeater window, found ${realized}.`,
+          )
+        }
+
+        const first = repeater.tryGetElement(0)
+        if (!first) {
+          throw new Error('ItemsRepeater did not realize its first row.')
+        }
+        firstVirtualMountId = virtualMountByItem.get(0)
+        if (firstVirtualMountId === undefined) {
+          throw new Error(
+            'ItemsRepeater did not mount the first JSX row.',
+          )
+        }
+
+        virtualItems.value = [...virtualItems.value].reverse()
+        scroll.updateLayout()
+        repeater.updateLayout()
+        scroll.scrollToVerticalOffset(scroll.scrollableHeight)
+        return { itemCount: 1000, realized }
       })
 
       runCase(cases, 'keyed-native-identity', () => {
@@ -427,6 +567,59 @@ export function createNativeSelfTest(
           firstError ??= error
         }
         activeSelfTestTimers.delete(timer)
+        runCase(cases, 'native-items-repeater-recycling', () => {
+          const repeater = repeaterRef.current
+          const scroll = repeaterScrollRef.current
+          if (
+            !repeater ||
+            !scroll ||
+            firstVirtualMountId === undefined
+          ) {
+            throw new Error(
+              'ItemsRepeater recycling state was not initialized.',
+            )
+          }
+          scroll.updateLayout()
+          repeater.updateLayout()
+          const realized = virtualItems.value.reduce(
+            (count, _item, index) =>
+              repeater.tryGetElement(index)
+                ? count + 1
+                : count,
+            0,
+          )
+          if (realized === 0 || realized >= 100) {
+            throw new Error(
+              `Expected a bounded scrolled ItemsRepeater window, found ${realized}.`,
+            )
+          }
+
+          const moved = repeater.tryGetElement(999)
+          if (!moved) {
+            throw new Error(
+              'ItemsRepeater did not realize the moved keyed row.',
+            )
+          }
+          if (
+            virtualMountByItem.get(0) !==
+              firstVirtualMountId ||
+            virtualIndexByItem.get(0)?.value !== 999
+          ) {
+            throw new Error(
+              'ItemsRepeater keyed row remounted or retained a stale index.',
+            )
+          }
+          if (virtualIndexChanges === 0) {
+            throw new Error(
+              'Observable vector updates did not produce native index changes.',
+            )
+          }
+          return {
+            realized,
+            mountCount: virtualMountId,
+            indexChanges: virtualIndexChanges,
+          }
+        })
         cases.push(
           firstError === undefined
             ? {

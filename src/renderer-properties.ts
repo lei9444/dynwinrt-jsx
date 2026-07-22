@@ -3,6 +3,7 @@ import type {
 } from './adapters'
 import { ChangeEchoSuppressor } from './change-echo'
 import {
+  afterReactiveFlush,
   effect,
   isSignal,
   onCleanup,
@@ -92,6 +93,7 @@ export class RendererPropertyService {
         reservedProperties.has(property) ||
         controlledBindings.changeProperties.has(property) ||
         adapters?.[property]?.kind === 'slot' ||
+        adapters?.[property]?.kind === 'itemsRepeater' ||
         isEventProperty(
           target as Record<string, unknown>,
           property,
@@ -591,64 +593,67 @@ export class RendererPropertyService {
               callbackError = error
             }
 
-            let reassertError: unknown
-            if (
-              binding.hasDesiredValue &&
-              binding.revision === revision
-            ) {
-              try {
-                this.writeControlledProperty(
-                  target,
-                  property,
-                  binding.desiredValue,
-                  controlled,
-                  suppressor,
+            afterReactiveFlush(() => {
+              let reassertError: unknown
+              if (
+                !scope.disposed &&
+                binding.hasDesiredValue &&
+                binding.revision === revision
+              ) {
+                try {
+                  this.writeControlledProperty(
+                    target,
+                    property,
+                    binding.desiredValue,
+                    controlled,
+                    suppressor,
+                  )
+                }
+                catch (error) {
+                  reassertError = error
+                }
+              }
+
+              if (
+                callbackError !== undefined &&
+                reassertError !== undefined
+              ) {
+                this.handleError(
+                  new AggregateError(
+                    [callbackError, reassertError],
+                    `${target.constructor.name}.${property} change callback and model reassertion failed.`,
+                  ),
+                  {
+                    phase: 'event',
+                    target,
+                    property: controlled.changeProperty,
+                  },
+                  scope,
                 )
               }
-              catch (error) {
-                reassertError = error
+              else if (callbackError !== undefined) {
+                this.handleError(
+                  callbackError,
+                  {
+                    phase: 'event',
+                    target,
+                    property: controlled.changeProperty,
+                  },
+                  scope,
+                )
               }
-            }
-
-            if (
-              callbackError !== undefined &&
-              reassertError !== undefined
-            ) {
-              this.handleError(
-                new AggregateError(
-                  [callbackError, reassertError],
-                  `${target.constructor.name}.${property} change callback and model reassertion failed.`,
-                ),
-                {
-                  phase: 'event',
-                  target,
-                  property: controlled.changeProperty,
-                },
-                scope,
-              )
-            }
-            else if (callbackError !== undefined) {
-              this.handleError(
-                callbackError,
-                {
-                  phase: 'event',
-                  target,
-                  property: controlled.changeProperty,
-                },
-                scope,
-              )
-            }
-            else if (reassertError !== undefined) {
-              this.handleError(
-                reassertError,
-                {
-                  phase: 'property',
-                  target,
-                  property,
-                },
-                scope,
-              )
-            }
+              else if (reassertError !== undefined) {
+                this.handleError(
+                  reassertError,
+                  {
+                    phase: 'property',
+                    target,
+                    property,
+                  },
+                  scope,
+                )
+              }
+            })
           },
         )
         bindings.set(property, binding)
