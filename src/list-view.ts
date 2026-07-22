@@ -7,8 +7,8 @@ import {
   type RefObject,
 } from './native'
 import { adapter } from './adapters'
+import { ChangeEchoSuppressor } from './change-echo'
 import {
-  onMount,
   readSignal,
   type MaybeSignal,
 } from './reactive'
@@ -41,10 +41,16 @@ export interface ListViewControlBindings<
   readonly selectedIndexProperty?: unknown
 }
 
-interface ListViewAdapterProps {
+interface ListViewAdapterProps<
+  Instance extends ListViewInstance,
+> {
   header?: Child
   footer?: Child
   selectedIndex?: MaybeSignal<number>
+  onSelectedIndexChange?: (
+    index: number,
+    sender: Instance,
+  ) => void
 }
 
 export interface ListViewSelectionProps<
@@ -59,69 +65,122 @@ type ListViewSelectionChangedCallback<Instance> = (
 ) => void
 
 export type ListViewProps<Instance extends ListViewInstance> =
-  & NativeComponentProps<Instance, Pick<ListViewAdapterProps, 'header' | 'footer'>>
+  & NativeComponentProps<
+      Instance,
+      Pick<
+        ListViewAdapterProps<Instance>,
+        'header' | 'footer' | 'onSelectedIndexChange'
+      >
+    >
   & ListViewSelectionProps<Instance>
 
 const maxPendingSelections = 8
-const pendingSelections = new WeakMap<object, number[]>()
+const pendingSelections = new WeakMap<
+  object,
+  ChangeEchoSuppressor<number>
+>()
 
 function recordPendingSelection(instance: object, value: number): void {
-  const pending = pendingSelections.get(instance) ?? []
-  pending.push(value)
-  if (pending.length > maxPendingSelections) {
-    pending.shift()
+  let suppressor = pendingSelections.get(instance)
+  if (!suppressor) {
+    suppressor = new ChangeEchoSuppressor<number>({
+      mode: 'synchronous',
+      maxPending: maxPendingSelections,
+    })
+    pendingSelections.set(instance, suppressor)
   }
-  pendingSelections.set(instance, pending)
+  suppressor.record(value)
 }
 
 function consumePendingSelectionEcho(
   instance: object,
   value: number,
 ): boolean {
-  const pending = pendingSelections.get(instance)
-  if (!pending || pending.length === 0) {
-    return false
-  }
-  const match = pending.indexOf(value)
-  if (match >= 0) {
-    pending.splice(0, match + 1)
-    if (pending.length === 0) {
-      pendingSelections.delete(instance)
-    }
-    return true
-  }
-  pendingSelections.delete(instance)
-  return false
+  return pendingSelections.get(instance)?.consume(value) ?? false
 }
 
 export function createListViewControl<Instance extends ListViewInstance>(
   bindings: ListViewControlBindings<Instance>,
 ): Component<ListViewProps<Instance>> {
-  const RawListView = native<Instance, ListViewAdapterProps>(
+  const coerceSelectedIndex = (value: unknown): number => {
+    if (
+      typeof value !== 'number' ||
+      !Number.isInteger(value) ||
+      value < -1
+    ) {
+      throw new RangeError(
+        'ListView selectedIndex must be an integer greater than or equal to -1.',
+      )
+    }
+    return value
+  }
+
+  const selectedIndexAdapter =
+    bindings.selectedIndexProperty !== undefined
+      ? adapter.controlled<Instance>(
+          {
+            changeProperty: 'onSelectedIndexChange',
+            read: (instance) => instance.selectedIndex,
+            write: (instance, value) => {
+              instance.selectedIndex = value as number
+            },
+            subscribe: (instance, callback) => {
+              if (
+                !instance.registerPropertyChangedCallback ||
+                !instance.unregisterPropertyChangedCallback
+              ) {
+                throw new Error(
+                  'selectedIndexProperty requires property-changed callback support.',
+                )
+              }
+              const token =
+                instance.registerPropertyChangedCallback(
+                  bindings.selectedIndexProperty,
+                  callback,
+                )
+              return () => {
+                instance.unregisterPropertyChangedCallback?.(
+                  bindings.selectedIndexProperty,
+                  token,
+                )
+              }
+            },
+            echo: 'synchronous',
+            maxPendingWrites: maxPendingSelections,
+          },
+          coerceSelectedIndex,
+        )
+      : adapter.coercing<Instance>((value, instance) => {
+          const selectedIndex = coerceSelectedIndex(value)
+          recordPendingSelection(instance, selectedIndex)
+          return selectedIndex
+        })
+
+  const RawListView = native<
+    Instance,
+    ListViewAdapterProps<Instance>
+  >(
     bindings.ListView,
     {
       displayName: 'ListView',
       adapters: {
         header: adapter.slot<ListViewInstance>('header'),
         footer: adapter.slot<ListViewInstance>('footer'),
-        selectedIndex: adapter.coercing<Instance>((value, instance) => {
-          if (
-            typeof value !== 'number' ||
-            !Number.isInteger(value) ||
-            value < -1
-          ) {
-            throw new RangeError(
-              'ListView selectedIndex must be an integer greater than or equal to -1.',
-            )
-          }
-          recordPendingSelection(instance, value)
-          return value
-        }),
+        selectedIndex: selectedIndexAdapter,
       },
     },
   )
 
   const MountedListView = (props: ListViewProps<Instance>): Child => {
+    if (bindings.selectedIndexProperty !== undefined) {
+      return RawListView(
+        props as NativeComponentProps<
+          Instance,
+          ListViewAdapterProps<Instance>
+        >,
+      )
+    }
+
     const {
       onSelectedIndexChange,
       onSelectionChanged,
@@ -155,43 +214,13 @@ export function createListViewControl<Instance extends ListViewInstance>(
       handleControlledSelectionChanged(instance ?? sender)
     }
 
-    if (
-      onSelectedIndexChange &&
-      bindings.selectedIndexProperty !== undefined
-    ) {
-      onMount(() => {
-        const current = instance
-        if (!current) {
-          throw new Error('ListView did not mount before onMount.')
-        }
-        if (
-          !current.registerPropertyChangedCallback ||
-          !current.unregisterPropertyChangedCallback
-        ) {
-          throw new Error(
-            'selectedIndexProperty requires property-changed callback support.',
-          )
-        }
-        const token = current.registerPropertyChangedCallback(
-          bindings.selectedIndexProperty,
-          () => {
-            handleControlledSelectionChanged(current)
-          },
-        )
-        return () => {
-          current.unregisterPropertyChangedCallback?.(
-            bindings.selectedIndexProperty,
-            token,
-          )
-        }
-      })
-    }
-
     return RawListView({
-      ...(rest as NativeComponentProps<Instance, ListViewAdapterProps>),
+      ...(rest as NativeComponentProps<
+        Instance,
+        ListViewAdapterProps<Instance>
+      >),
       ref: handleRef,
-      ...(onSelectedIndexChange &&
-        bindings.selectedIndexProperty === undefined
+      ...(onSelectedIndexChange
         ? { onSelectionChanged: handleSelectionChanged }
         : onSelectionChanged === undefined
           ? {}

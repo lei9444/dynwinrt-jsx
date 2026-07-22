@@ -490,7 +490,7 @@ identity, and manifest dependencies in a provenance document.
 - [x] Add a typed `runWinUIWorkerApp()` API that owns
       `Application.start/create`, Window setup, renderer/model composition,
       startup errors, activation, and exit.
-- [ ] Split `src/renderer.ts` into focused mount, property, event, children,
+- [x] Split `src/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,
         assignment, events, and cleanup into `renderer-properties.ts`.
@@ -498,11 +498,13 @@ identity, and manifest dependencies in a provenance document.
         resolution into `renderer-children.ts`.
   - [x] Extract mounted-record node tracking and idempotent disposal into
         `renderer-lifecycle.ts`.
-  - [ ] Extract dynamic/list/portal mount orchestration from the core Renderer.
-  - [ ] Extract ErrorBoundary ownership and fallback replacement into a focused
+  - [x] Extract dynamic/list/portal mount orchestration from the core Renderer.
+  - [x] Extract ErrorBoundary ownership and fallback replacement into a focused
         boundary service.
-- [ ] Add a reusable controlled-value adapter foundation with native echo
+- [x] Add a reusable controlled-value adapter foundation with native echo
       suppression, coercion classification, and transactional rollback.
+- [x] Migrate ListView controlled `selectedIndex` to the shared foundation when
+      the generated dependency property binding is available.
 - [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
       `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
 - [ ] Add native `ItemsRepeater` virtualization with dynamic item size,

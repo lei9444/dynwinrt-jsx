@@ -1,6 +1,7 @@
 import type {
   NativeAdapter,
 } from './adapters'
+import { ChangeEchoSuppressor } from './change-echo'
 import {
   effect,
   isSignal,
@@ -68,12 +69,21 @@ export class RendererPropertyService {
       | undefined,
     scope: ReactiveScope,
   ): void {
+    const controlledBindings =
+      this.bindControlledProperties(
+        target,
+        props,
+        adapters,
+        scope,
+      )
+
     for (const [property, sourceValue] of Object.entries(props)) {
       if (scope.disposed) {
         return
       }
       if (
         reservedProperties.has(property) ||
+        controlledBindings.changeProperties.has(property) ||
         adapters?.[property]?.kind === 'slot' ||
         isEventProperty(
           target as Record<string, unknown>,
@@ -99,6 +109,7 @@ export class RendererPropertyService {
             ),
             componentSetter,
             adapters[property],
+            controlledBindings.suppressors.get(property),
             scope,
           )
           continue
@@ -109,6 +120,7 @@ export class RendererPropertyService {
           () => sourceValue.value,
           componentSetter,
           adapters?.[property],
+          controlledBindings.suppressors.get(property),
           scope,
         )
       }
@@ -125,6 +137,7 @@ export class RendererPropertyService {
           () => sourceValue,
           componentSetter,
           adapters?.[property],
+          controlledBindings.suppressors.get(property),
           scope,
         )
       }
@@ -139,6 +152,7 @@ export class RendererPropertyService {
           ),
           componentSetter,
           adapters?.[property],
+          controlledBindings.suppressors.get(property),
           scope,
         )
       }
@@ -148,12 +162,30 @@ export class RendererPropertyService {
   applyEvents(
     target: object,
     props: Record<string, unknown>,
+    adapters:
+      | Record<string, NativeAdapter<object> | undefined>
+      | undefined,
     scope: ReactiveScope,
   ): void {
     const record = target as Record<string, unknown>
+    const controlledChangeProperties = new Set(
+      Object.values(adapters ?? {})
+        .map((adapter) =>
+          adapter?.kind === 'property'
+            ? adapter.controlled?.changeProperty
+            : undefined,
+        )
+        .filter(
+          (property): property is string =>
+            property !== undefined,
+        ),
+    )
 
     for (const [property, callbackSource] of Object.entries(props)) {
-      if (!isEventProperty(record, property, callbackSource)) {
+      if (
+        controlledChangeProperties.has(property) ||
+        !isEventProperty(record, property, callbackSource)
+      ) {
         continue
       }
 
@@ -190,6 +222,7 @@ export class RendererPropertyService {
     readSource: () => unknown,
     componentSetter: ComponentPropertySetter | undefined,
     adapter: NativeAdapter<object> | undefined,
+    suppressor: ChangeEchoSuppressor<unknown> | undefined,
     scope: ReactiveScope,
   ): void {
     const resourceRevision = signal(0)
@@ -256,6 +289,7 @@ export class RendererPropertyService {
           ),
           componentSetter,
           adapter,
+          suppressor,
           scope,
         )
         if (
@@ -293,6 +327,7 @@ export class RendererPropertyService {
     value: unknown,
     componentSetter: ComponentPropertySetter | undefined,
     adapter: NativeAdapter<object> | undefined,
+    suppressor: ChangeEchoSuppressor<unknown> | undefined,
     scope: ReactiveScope,
   ): void {
     try {
@@ -315,6 +350,47 @@ export class RendererPropertyService {
       if (adapter?.kind === 'property') {
         if (adapter.coerce) {
           value = adapter.coerce(value, target)
+        }
+        if (adapter.controlled) {
+          const current =
+            adapter.controlled.read(target)
+          const equals =
+            adapter.controlled.equals ?? Object.is
+          if (equals(value, current)) {
+            return
+          }
+          suppressor?.record(value)
+          try {
+            adapter.controlled.write(target, value)
+          }
+          catch (error) {
+            suppressor?.clear()
+            if (adapter.controlled.rollback) {
+              suppressor?.record(current)
+              try {
+                adapter.controlled.rollback(
+                  target,
+                  current,
+                  value,
+                  error,
+                )
+              }
+              catch (rollbackError) {
+                throw new AggregateError(
+                  [error, rollbackError],
+                  `${target.constructor.name}.${property} write and rollback failed.`,
+                )
+              }
+              finally {
+                suppressor?.finishWrite()
+              }
+            }
+            throw error
+          }
+          finally {
+            suppressor?.finishWrite()
+          }
+          return
         }
         if (adapter.set) {
           adapter.set(target, value)
@@ -413,5 +489,89 @@ export class RendererPropertyService {
     }
 
     return value
+  }
+
+  private bindControlledProperties(
+    target: object,
+    props: Record<string, unknown>,
+    adapters:
+      | Record<string, NativeAdapter<object> | undefined>
+      | undefined,
+    scope: ReactiveScope,
+  ): {
+    suppressors: Map<
+      string,
+      ChangeEchoSuppressor<unknown>
+    >
+    changeProperties: Set<string>
+  } {
+    const suppressors = new Map<
+      string,
+      ChangeEchoSuppressor<unknown>
+    >()
+    const changeProperties = new Set<string>()
+
+    for (const [property, adapter] of Object.entries(
+      adapters ?? {},
+    )) {
+      if (
+        adapter?.kind !== 'property' ||
+        !adapter.controlled
+      ) {
+        continue
+      }
+
+      const controlled = adapter.controlled
+      changeProperties.add(controlled.changeProperty)
+      const callbackSource =
+        props[controlled.changeProperty]
+      if (
+        !isSignal(callbackSource) &&
+        typeof callbackSource !== 'function'
+      ) {
+        continue
+      }
+
+      const suppressor =
+        new ChangeEchoSuppressor<unknown>({
+          mode: controlled.echo,
+          equals: controlled.equals,
+          maxPending: controlled.maxPendingWrites,
+        })
+
+      try {
+        const cleanup = controlled.subscribe(
+          target,
+          () => {
+            const value = controlled.read(target)
+            if (suppressor.consume(value)) {
+              return
+            }
+            const callback = isSignal(callbackSource)
+              ? callbackSource.peek()
+              : callbackSource
+            if (typeof callback === 'function') {
+              callback(value, target)
+            }
+          },
+        )
+        suppressors.set(property, suppressor)
+        runInScope(scope, () => {
+          onCleanup(() => {
+            suppressor.clear()
+            cleanup?.()
+          })
+        })
+      }
+      catch (error) {
+        this.handleError(error, {
+          phase: 'event',
+          target,
+          property,
+        }, scope)
+      }
+    }
+
+    return { suppressors, changeProperties }
   }
 }

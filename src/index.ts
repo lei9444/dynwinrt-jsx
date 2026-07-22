@@ -25,6 +25,8 @@ export {
   type NativeAdapter,
   type NativeAdapterMap,
   type NativeCollectionAdapter,
+  type NativeControlledEchoMode,
+  type NativeControlledPropertyOptions,
   type NativePropertyAdapter,
   type NativePropertyMode,
   type NativeSlotAdapter,

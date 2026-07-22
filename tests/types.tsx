@@ -273,6 +273,28 @@ const DockedPanel = native<
     spacing: adapter.initialOnly<TypePanel>(),
   },
 })
+const ControlledTypeList = native<
+  TypeListView,
+  {
+    onSelectedIndexChange?: (
+      value: number,
+      instance: TypeListView,
+    ) => void
+  }
+>(TypeListView, {
+  adapters: {
+    selectedIndex: adapter.controlled<TypeListView>({
+      changeProperty: 'onSelectedIndexChange',
+      read: (instance) => instance.selectedIndex,
+      write: (instance, value) => {
+        instance.selectedIndex = value as number
+      },
+      subscribe: (instance, callback) =>
+        instance.onSelectionChanged(callback),
+      echo: 'synchronous',
+    }),
+  },
+})
 const LayoutGrid = createGridControl({
   Grid: TypeGrid,
   RowDefinition: TypeRowDefinition,
@@ -437,6 +459,12 @@ export const typeCheckedTree = (
     >
       <UI.TextBlock text="Item" />
     </List>
+    <ControlledTypeList
+      selectedIndex={signal(0)}
+      onSelectedIndexChange={(index, instance) => {
+        instance.selectedIndex = index
+      }}
+    />
 
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}

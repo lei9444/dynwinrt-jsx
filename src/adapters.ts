@@ -7,9 +7,41 @@ export type NativePropertyMode =
   | 'coercing'
   | 'reference'
 
+export type NativeControlledEchoMode =
+  | 'synchronous'
+  | 'deferred'
+  | 'setterScope'
+
+export interface NativeControlledPropertyOptions<Instance> {
+  readonly changeProperty: string
+  readonly read: (instance: Instance) => unknown
+  readonly write: (
+    instance: Instance,
+    value: unknown,
+  ) => void
+  readonly subscribe: (
+    instance: Instance,
+    callback: () => void,
+  ) => void | (() => void)
+  readonly rollback?: (
+    instance: Instance,
+    previous: unknown,
+    attempted: unknown,
+    error: unknown,
+  ) => void
+  readonly echo?: NativeControlledEchoMode
+  readonly equals?: (
+    expected: unknown,
+    actual: unknown,
+  ) => boolean
+  readonly maxPendingWrites?: number
+}
+
 export interface NativePropertyAdapter<Instance> {
   readonly kind: 'property'
   readonly mode: NativePropertyMode
+  readonly controlled?:
+    NativeControlledPropertyOptions<Instance>
   readonly coerce?: (
     value: unknown,
     instance: Instance,
@@ -54,13 +86,29 @@ export const adapter = {
   initialOnly<Instance>(): NativePropertyAdapter<Instance> {
     return { kind: 'property', mode: 'initialOnly' }
   },
-  controlled<Instance>(): NativePropertyAdapter<Instance> {
-    return { kind: 'property', mode: 'controlled' }
+  controlled<Instance>(
+    controlled?: NativeControlledPropertyOptions<Instance>,
+    coerce?: NativePropertyAdapter<Instance>['coerce'],
+  ): NativePropertyAdapter<Instance> {
+    return controlled
+      ? {
+          kind: 'property',
+          mode: 'controlled',
+          controlled,
+          ...(coerce ? { coerce } : {}),
+        }
+      : { kind: 'property', mode: 'controlled' }
   },
   coercing<Instance>(
     coerce: NativePropertyAdapter<Instance>['coerce'],
+    controlled?: NativeControlledPropertyOptions<Instance>,
   ): NativePropertyAdapter<Instance> {
-    return { kind: 'property', mode: 'coercing', coerce }
+    return {
+      kind: 'property',
+      mode: 'coercing',
+      coerce,
+      ...(controlled ? { controlled } : {}),
+    }
   },
   reference<Instance>(
     set?: NativePropertyAdapter<Instance>['set'],

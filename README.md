@@ -211,6 +211,33 @@ Ordinary generated properties still use direct assignment. Collection
 adapters validate the complete array and roll back failed native replacement;
 slot adapters own and dispose the JSX subtree they mount.
 
+Controlled adapters subscribe to native readback, suppress programmatic change
+echoes, and forward only genuine user changes:
+
+```ts
+const ControlledSlider = native(Slider, {
+  adapters: {
+    value: adapter.controlled(
+      {
+        changeProperty: 'onValueChange',
+        read: (slider) => slider.value,
+        write: (slider, value) => {
+          slider.value = value as number
+        },
+        subscribe: (slider, changed) =>
+          slider.onValueChanged(changed),
+        echo: 'synchronous',
+      },
+      (value) => Number(value),
+    ),
+  },
+})
+```
+
+Echo modes are `synchronous`, `deferred`, and `setterScope`. Controlled
+descriptors may provide `equals`, `maxPendingWrites`, and a transactional
+`rollback` callback for partial native writes.
+
 ### WinUI object values
 
 Create object-valued properties from the generated constructors inside the

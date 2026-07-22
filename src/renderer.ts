@@ -8,14 +8,10 @@ import {
 import {
   captureScopeError,
   createScope,
-  effect,
   flushScopeMounts,
   isSignal,
   runInScope,
-  setScopeErrorHandler,
-  signal,
   type ReactiveScope,
-  type Signal,
 } from './reactive'
 import {
   type ResourceReference,
@@ -27,12 +23,7 @@ import {
   isListNode,
   isPortalNode,
   isVNode,
-  type BoundaryErrorContext,
   type Child,
-  type ErrorBoundaryNode,
-  type Key,
-  type ListNode,
-  type PortalNode,
   type VNode,
 } from './vnode'
 import type { NativeAdapter } from './adapters'
@@ -47,6 +38,8 @@ import {
   RecordState,
   type MountedRecord,
 } from './renderer-lifecycle'
+import { RendererBoundaryService } from './renderer-boundary'
+import { RendererControlFlowService } from './renderer-control-flow'
 
 export {
   isNativeCollection,
@@ -142,14 +135,6 @@ export interface RendererDiagnostics {
 }
 
 interface ChildSlot {
-  nodes: readonly unknown[]
-  record: MountedRecord
-}
-
-interface ListEntry<Item> {
-  readonly key: Key
-  readonly item: Item
-  readonly index: Signal<number>
   nodes: readonly unknown[]
   record: MountedRecord
 }
@@ -287,12 +272,53 @@ export class Renderer {
     listEntriesReused: 0,
   }
   private readonly propertyService: RendererPropertyService
+  private readonly boundaryService: RendererBoundaryService
+  private readonly controlFlowService: RendererControlFlowService
 
   constructor(readonly options: RendererOptions = {}) {
     this.propertyService = new RendererPropertyService(
       options,
       (error, context, scope) => {
         this.handleError(error, context, scope)
+      },
+    )
+    this.boundaryService = new RendererBoundaryService({
+      mount: (child, onNodesChanged, parentScope) =>
+        this.mount(child, onNodesChanged, parentScope),
+      mountOwned: (read, onNodesChanged, parentScope) =>
+        this.mountOwned(read, onNodesChanged, parentScope),
+      mountEmpty: (onNodesChanged) =>
+        this.mountEmpty(onNodesChanged),
+      handleError: (error, context, scope) => {
+        this.handleError(error, context, scope)
+      },
+    })
+    this.controlFlowService = new RendererControlFlowService(
+      options,
+      {
+        mount: (child, onNodesChanged, parentScope) =>
+          this.mount(child, onNodesChanged, parentScope),
+        mountOwned: (read, onNodesChanged, parentScope) =>
+          this.mountOwned(read, onNodesChanged, parentScope),
+        createChildrenController: (
+          adapter,
+          scope,
+          children,
+        ) => new ChildrenController(
+          this,
+          adapter,
+          scope,
+          children,
+        ),
+        handleError: (error, context, scope) => {
+          this.handleError(error, context, scope)
+        },
+        markListEntryCreated: () => {
+          this.counters.listEntriesCreated += 1
+        },
+        markListEntryReused: () => {
+          this.counters.listEntriesReused += 1
+        },
       },
     )
   }
@@ -366,7 +392,7 @@ export class Renderer {
     parentScope: ReactiveScope,
   ): MountedRecord {
     if (isSignal<Child>(child)) {
-      return this.mountDynamic(
+      return this.controlFlowService.mountDynamic(
         () => child.value,
         onNodesChanged,
         parentScope,
@@ -397,7 +423,7 @@ export class Renderer {
     }
 
     if (isDynamicNode(child)) {
-      return this.mountDynamic(
+      return this.controlFlowService.mountDynamic(
         child.read,
         onNodesChanged,
         parentScope,
@@ -405,7 +431,7 @@ export class Renderer {
     }
 
     if (isListNode(child)) {
-      return this.mountList(
+      return this.controlFlowService.mountList(
         child,
         onNodesChanged,
         parentScope,
@@ -413,7 +439,7 @@ export class Renderer {
     }
 
     if (isErrorBoundaryNode(child)) {
-      return this.mountErrorBoundary(
+      return this.boundaryService.mount(
         child,
         onNodesChanged,
         parentScope,
@@ -421,7 +447,7 @@ export class Renderer {
     }
 
     if (isPortalNode(child)) {
-      return this.mountPortal(
+      return this.controlFlowService.mountPortal(
         child,
         onNodesChanged,
         parentScope,
@@ -541,383 +567,6 @@ export class Renderer {
 
     suspended = false
     update()
-    return record
-  }
-
-  private mountDynamic(
-    read: () => Child,
-    onNodesChanged: (nodes: readonly unknown[]) => void,
-    parentScope: ReactiveScope,
-  ): MountedRecord {
-    const scope = createScope(parentScope)
-    let current: MountedRecord | undefined
-
-    const record = new RecordState(
-      onNodesChanged,
-      () => {
-        current?.dispose()
-        current = undefined
-        scope.dispose()
-      },
-    )
-
-    runInScope(scope, () => {
-      effect(() => {
-        current?.dispose()
-        current = this.mountOwned(
-          read,
-          (nodes) => record.setNodes(nodes),
-          scope,
-        )
-      })
-    })
-
-    return record
-  }
-
-  private mountList<Item>(
-    list: ListNode<Item>,
-    onNodesChanged: (nodes: readonly unknown[]) => void,
-    parentScope: ReactiveScope,
-  ): MountedRecord {
-    const scope = createScope(parentScope)
-    let entries: ListEntry<Item>[] = []
-    let fallback: MountedRecord | undefined
-
-    const record = new RecordState(
-      onNodesChanged,
-      () => {
-        fallback?.dispose()
-        fallback = undefined
-        for (const entry of entries) {
-          entry.record.dispose()
-        }
-        entries = []
-        scope.dispose()
-      },
-    )
-
-    const updateNodes = () => {
-      if (fallback) {
-        record.setNodes(fallback.nodes)
-      } else {
-        record.setNodes(entries.flatMap((entry) => [...entry.nodes]))
-      }
-    }
-
-    runInScope(scope, () => {
-      effect(() => {
-        const items = list.readItems()
-        if (items.length === 0) {
-          for (const entry of entries) {
-            entry.record.dispose()
-          }
-          entries = []
-
-          if (!fallback && list.fallback != null) {
-            fallback = this.mount(
-              list.fallback,
-              () => updateNodes(),
-              scope,
-            )
-          }
-
-          updateNodes()
-          return
-        }
-
-        fallback?.dispose()
-        fallback = undefined
-
-        const seenKeys = new Set<Key>()
-        const keyedItems = items.map((item, visibleIndex) => {
-          const index = list.getSourceIndex(item, visibleIndex)
-          const key = list.getKey(item, index)
-          if (seenKeys.has(key)) {
-            throw new Error(`Duplicate For key: ${String(key)}`)
-          }
-          seenKeys.add(key)
-          return { item, index, key }
-        })
-
-        const oldEntries = new Map<Key, ListEntry<Item>>()
-        for (const entry of entries) {
-          if (oldEntries.has(entry.key)) {
-            throw new Error(`Duplicate existing For key: ${String(entry.key)}`)
-          }
-          oldEntries.set(entry.key, entry)
-        }
-
-        const nextEntries: ListEntry<Item>[] = []
-
-        keyedItems.forEach(({ item, index, key }) => {
-          const previous = oldEntries.get(key)
-          if (
-            previous &&
-            Object.is(previous.item, item)
-          ) {
-            oldEntries.delete(key)
-            previous.index.value = index
-            this.counters.listEntriesReused += 1
-            nextEntries.push(previous)
-            return
-          }
-
-          previous?.record.dispose()
-          oldEntries.delete(key)
-
-          const entry: ListEntry<Item> = {
-            key,
-            item,
-            index: signal(index),
-            nodes: [],
-            record: undefined as unknown as MountedRecord,
-          }
-          this.counters.listEntriesCreated += 1
-          entry.record = this.mountOwned(
-            () => list.renderItem(item, entry.index),
-            (nodes) => {
-              entry.nodes = nodes
-              updateNodes()
-            },
-            scope,
-          )
-          nextEntries.push(entry)
-        })
-
-        for (const entry of oldEntries.values()) {
-          entry.record.dispose()
-        }
-
-        entries = nextEntries
-        updateNodes()
-      })
-    })
-
-    return record
-  }
-
-  private mountErrorBoundary(
-    boundary: ErrorBoundaryNode,
-    onNodesChanged: (nodes: readonly unknown[]) => void,
-    parentScope: ReactiveScope,
-  ): MountedRecord {
-    const scope = createScope(parentScope)
-    let current: MountedRecord | undefined
-    let disposed = false
-    let mountingPrimary = false
-    let transitioning = false
-    let showingFallback = false
-    let pendingError:
-      | {
-          error: unknown
-          context: BoundaryErrorContext
-        }
-      | undefined
-
-    const record = new RecordState(
-      onNodesChanged,
-      () => {
-        disposed = true
-        transitioning = true
-        try {
-          setScopeErrorHandler(scope, undefined)
-          current?.dispose()
-          current = undefined
-          scope.dispose()
-        } finally {
-          transitioning = false
-        }
-      },
-    )
-
-    const normalizeContext = (
-      context: unknown,
-    ): BoundaryErrorContext => {
-      if (
-        typeof context === 'object' &&
-        context !== null &&
-        'phase' in context &&
-        typeof (context as { phase?: unknown }).phase === 'string'
-      ) {
-        return context as BoundaryErrorContext
-      }
-
-      return { phase: 'reactive' }
-    }
-
-    const mountFallback = (
-      error: unknown,
-      context: BoundaryErrorContext,
-    ) => {
-      showingFallback = true
-      transitioning = true
-      try {
-        current = this.mountOwned(
-          () => boundary.fallback(error, context),
-          (nodes) => record.setNodes(nodes),
-          scope,
-        )
-      } catch (fallbackError) {
-        current = this.mountEmpty((nodes) => record.setNodes(nodes))
-        this.handleError(
-          fallbackError,
-          { phase: 'component' },
-          parentScope,
-        )
-      } finally {
-        transitioning = false
-      }
-    }
-
-    const mountPrimary = () => {
-      transitioning = true
-      current?.dispose()
-      current = undefined
-      showingFallback = false
-      pendingError = undefined
-      transitioning = false
-
-      mountingPrimary = true
-      const candidate = this.mount(
-        boundary.children,
-        (nodes) => record.setNodes(nodes),
-        scope,
-      )
-      mountingPrimary = false
-
-      const captured = takePendingError()
-      if (captured) {
-        candidate.dispose()
-        mountFallback(captured.error, captured.context)
-      } else {
-        current = candidate
-      }
-    }
-
-    const takePendingError = () => {
-      const captured:
-        | {
-            error: unknown
-            context: BoundaryErrorContext
-          }
-        | undefined = pendingError
-      pendingError = undefined
-      return captured
-    }
-
-    setScopeErrorHandler(scope, (error, rawContext) => {
-      if (disposed || transitioning) {
-        return false
-      }
-
-      const captured = {
-        error,
-        context: normalizeContext(rawContext),
-      }
-
-      if (mountingPrimary) {
-        pendingError = captured
-        return true
-      }
-
-      transitioning = true
-      try {
-        current?.dispose()
-        current = undefined
-      } finally {
-        transitioning = false
-      }
-      mountFallback(captured.error, captured.context)
-      return true
-    })
-
-    mountPrimary()
-
-    if (boundary.readReset) {
-      let initialized = false
-      let previous: unknown
-      runInScope(scope, () => {
-        effect(() => {
-          const next = boundary.readReset?.()
-          if (
-            initialized &&
-            showingFallback &&
-            !Object.is(previous, next)
-          ) {
-            mountPrimary()
-          }
-          previous = next
-          initialized = true
-        })
-      })
-    }
-
-    return record
-  }
-
-  private mountPortal(
-    portal: PortalNode,
-    onNodesChanged: (nodes: readonly unknown[]) => void,
-    parentScope: ReactiveScope,
-  ): MountedRecord {
-    const scope = createScope(parentScope)
-    let controller: ChildrenController | undefined
-    let target: object | null | undefined
-
-    const record = new RecordState(
-      onNodesChanged,
-      () => {
-        controller?.dispose()
-        controller = undefined
-        target = undefined
-        scope.dispose()
-      },
-    )
-    record.setNodes([])
-
-    runInScope(scope, () => {
-      effect(() => {
-        const nextTarget = portal.readTarget()
-        if (nextTarget === target) {
-          return
-        }
-
-        controller?.dispose()
-        controller = undefined
-        target = nextTarget
-
-        if (!nextTarget) {
-          return
-        }
-
-        const adapter = resolveChildAdapter(
-          this.options,
-          nextTarget,
-        )
-        if (!adapter) {
-          throw new Error(
-            `${nextTarget.constructor.name} cannot host portal children.`,
-          )
-        }
-
-        controller = new ChildrenController(
-          this,
-          adapter,
-          scope,
-          portal.children,
-        )
-      }, {
-        onError: (error) => {
-          this.handleError(
-            error,
-            { phase: 'portal', target },
-            scope,
-          )
-        },
-      })
-    })
-
     return record
   }
 
@@ -1097,6 +746,7 @@ export class Renderer {
         this.propertyService.applyEvents(
           instance,
           vnode.props,
+          adapters,
           scope,
         )
         if (scope.disposed) {
