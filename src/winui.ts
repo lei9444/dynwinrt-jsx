@@ -54,6 +54,110 @@ export type AttachedPropertyRegistrations = Record<
   AttachedPropertyRegistration
 >
 
+export type WinUIRendererCapability =
+  | 'text'
+  | 'nullableBoolean'
+  | 'uiElementCollections'
+  | 'resources'
+  | 'resourceOverrides'
+  | 'grid'
+  | 'canvas'
+  | 'automation'
+
+export type WinUIRendererCapabilities = Readonly<
+  Record<WinUIRendererCapability, boolean>
+>
+
+export interface WinUIRendererOptions extends RendererOptions {
+  readonly attachedProperties?: AttachedPropertyRegistrations
+}
+
+export interface WinUIRendererPreset {
+  readonly capabilities: WinUIRendererCapabilities
+  createRenderer(options?: WinUIRendererOptions): Renderer
+}
+
+function hasStaticMethods(
+  owner: object | undefined,
+  methods: readonly string[],
+): boolean {
+  const record = owner as Record<string, unknown> | undefined
+  return methods.every(
+    (method) => typeof record?.[method] === 'function',
+  )
+}
+
+function createCapabilities(
+  bindings: WinUIBindings,
+): WinUIRendererCapabilities {
+  const resources = Boolean(
+    bindings.Application &&
+    bindings.IMap_Object_Object &&
+    bindings.PropertyValue?.createString,
+  )
+  return Object.freeze({
+    text: typeof bindings.TextBlock === 'function',
+    nullableBoolean: Boolean(
+      bindings.PropertyValue?.createBoolean &&
+      bindings.IReference_Boolean?.from,
+    ),
+    uiElementCollections:
+      bindings.IVector_UIElement !== undefined,
+    resources,
+    resourceOverrides:
+      resources &&
+      typeof bindings.ResourceDictionary === 'function',
+    grid: hasStaticMethods(bindings.Grid, [
+      'setRow',
+      'setColumn',
+      'setRowSpan',
+      'setColumnSpan',
+    ]),
+    canvas: hasStaticMethods(bindings.Canvas, [
+      'setLeft',
+      'setTop',
+    ]),
+    automation: hasStaticMethods(
+      bindings.AutomationProperties,
+      [
+        'setAutomationId',
+        'setName',
+        'setHelpText',
+        'setLabeledBy',
+        'setHeadingLevel',
+        'setPositionInSet',
+        'setSizeOfSet',
+        'setLiveSetting',
+        'setIsDialog',
+        'setAutomationControlType',
+      ],
+    ),
+  })
+}
+
+function missingCapability(
+  feature: string,
+  bindings: readonly string[],
+): Error {
+  return new Error(
+    `${feature} requires generated WinUI bindings for ${bindings.join(
+      ' and ',
+    )}. Pass the full generated binding namespace to createWinUIRendererPreset() or createWinUIRenderer().`,
+  )
+}
+
+export function createWinUIRendererPreset(
+  bindings: WinUIBindings,
+): WinUIRendererPreset {
+  const capabilities = createCapabilities(bindings)
+  return Object.freeze({
+    capabilities,
+    createRenderer(options: WinUIRendererOptions = {}) {
+      return createWinUIRenderer(bindings, options)
+    },
+  })
+}
+
 export function createAttachedPropertySetters(
   registrations: AttachedPropertyRegistrations,
 ): Record<string, NativePropertySetter> {
@@ -178,25 +282,25 @@ export function createWinUIAttachedPropertyRegistrations(
 export function createWinUIPropertyConverters(
   bindings: WinUIBindings,
 ): Record<string, NativePropertyConverter> {
-  const converters: Record<string, NativePropertyConverter> = {}
-
-  if (
-    bindings.PropertyValue?.createBoolean &&
-    bindings.IReference_Boolean
-  ) {
-    converters.isChecked = (_target, value) => {
+  const converters: Record<string, NativePropertyConverter> = {
+    isChecked: (_target, value) => {
       if (value == null || typeof value !== 'boolean') {
         return value
       }
-
-      return bindings.IReference_Boolean?.from(
-        bindings.PropertyValue?.createBoolean?.(value),
+      if (
+        !bindings.PropertyValue?.createBoolean ||
+        !bindings.IReference_Boolean?.from
+      ) {
+        throw missingCapability(
+          'Boolean isChecked conversion',
+          ['PropertyValue', 'IReference_Boolean'],
+        )
+      }
+      return bindings.IReference_Boolean.from(
+        bindings.PropertyValue.createBoolean(value),
       )
-    }
-  }
-
-  if (bindings.TextBlock) {
-    const textContent: NativePropertyConverter = (_target, value) => {
+    },
+    content: (_target, value) => {
       if (
         typeof value !== 'string' &&
         typeof value !== 'number' &&
@@ -204,13 +308,34 @@ export function createWinUIPropertyConverters(
       ) {
         return value
       }
-
-      const textBlock = new bindings.TextBlock!()
+      if (!bindings.TextBlock) {
+        throw missingCapability(
+          'Primitive content conversion',
+          ['TextBlock'],
+        )
+      }
+      const textBlock = new bindings.TextBlock()
+      textBlock.text = String(value)
+      return textBlock
+    },
+    header: (_target, value) => {
+      if (
+        typeof value !== 'string' &&
+        typeof value !== 'number' &&
+        typeof value !== 'bigint'
+      ) {
+        return value
+      }
+      if (!bindings.TextBlock) {
+        throw missingCapability(
+          'Primitive header conversion',
+          ['TextBlock'],
+        )
+      }
+      const textBlock = new bindings.TextBlock()
       textBlock.text = String(value)
       return textBlock
     }
-    converters.content = textContent
-    converters.header = textContent
   }
 
   return converters
@@ -295,9 +420,7 @@ export function color(
 
 export function createWinUIRenderer(
   bindings: WinUIBindings,
-  options: RendererOptions & {
-    attachedProperties?: AttachedPropertyRegistrations
-  } = {},
+  options: WinUIRendererOptions = {},
 ): Renderer {
   const resourceRuntime = createWinUIResourceRuntime(
     bindings,
@@ -381,26 +504,34 @@ export function createWinUIRenderer(
         if (isNativeCollection(value)) {
           return value
         }
-        if (
-          !bindings.IVector_UIElement ||
-          typeof (value as Partial<ProjectedCollection> | null)?.as !== 'function'
-        ) {
+        const projected =
+          value as Partial<ProjectedCollection> | null
+        if (typeof projected?.as !== 'function') {
           return null
         }
-
-        return (value as ProjectedCollection).as(
+        if (!bindings.IVector_UIElement) {
+          throw missingCapability(
+            'Projected UIElement collection conversion',
+            ['IVector_UIElement'],
+          )
+        }
+        return projected.as(
           bindings.IVector_UIElement,
         )
       }),
     createText:
       options.createText ??
-      (bindings.TextBlock
-        ? (value) => {
-            const textBlock = new bindings.TextBlock!()
-            textBlock.text = value
-            return textBlock
-          }
-        : undefined),
+      ((value) => {
+        if (!bindings.TextBlock) {
+          throw missingCapability(
+            'Primitive JSX child conversion',
+            ['TextBlock'],
+          )
+        }
+        const textBlock = new bindings.TextBlock()
+        textBlock.text = value
+        return textBlock
+      }),
     resolveResource:
       options.resolveResource ??
       resourceRuntime?.resolveResource,

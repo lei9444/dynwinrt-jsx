@@ -786,15 +786,7 @@ export class Renderer {
           metadata.options.setProperty,
           adapters,
           scope,
-        )
-        if (scope.disposed) {
-          return
-        }
-        this.propertyService.applyEvents(
-          instance,
-          vnode.props,
-          adapters,
-          scope,
+          'beforeChildren',
         )
         if (scope.disposed) {
           return
@@ -866,12 +858,48 @@ export class Renderer {
             vnode.props.children,
           ))
         }
+
+        this.propertyService.applyProperties(
+          instance,
+          vnode.props,
+          metadata.options.setProperty,
+          adapters,
+          scope,
+          'afterChildren',
+        )
+        if (scope.disposed) {
+          return
+        }
+        this.propertyService.applyEvents(
+          instance,
+          vnode.props,
+          adapters,
+          scope,
+        )
       })
       if (scope.disposed) {
         record.dispose()
         return record
       }
       record.setNodes([instance])
+      if (scope.disposed) {
+        record.dispose()
+        return record
+      }
+      runInScope(scope, () => {
+        this.propertyService.applyProperties(
+          instance,
+          vnode.props,
+          metadata.options.setProperty,
+          adapters,
+          scope,
+          'afterMount',
+        )
+      })
+      if (scope.disposed) {
+        record.dispose()
+        return record
+      }
     } catch (error) {
       record.dispose()
       this.handleError(error, {

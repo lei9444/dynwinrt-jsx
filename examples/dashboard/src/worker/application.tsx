@@ -1,5 +1,5 @@
 import {
-  createWinUIRenderer,
+  createWinUIRendererPreset,
   type Child,
 } from 'dynwinrt-jsx'
 import type { StateBridge } from 'dynwinrt-jsx/host'
@@ -7,20 +7,11 @@ import {
   runWinUIWorkerApp,
   type FileHotReloadFileSystem,
 } from 'dynwinrt-jsx/worker'
+import * as WinUIBindings from '#winapp/bindings'
 import {
-  AccessibilitySettings,
   Application,
   ApplicationTheme,
-  AutomationProperties,
-  ElementTheme,
-  Grid,
-  IMap_Object_Object,
-  IReference_Boolean,
-  IVector_UIElement,
   MicaBackdrop,
-  PropertyValue,
-  ResourceDictionary,
-  TextBlock,
   TitleBarTheme,
   Window,
   XamlRoot,
@@ -64,6 +55,9 @@ declare const performance: {
   now(): number
 }
 
+const winuiRendererPreset =
+  createWinUIRendererPreset(WinUIBindings)
+
 export function runDashboardApplication(
   options: RunDashboardApplicationOptions,
 ): number {
@@ -79,20 +73,7 @@ export function runDashboardApplication(
   return runWinUIWorkerApp({
     application: Application,
     createRenderer() {
-      return createWinUIRenderer({
-        AccessibilitySettings,
-        Application,
-        ApplicationTheme,
-        AutomationProperties,
-        ElementTheme,
-        Grid,
-        IMap_Object_Object,
-        IReference_Boolean,
-        IVector_UIElement,
-        PropertyValue,
-        ResourceDictionary,
-        TextBlock,
-      })
+      return winuiRendererPreset.createRenderer()
     },
     createWindow() {
       return new Window()

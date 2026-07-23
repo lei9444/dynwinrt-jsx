@@ -397,6 +397,7 @@ Keep each slice usable and independently reviewable:
 
 - [x] Define one-way, initial-only, controlled, coercing, reference, and
       child-strategy adapter shapes.
+- [x] Add before-children, after-children, and after-mount property phases.
 - [x] Preserve direct generated-property assignment for ordinary controls.
 - [x] Classify controlled properties by synchronous, deferred, coercing, or
       collection-valued behavior.
@@ -509,6 +510,8 @@ identity, and manifest dependencies in a provenance document.
 - [x] Migrate ListView controlled `selectedIndex` to the shared foundation when
       the generated dependency property binding is available.
   - [x] Suppress dependency-property callbacks across native coercion.
+- [x] Add full-namespace WinUI renderer presets with capability reporting and
+      actionable missing-binding errors.
 - [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
       `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
   - [x] Add ComboBox items/header ownership and controlled `selectedIndex`.

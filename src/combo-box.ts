@@ -4,13 +4,7 @@ import {
   type NativeComponentProps,
   type NativeConstructor,
 } from './native'
-import {
-  computed,
-  onMount,
-  readSignal,
-  signal,
-  type MaybeSignal,
-} from './reactive'
+import type { MaybeSignal } from './reactive'
 import type { NativeCollection } from './renderer'
 import {
   createSelectedIndexAdapter,
@@ -83,10 +77,6 @@ export function createComboBoxControl<
   return function ComboBox(
     props: ComboBoxProps<Instance>,
   ): Child {
-    const {
-      selectedIndex,
-      ...rest
-    } = props
     const rawSelectedItem = (
       props as ComboBoxProps<Instance> & {
         selectedItem?: unknown
@@ -97,30 +87,7 @@ export function createComboBoxControl<
         'createComboBoxControl() supports controlled selectedIndex only; use a raw native ComboBox for selectedItem.',
       )
     }
-    if (selectedIndex === undefined) {
-      return RawComboBox(
-        rest as NativeComponentProps<
-          Instance,
-          ComboBoxAdapterProps<Instance>
-        >,
-      )
-    }
-
-    const mounted = signal(false)
-    const delayedSelectedIndex =
-      computed(() =>
-        mounted.value
-          ? readSignal(selectedIndex)
-          : -1,
-      )
-    onMount(() => {
-      mounted.value = true
-    })
-
-    return RawComboBox({
-      ...rest,
-      selectedIndex: delayedSelectedIndex,
-    } as NativeComponentProps<
+    return RawComboBox(props as NativeComponentProps<
       Instance,
       ComboBoxAdapterProps<Instance>
     >)

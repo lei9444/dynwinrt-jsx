@@ -2,7 +2,7 @@ import {
   createControls,
   createMessageTransport,
   createStateBridge,
-  createWinUIRenderer,
+  createWinUIRendererPreset,
   thickness,
   type Child,
 } from 'dynwinrt-jsx'
@@ -13,19 +13,11 @@ import {
   type FileHotReloadMessage,
 } from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
+import * as WinUIBindings from '#winapp/bindings'
 import {
-  AccessibilitySettings,
   Application,
   ApplicationTheme,
-  AutomationProperties,
-  ElementTheme,
-  Grid,
-  IMap_Object_Object,
-  IReference_Boolean,
-  IVector_UIElement,
   MicaBackdrop,
-  PropertyValue,
-  ResourceDictionary,
   StackPanel,
   TextBlock,
   TextWrapping,
@@ -82,6 +74,8 @@ if (!parentPort) {
 }
 
 roInitialize(0)
+const winuiRendererPreset =
+  createWinUIRendererPreset(WinUIBindings)
 
 const bridge = createStateBridge<AppState>(
   createMessageTransport(workerData.statePort),
@@ -120,20 +114,7 @@ const errorTree = (error: unknown): Child => (
 const exitCode = runWinUIWorkerApp({
   application: Application,
   createRenderer() {
-    return createWinUIRenderer({
-      AccessibilitySettings,
-      Application,
-      ApplicationTheme,
-      AutomationProperties,
-      ElementTheme,
-      Grid,
-      IMap_Object_Object,
-      IReference_Boolean,
-      IVector_UIElement,
-      PropertyValue,
-      ResourceDictionary,
-      TextBlock,
-    })
+    return winuiRendererPreset.createRenderer()
   },
   createWindow() {
     return new Window()

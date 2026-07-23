@@ -208,6 +208,10 @@ The built-in WinUI layer currently provides:
 - Primitive `content` and `header` conversion to native `TextBlock`.
 - Boolean `isChecked` conversion to `IReference<Boolean>`.
 - ContentDialog cleanup and focus restoration from the native Closed event.
+- Property adapters can apply before children, after children, or after the
+  native record mounts.
+- Full generated binding namespaces can create renderer presets with capability
+  reporting and actionable missing-binding errors.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters
@@ -221,8 +225,9 @@ specific enough that they cannot corrupt unrelated native properties.
 3. Inspect the generated `.d.ts` file for constructors, writable properties,
    events, child collections, and object-valued properties.
 4. Import the generated constructor and add it to `createControls()`.
-5. Pass any interfaces or helper classes required by collection adapters,
-   resources, attached properties, or converters to `createWinUIRenderer()`.
+5. Prefer `createWinUIRendererPreset()` with the full generated binding
+   namespace so collection, resource, attached-property, and converter
+   capabilities are detected automatically.
 6. Add a framework adapter only when the control's native shape cannot be
    represented by existing properties and children.
 7. Add a strict TSX contract and a representative application use.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added lifecycle-aware native property phases and full-namespace WinUI renderer presets with capability diagnostics.
 - Added typed, signal-backed declarative Grid row and column definitions.
 - Added transactional native definition collection replacement with rollback.
 - Added NavigationView menu/footer collection adapters and navigation item/icon helpers.

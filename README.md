@@ -8,7 +8,7 @@ Components use React-like composition and Solid-style fine-grained signals. A co
 import {
   computed,
   createControls,
-  createWinUIRenderer,
+  createWinUIRendererPreset,
   signal,
 } from 'dynwinrt-jsx'
 import * as bindings from './.winapp/bindings/index.js'
@@ -18,7 +18,7 @@ const UI = createControls({
   StackPanel: bindings.StackPanel,
   TextBlock: bindings.TextBlock,
 })
-const renderer = createWinUIRenderer(bindings)
+const renderer = createWinUIRendererPreset(bindings).createRenderer()
 
 function Counter() {
   const count = signal(0)
@@ -211,6 +211,25 @@ const CommandSurface = native<
 Ordinary generated properties still use direct assignment. Collection
 adapters validate the complete array and roll back failed native replacement;
 slot adapters own and dispose the JSX subtree they mount.
+
+Property adapters run before children by default. Use `adapter.withPhase()` when
+a native property depends on mounted slots, items, or the completed native
+record:
+
+```ts
+const SelectedControl = native(Selector, {
+  adapters: {
+    selectedIndex: adapter.withPhase(
+      adapter.controlled(/* native read/write subscription */),
+      'afterChildren',
+    ),
+  },
+})
+```
+
+The available phases are `beforeChildren`, `afterChildren`, and `afterMount`.
+Initial event handlers are connected after `afterChildren` properties so
+programmatic mount writes do not appear as user events.
 
 Controlled adapters subscribe to native readback, suppress programmatic change
 echoes, and forward only genuine user changes:
@@ -526,6 +545,23 @@ Common automation metadata is available directly on native JSX controls:
 
 Supported metadata includes name, help text, labeled-by, heading level,
 position/size in set, live setting, dialog state, and automation control type.
+
+Create a reusable renderer preset from the complete generated binding
+namespace:
+
+```ts
+import * as WinUIBindings from '#winapp/bindings'
+
+const winuiRenderer = createWinUIRendererPreset(WinUIBindings)
+const renderer = winuiRenderer.createRenderer()
+```
+
+`winuiRenderer.capabilities` reports text, nullable Boolean, projected
+collection, resource, Grid, Canvas, and Automation support. Passing the full
+namespace automatically enables every generated capability. If a Boolean
+`isChecked`, primitive content/header, primitive child, or projected collection
+is used without its required binding, the renderer names the missing generated
+type instead of forwarding an invalid value to WinUI.
 
 Register additional WinUI attached properties when an application generates
 the owning type:

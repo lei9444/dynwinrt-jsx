@@ -42,40 +42,43 @@ export function createSelectedIndexAdapter<
 >(
   options: SelectedIndexAdapterOptions,
 ): NativePropertyAdapter<Instance> {
-  return adapter.controlled<Instance>(
-    {
-      changeProperty: 'onSelectedIndexChange',
-      read: (instance) => instance.selectedIndex,
-      write: (instance, value) => {
-        instance.selectedIndex = value as number
+  return adapter.withPhase(
+    adapter.controlled<Instance>(
+      {
+        changeProperty: 'onSelectedIndexChange',
+        read: (instance) => instance.selectedIndex,
+        write: (instance, value) => {
+          instance.selectedIndex = value as number
+        },
+        subscribe: (instance, callback) => {
+          if (
+            !instance.registerPropertyChangedCallback ||
+            !instance.unregisterPropertyChangedCallback
+          ) {
+            throw new Error(
+              `${options.label} selectedIndexProperty requires property-changed callback support.`,
+            )
+          }
+          const token =
+            instance.registerPropertyChangedCallback(
+              options.property,
+              callback,
+            )
+          return () => {
+            instance.unregisterPropertyChangedCallback?.(
+              options.property,
+              token,
+            )
+          }
+        },
+        echo: 'setterScope',
+        maxPendingWrites: options.maxPendingWrites,
       },
-      subscribe: (instance, callback) => {
-        if (
-          !instance.registerPropertyChangedCallback ||
-          !instance.unregisterPropertyChangedCallback
-        ) {
-          throw new Error(
-            `${options.label} selectedIndexProperty requires property-changed callback support.`,
-          )
-        }
-        const token =
-          instance.registerPropertyChangedCallback(
-            options.property,
-            callback,
-          )
-        return () => {
-          instance.unregisterPropertyChangedCallback?.(
-            options.property,
-            token,
-          )
-        }
-      },
-      echo: 'setterScope',
-      maxPendingWrites: options.maxPendingWrites,
-    },
-    (value) => coerceSelectedIndex(
-      value,
-      options.label,
+      (value) => coerceSelectedIndex(
+        value,
+        options.label,
+      ),
     ),
+    'afterChildren',
   )
 }

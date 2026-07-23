@@ -9,6 +9,11 @@ export type NativePropertyMode =
   | 'coercing'
   | 'reference'
 
+export type NativePropertyPhase =
+  | 'beforeChildren'
+  | 'afterChildren'
+  | 'afterMount'
+
 export type NativeControlledEchoMode =
   | 'synchronous'
   | 'deferred'
@@ -57,6 +62,7 @@ export type NativeControlledPropertyOptions<Instance> =
 export interface NativePropertyAdapter<Instance> {
   readonly kind: 'property'
   readonly mode: NativePropertyMode
+  readonly phase?: NativePropertyPhase
   readonly controlled?:
     NativeControlledPropertyOptions<Instance>
   readonly coerce?: (
@@ -167,6 +173,20 @@ function validateControlledOptions<Instance>(
   }
 }
 
+function validatePropertyPhase(
+  phase: NativePropertyPhase,
+): void {
+  if (
+    phase !== 'beforeChildren' &&
+    phase !== 'afterChildren' &&
+    phase !== 'afterMount'
+  ) {
+    throw new TypeError(
+      `Unknown native property phase "${String(phase)}".`,
+    )
+  }
+}
+
 export const adapter = {
   oneWay<Instance>(): NativePropertyAdapter<Instance> {
     return { kind: 'property', mode: 'oneWay' }
@@ -208,6 +228,13 @@ export const adapter = {
     set?: NativePropertyAdapter<Instance>['set'],
   ): NativePropertyAdapter<Instance> {
     return { kind: 'property', mode: 'reference', set }
+  },
+  withPhase<Instance>(
+    property: NativePropertyAdapter<Instance>,
+    phase: NativePropertyPhase,
+  ): NativePropertyAdapter<Instance> {
+    validatePropertyPhase(phase)
+    return { ...property, phase }
   },
   collection<Instance>(
     options: Omit<NativeCollectionAdapter<Instance>, 'kind'>,

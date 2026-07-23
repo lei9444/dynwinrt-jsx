@@ -1,5 +1,6 @@
 import type {
   NativeAdapter,
+  NativePropertyPhase,
 } from './adapters'
 import { ChangeEchoSuppressor } from './change-echo'
 import {
@@ -43,11 +44,93 @@ interface ControlledPropertyBinding {
   revision: number
 }
 
+type DeferredPropertyPhase = Exclude<
+  NativePropertyPhase,
+  'beforeChildren'
+>
+
+interface DeferredPropertyAssignment {
+  readonly scope: ReactiveScope
+  readonly assign: () => void
+}
+
+const deferredPropertyAssignments: Record<
+  DeferredPropertyPhase,
+  DeferredPropertyAssignment[]
+> = {
+  afterChildren: [],
+  afterMount: [],
+}
+let deferredPropertyFlushScheduled = false
+
+function schedulePropertyAssignment(
+  phase: NativePropertyPhase,
+  scope: ReactiveScope,
+  assign: () => void,
+): void {
+  if (phase === 'beforeChildren') {
+    assign()
+    return
+  }
+
+  deferredPropertyAssignments[phase].push({
+    scope,
+    assign,
+  })
+  if (deferredPropertyFlushScheduled) {
+    return
+  }
+  deferredPropertyFlushScheduled = true
+  afterReactiveFlush(() => {
+    deferredPropertyFlushScheduled = false
+    let firstError: unknown
+    for (const deferredPhase of [
+      'afterChildren',
+      'afterMount',
+    ] as const) {
+      const pending =
+        deferredPropertyAssignments[deferredPhase].splice(0)
+      for (const entry of pending) {
+        if (!entry.scope.disposed) {
+          try {
+            entry.assign()
+          }
+          catch (error) {
+            firstError ??= error
+          }
+        }
+      }
+    }
+    if (firstError !== undefined) {
+      throw firstError
+    }
+  })
+}
+
 const reservedProperties = new Set([
   'children',
   'key',
   'ref',
 ])
+
+function getPropertyPhase(
+  adapter: NativeAdapter<object> | undefined,
+): NativePropertyPhase {
+  if (adapter?.kind !== 'property') {
+    return 'beforeChildren'
+  }
+  const phase = adapter.phase ?? 'beforeChildren'
+  if (
+    phase !== 'beforeChildren' &&
+    phase !== 'afterChildren' &&
+    phase !== 'afterMount'
+  ) {
+    throw new TypeError(
+      `Unknown native property phase "${String(phase)}".`,
+    )
+  }
+  return phase
+}
 
 function isEventProperty(
   target: Record<string, unknown>,
@@ -76,13 +159,27 @@ export class RendererPropertyService {
       | Record<string, NativeAdapter<object> | undefined>
       | undefined,
     scope: ReactiveScope,
+    phase: NativePropertyPhase = 'beforeChildren',
   ): void {
+    const changeProperties = new Set(
+      Object.values(adapters ?? {})
+        .map((adapter) =>
+          adapter?.kind === 'property'
+            ? adapter.controlled?.changeProperty
+            : undefined,
+        )
+        .filter(
+          (property): property is string =>
+            property !== undefined,
+        ),
+    )
     const controlledBindings =
       this.bindControlledProperties(
         target,
         props,
         adapters,
         scope,
+        phase,
       )
 
     for (const [property, sourceValue] of Object.entries(props)) {
@@ -91,7 +188,7 @@ export class RendererPropertyService {
       }
       if (
         reservedProperties.has(property) ||
-        controlledBindings.changeProperties.has(property) ||
+        changeProperties.has(property) ||
         adapters?.[property]?.kind === 'slot' ||
         adapters?.[property]?.kind === 'itemsRepeater' ||
         isEventProperty(
@@ -102,23 +199,24 @@ export class RendererPropertyService {
       ) {
         continue
       }
+      if (
+        getPropertyPhase(adapters?.[property]) !== phase
+      ) {
+        continue
+      }
 
       if (isSignal(sourceValue)) {
         if (
           adapters?.[property]?.kind === 'property' &&
           adapters[property].mode === 'initialOnly'
         ) {
-          this.assignProperty(
+          this.resolveAndAssignProperty(
             target,
             property,
-            this.resolvePropertyValue(
-              target,
-              property,
-              sourceValue.peek(),
-            ),
+            sourceValue.peek(),
             componentSetter,
             adapters[property],
-            controlledBindings.bindings.get(property),
+            controlledBindings.get(property),
             scope,
           )
           continue
@@ -129,8 +227,9 @@ export class RendererPropertyService {
           () => sourceValue.value,
           componentSetter,
           adapters?.[property],
-          controlledBindings.bindings.get(property),
+          controlledBindings.get(property),
           scope,
+          phase,
         )
       }
       else if (
@@ -146,22 +245,19 @@ export class RendererPropertyService {
           () => sourceValue,
           componentSetter,
           adapters?.[property],
-          controlledBindings.bindings.get(property),
+          controlledBindings.get(property),
           scope,
+          phase,
         )
       }
       else {
-        this.assignProperty(
+        this.resolveAndAssignProperty(
           target,
           property,
-          this.resolvePropertyValue(
-            target,
-            property,
-            sourceValue,
-          ),
+          sourceValue,
           componentSetter,
           adapters?.[property],
-          controlledBindings.bindings.get(property),
+          controlledBindings.get(property),
           scope,
         )
       }
@@ -233,10 +329,12 @@ export class RendererPropertyService {
     adapter: NativeAdapter<object> | undefined,
     controlledBinding: ControlledPropertyBinding | undefined,
     scope: ReactiveScope,
+    phase: NativePropertyPhase,
   ): void {
     const resourceRevision = signal(0)
     let observedKind: ResourceReference['kind'] | undefined
     let unsubscribe: (() => void) | undefined
+    let initialized = false
     const stopObserving = (): unknown => {
       const cleanup = unsubscribe
       unsubscribe = undefined
@@ -288,28 +386,37 @@ export class RendererPropertyService {
         else if (observedKind) {
           observationError = stopObserving()
         }
-        this.assignProperty(
-          target,
-          property,
-          this.resolvePropertyValue(
+        const assign = () => {
+          this.resolveAndAssignProperty(
             target,
             property,
             source,
-          ),
-          componentSetter,
-          adapter,
-          controlledBinding,
-          scope,
-        )
-        if (
-          observationError !== undefined &&
-          !scope.disposed
-        ) {
-          this.handleError(
-            observationError,
-            { phase: 'event', target, property },
+            componentSetter,
+            adapter,
+            controlledBinding,
             scope,
           )
+          if (
+            observationError !== undefined &&
+            !scope.disposed
+          ) {
+            this.handleError(
+              observationError,
+              { phase: 'event', target, property },
+              scope,
+            )
+          }
+        }
+        if (initialized) {
+          schedulePropertyAssignment(
+            phase,
+            scope,
+            assign,
+          )
+        }
+        else {
+          initialized = true
+          assign()
         }
       })
     })
@@ -429,6 +536,42 @@ export class RendererPropertyService {
     }
   }
 
+  private resolveAndAssignProperty(
+    target: object,
+    property: string,
+    source: unknown,
+    componentSetter: ComponentPropertySetter | undefined,
+    adapter: NativeAdapter<object> | undefined,
+    controlledBinding: ControlledPropertyBinding | undefined,
+    scope: ReactiveScope,
+  ): void {
+    let value: unknown
+    try {
+      value = this.resolvePropertyValue(
+        target,
+        property,
+        source,
+      )
+    }
+    catch (error) {
+      this.handleError(error, {
+        phase: 'property',
+        target,
+        property,
+      }, scope)
+      return
+    }
+    this.assignProperty(
+      target,
+      property,
+      value,
+      componentSetter,
+      adapter,
+      controlledBinding,
+      scope,
+    )
+  }
+
   private writeControlledProperty(
     target: object,
     property: string,
@@ -529,26 +672,23 @@ export class RendererPropertyService {
       | Record<string, NativeAdapter<object> | undefined>
       | undefined,
     scope: ReactiveScope,
-  ): {
-    bindings: Map<string, ControlledPropertyBinding>
-    changeProperties: Set<string>
-  } {
+    phase: NativePropertyPhase,
+  ): Map<string, ControlledPropertyBinding> {
     const bindings =
       new Map<string, ControlledPropertyBinding>()
-    const changeProperties = new Set<string>()
 
     for (const [property, adapter] of Object.entries(
       adapters ?? {},
     )) {
       if (
         adapter?.kind !== 'property' ||
-        !adapter.controlled
+        !adapter.controlled ||
+        getPropertyPhase(adapter) !== phase
       ) {
         continue
       }
 
       const controlled = adapter.controlled
-      changeProperties.add(controlled.changeProperty)
       const callbackSource =
         props[controlled.changeProperty]
       if (
@@ -673,6 +813,6 @@ export class RendererPropertyService {
       }
     }
 
-    return { bindings, changeProperties }
+    return bindings
   }
 }

@@ -32,6 +32,7 @@ import {
   createTeachingTip,
   createUri,
   createWinUIThemeController,
+  createWinUIRendererPreset,
   gridLength,
   native,
   resource,
@@ -45,7 +46,9 @@ import {
   tokens,
   useContext,
   type MaybeSignal,
+  type NativePropertyPhase,
   type Renderer,
+  type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
 
@@ -332,6 +335,20 @@ const ControlledTypeList = native<
     }),
   },
 })
+const selectedIndexPhase: NativePropertyPhase = 'afterChildren'
+adapter.withPhase(
+  adapter.oneWay<TypeListView>(),
+  selectedIndexPhase,
+)
+// @ts-expect-error Native property phases are a closed set.
+adapter.withPhase(adapter.oneWay<TypeListView>(), 'later')
+const rendererPreset = createWinUIRendererPreset({
+  TextBlock: TypeTextBlock,
+})
+const textCapability: WinUIRendererCapability = 'text'
+const presetRenderer: Renderer = rendererPreset.createRenderer()
+void rendererPreset.capabilities[textCapability]
+void presetRenderer
 const VirtualizedTypeList = createItemsRepeaterControl({
   ItemsRepeater: TypeItemsRepeater,
   ContentControl: TypeContentControl,

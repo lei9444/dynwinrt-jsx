@@ -95,6 +95,15 @@ Available descriptors classify one-way, initial-only, controlled, coercing,
 reference, collection, single-slot, and collection-slot behavior. Adapter-owned
 slots now dispose their child scopes with the native control.
 
+Property descriptors can opt into `afterChildren` or `afterMount` application
+with `adapter.withPhase()`. The default remains `beforeChildren`. Selection
+controls now use `afterChildren` directly instead of delaying model values with
+wrapper signals. Reactive writes in these later phases run after ordinary
+effects in the same flush, so batched item and selection updates preserve their
+declared order. Native event props are connected after `afterChildren`
+properties; initial programmatic writes therefore no longer invoke raw event
+handlers during mount.
+
 Controlled adapters keep the JSX source authoritative. A native change is
 forwarded once; if its callback leaves the source signal unchanged, the latest
 model value is written back to the control. Transactional `rollback` is
@@ -116,6 +125,22 @@ createWinUIRenderer(bindings, {
 
 Unlike optional built-in registrations, an invalid custom registration throws
 when the renderer is created.
+
+## WinUI renderer presets
+
+Pass the complete generated namespace to `createWinUIRendererPreset()` instead
+of manually maintaining a renderer-only binding list:
+
+```ts
+import * as WinUIBindings from '#winapp/bindings'
+
+const preset = createWinUIRendererPreset(WinUIBindings)
+const renderer = preset.createRenderer()
+```
+
+The old `createWinUIRenderer(bindings, options)` API remains supported.
+Presets expose detected capabilities and produce actionable errors when JSX
+uses a missing nullable Boolean, text, or projected collection binding.
 
 ## Scoped overlays
 

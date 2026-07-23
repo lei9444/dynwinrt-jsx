@@ -9,10 +9,7 @@ import {
 import { adapter } from './adapters'
 import { ChangeEchoSuppressor } from './change-echo'
 import {
-  computed,
-  onMount,
   readSignal,
-  signal,
   type MaybeSignal,
 } from './reactive'
 import type { NativeCollection } from './renderer'
@@ -110,14 +107,17 @@ export function createListViewControl<Instance extends ListViewInstance>(
           label: 'ListView',
           maxPendingWrites: maxPendingSelections,
         })
-      : adapter.coercing<Instance>((value, instance) => {
-          const selectedIndex = coerceSelectedIndex(
-            value,
-            'ListView',
-          )
-          recordPendingSelection(instance, selectedIndex)
-          return selectedIndex
-        })
+      : adapter.withPhase(
+          adapter.coercing<Instance>((value, instance) => {
+            const selectedIndex = coerceSelectedIndex(
+              value,
+              'ListView',
+            )
+            recordPendingSelection(instance, selectedIndex)
+            return selectedIndex
+          }),
+          'afterChildren',
+        )
 
   const RawListView = native<
     Instance,
@@ -136,34 +136,7 @@ export function createListViewControl<Instance extends ListViewInstance>(
 
   const MountedListView = (props: ListViewProps<Instance>): Child => {
     if (bindings.selectedIndexProperty !== undefined) {
-      const controlledProps = props as ListViewProps<Instance> & {
-        selectedIndex?: MaybeSignal<number>
-      }
-      const {
-        selectedIndex,
-        ...rest
-      } = controlledProps
-      if (selectedIndex === undefined) {
-        return RawListView(
-          rest as NativeComponentProps<
-            Instance,
-            ListViewAdapterProps<Instance>
-          >,
-        )
-      }
-
-      const mounted = signal(false)
-      const delayedSelectedIndex = computed(() =>
-        mounted.value ? readSignal(selectedIndex) : -1,
-      )
-      onMount(() => {
-        mounted.value = true
-      })
-
-      return RawListView({
-        ...rest,
-        selectedIndex: delayedSelectedIndex,
-      } as NativeComponentProps<
+      return RawListView(props as NativeComponentProps<
         Instance,
         ListViewAdapterProps<Instance>
       >)

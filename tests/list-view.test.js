@@ -4,6 +4,7 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 
 const {
+  batch,
   createControls,
   createFocusTarget,
   createListViewControl,
@@ -389,6 +390,50 @@ test('ListView mounts items before applying controlled selectedIndex', () => {
   assert.equal(control.items.size, 2)
   assert.equal(control.selectedIndex, 1)
   handle.dispose()
+})
+
+test('ListView applies batched selection after item updates', () => {
+  const selectedIndexProperty = {}
+  const UI = createControls({ TextBlock: FakeTextBlock })
+  const ListView = createListViewControl({
+    ListView: ItemAwareFakeListView,
+    selectedIndexProperty,
+  })
+  const selectedIndex = signal(0)
+  const items = signal([
+    { id: 1, label: 'One' },
+  ])
+  let control
+
+  renderer().render(
+    ListView({
+      ref(value) {
+        control = value
+      },
+      selectedIndex,
+      onSelectedIndexChange(index) {
+        selectedIndex.value = index
+      },
+      children: For({
+        each: items,
+        key: (item) => item.id,
+        children: (item) =>
+          UI.TextBlock({ text: item.label }),
+      }),
+    }),
+    new FakePanel(),
+  )
+
+  batch(() => {
+    selectedIndex.value = 1
+    items.value = [
+      { id: 1, label: 'One' },
+      { id: 2, label: 'Two' },
+    ]
+  })
+
+  assert.equal(control.items.size, 2)
+  assert.equal(control.selectedIndex, 1)
 })
 
 test('ListView suppresses dependency-property echoes after native coercion', () => {

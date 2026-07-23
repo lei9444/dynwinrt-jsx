@@ -5,6 +5,7 @@ const test = require('node:test')
 
 const {
   For,
+  batch,
   createComboBoxControl,
   createControls,
   createRenderer,
@@ -251,6 +252,41 @@ test('ComboBox restores rejected selection after items finish updating', () => {
   assert.equal(comboBox.selectedIndex, 1)
   assert.equal(comboBox.selectedItem.text, 'Two updated')
   assert.ok(changes.includes(-1))
+})
+
+test('ComboBox applies batched selection after item updates', () => {
+  const ComboBox = createComboBox()
+  const selectedIndex = signal(0)
+  const items = signal([
+    { id: 1, label: 'One' },
+  ])
+  const window = new FakeWindow()
+  renderer().render(
+    jsx(ComboBox, {
+      selectedIndex,
+      onSelectedIndexChange() {},
+      children: jsx(For, {
+        each: items,
+        key: (item) => item.id,
+        children: (item) =>
+          jsx(UI.TextBlock, { text: item.label }),
+      }),
+    }),
+    window,
+  )
+
+  batch(() => {
+    selectedIndex.value = 1
+    items.value = [
+      { id: 1, label: 'One' },
+      { id: 2, label: 'Two' },
+    ]
+  })
+
+  assert.equal(window.content.items.size, 2)
+  assert.equal(selectedIndex.value, 1)
+  assert.equal(window.content.selectedIndex, 1)
+  assert.equal(window.content.selectedItem.text, 'Two')
 })
 
 test('ComboBox validates selectedIndex and releases subscriptions', () => {
