@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added privacy-safe renderer inspection snapshots and bounded lifecycle, property, event, child, resource, list, and error operation records.
 - Added lifecycle-aware native property phases and full-namespace WinUI renderer presets with capability diagnostics.
 - Added typed, signal-backed declarative Grid row and column definitions.
 - Added transactional native definition collection replacement with rollback.

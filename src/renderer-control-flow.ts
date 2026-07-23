@@ -2,6 +2,7 @@ import {
   createScope,
   effect,
   runInScope,
+  setReactiveScopeInspection,
   signal,
   type ReactiveScope,
   type Signal,
@@ -56,8 +57,8 @@ export interface RendererControlFlowHost {
     context: RendererErrorContext,
     scope: ReactiveScope,
   ): void
-  markListEntryCreated(): void
-  markListEntryReused(): void
+  markListEntryCreated(scope: ReactiveScope): void
+  markListEntryReused(scope: ReactiveScope): void
 }
 
 export class RendererControlFlowService {
@@ -72,14 +73,31 @@ export class RendererControlFlowService {
     parentScope: ReactiveScope,
   ): MountedRecord {
     const scope = createScope(parentScope)
+    setReactiveScopeInspection(scope, {
+      kind: 'dynamic',
+    })
     let current: MountedRecord | undefined
 
     const record = new RecordState(
       onNodesChanged,
       () => {
-        current?.dispose()
+        let firstError: unknown
+        try {
+          current?.dispose()
+        }
+        catch (error) {
+          firstError = error
+        }
         current = undefined
-        scope.dispose()
+        try {
+          scope.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        if (firstError !== undefined) {
+          throw firstError
+        }
       },
     )
 
@@ -103,20 +121,71 @@ export class RendererControlFlowService {
     parentScope: ReactiveScope,
   ): MountedRecord {
     const scope = createScope(parentScope)
+    setReactiveScopeInspection(scope, {
+      kind: 'list',
+    })
     let entries: ListEntry<Item>[] = []
     let fallback: MountedRecord | undefined
+    const disposeEntries = (
+      values: Iterable<ListEntry<Item>>,
+    ): unknown => {
+      let firstError: unknown
+      for (const entry of values) {
+        try {
+          entry.record.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+      }
+      return firstError
+    }
 
     const record = new RecordState(
       onNodesChanged,
       () => {
-        fallback?.dispose()
-        fallback = undefined
-        for (const entry of entries) {
-          entry.record.dispose()
+        let firstError: unknown
+        let retainedFallback: MountedRecord | undefined
+        try {
+          fallback?.dispose()
         }
-        entries = []
-        scope.dispose()
+        catch (error) {
+          firstError = error
+          if (fallback && !fallback.disposed) {
+            retainedFallback = fallback
+          }
+        }
+        fallback = retainedFallback
+        const retainedEntries: ListEntry<Item>[] = []
+        for (const entry of entries) {
+          try {
+            entry.record.dispose()
+          }
+          catch (error) {
+            firstError ??= error
+          }
+          if (!entry.record.disposed) {
+            retainedEntries.push(entry)
+          }
+        }
+        entries = retainedEntries
+        if (
+          fallback !== undefined ||
+          entries.length > 0
+        ) {
+          throw firstError
+        }
+        try {
+          scope.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        if (firstError !== undefined) {
+          throw firstError
+        }
       },
+      true,
     )
 
     const updateNodes = () => {
@@ -134,9 +203,7 @@ export class RendererControlFlowService {
       effect(() => {
         const items = list.readItems()
         if (items.length === 0) {
-          for (const entry of entries) {
-            entry.record.dispose()
-          }
+          const disposalError = disposeEntries(entries)
           entries = []
 
           if (!fallback && list.fallback != null) {
@@ -148,10 +215,19 @@ export class RendererControlFlowService {
           }
 
           updateNodes()
+          if (disposalError !== undefined) {
+            throw disposalError
+          }
           return
         }
 
-        fallback?.dispose()
+        let disposalError: unknown
+        try {
+          fallback?.dispose()
+        }
+        catch (error) {
+          disposalError = error
+        }
         fallback = undefined
 
         const seenKeys = new Set<Key>()
@@ -183,49 +259,97 @@ export class RendererControlFlowService {
         }
 
         const nextEntries: ListEntry<Item>[] = []
+        const createdEntries: ListEntry<Item>[] = []
+        const disposedEntries = new Set<ListEntry<Item>>()
+        const previousIndexes =
+          new Map<ListEntry<Item>, number>()
 
-        keyedItems.forEach(({ item, index, key }) => {
-          const previous = oldEntries.get(key)
-          if (
-            previous &&
-            Object.is(previous.item, item)
-          ) {
+        try {
+          keyedItems.forEach(({ item, index, key }) => {
+            const previous = oldEntries.get(key)
+            if (
+              previous &&
+              Object.is(previous.item, item)
+            ) {
+              oldEntries.delete(key)
+              previousIndexes.set(
+                previous,
+                previous.index.peek(),
+              )
+              previous.index.value = index
+              this.host.markListEntryReused(scope)
+              nextEntries.push(previous)
+              return
+            }
+
+            if (previous) {
+              disposedEntries.add(previous)
+              previous.record.dispose()
+            }
             oldEntries.delete(key)
-            previous.index.value = index
-            this.host.markListEntryReused()
-            nextEntries.push(previous)
-            return
-          }
 
-          previous?.record.dispose()
-          oldEntries.delete(key)
-
-          const entry: ListEntry<Item> = {
-            key,
-            item,
-            index: signal(index),
-            nodes: [],
-            record:
-              undefined as unknown as MountedRecord,
-          }
-          this.host.markListEntryCreated()
-          entry.record = this.host.mountOwned(
-            () => list.renderItem(item, entry.index),
-            (nodes) => {
-              entry.nodes = nodes
-              updateNodes()
-            },
-            scope,
-          )
-          nextEntries.push(entry)
-        })
-
-        for (const entry of oldEntries.values()) {
-          entry.record.dispose()
+            const entry: ListEntry<Item> = {
+              key,
+              item,
+              index: signal(index),
+              nodes: [],
+              record:
+                undefined as unknown as MountedRecord,
+            }
+            this.host.markListEntryCreated(scope)
+            entry.record = this.host.mountOwned(
+              () => list.renderItem(item, entry.index),
+              (nodes) => {
+                entry.nodes = nodes
+                updateNodes()
+              },
+              scope,
+            )
+            createdEntries.push(entry)
+            nextEntries.push(entry)
+          })
         }
+        catch (error) {
+          let cleanupError =
+            disposeEntries(createdEntries)
+          for (const [entry, previousIndex] of
+            previousIndexes) {
+            if (!disposedEntries.has(entry)) {
+              try {
+                entry.index.value = previousIndex
+              }
+              catch (failure) {
+                cleanupError ??= failure
+              }
+            }
+          }
+          entries = entries.filter(
+            (entry) => !disposedEntries.has(entry),
+          )
+          try {
+            updateNodes()
+          }
+          catch (failure) {
+            cleanupError ??= failure
+          }
+          if (cleanupError !== undefined) {
+            throw new AggregateError(
+              [error, cleanupError],
+              'Keyed reconciliation and staged cleanup failed.',
+            )
+          }
+          throw error
+        }
+
+        const oldEntriesError =
+          disposeEntries(oldEntries.values())
+        disposalError ??= oldEntriesError
 
         entries = nextEntries
         updateNodes()
+        if (disposalError !== undefined) {
+          throw disposalError
+        }
       })
     })
 
@@ -238,6 +362,9 @@ export class RendererControlFlowService {
     parentScope: ReactiveScope,
   ): MountedRecord {
     const scope = createScope(parentScope)
+    setReactiveScopeInspection(scope, {
+      kind: 'portal',
+    })
     let controller:
       | RendererChildController
       | undefined
@@ -251,6 +378,7 @@ export class RendererControlFlowService {
         target = undefined
         scope.dispose()
       },
+      true,
     )
     record.setNodes([])
 

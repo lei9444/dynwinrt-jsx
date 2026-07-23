@@ -159,6 +159,22 @@ export {
   type DiagnosticRecord,
 } from './diagnostics'
 
+export type {
+  ReactiveDependencyInspection,
+  ReactiveGraphInspection,
+  ReactiveObserverInspection,
+  ReactiveScopeInspection,
+  RendererInspectionNode,
+  RendererInspectionNodeKind,
+  RendererInspectionSnapshot,
+  RendererInspectionSubscription,
+  RendererInspectionSubscriptionKind,
+  RendererInspector,
+  RendererInspectorOptions,
+  RendererOperationKind,
+  RendererOperationRecord,
+} from './inspector'
+
 export {
   createJsonStateStore,
   type JsonStateLoadResult,

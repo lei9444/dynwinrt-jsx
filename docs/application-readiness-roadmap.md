@@ -548,9 +548,9 @@ identity, and manifest dependencies in a provenance document.
 
 #### Diagnostics and application models
 
-- [ ] Add a structured runtime inspector for native trees, signal/effect
+- [x] Add a structured runtime inspector for native trees, signal/effect
       graphs, event subscriptions, resource lookup, and lifecycle ownership.
-- [ ] Expose the inspector through stable APIs usable by local tooling and
+- [x] Expose the inspector through stable APIs usable by local tooling and
       coding agents.
 - [ ] Add multi-Window renderer and projection scopes with independent state,
       errors, closing, and secondary-window lifecycle.

@@ -112,9 +112,11 @@ const UI = createControls({
   TextBlock: FakeTextBlock,
 })
 
-function createRepeater() {
+function createRepeater(
+  ItemsRepeater = FakeItemsRepeater,
+) {
   return createItemsRepeaterControl({
-    ItemsRepeater: FakeItemsRepeater,
+    ItemsRepeater,
     ContentControl: FakeContentControl,
     IElementFactory: {
       create(getElement, recycleElement) {
@@ -156,6 +158,45 @@ function renderer() {
     },
   })
 }
+
+test('ItemsRepeater setup failure releases synchronously realized entries', () => {
+  class FailingItemsRepeater extends FakeItemsRepeater {
+    failAssignment = true
+
+    get itemsSource() {
+      return super.itemsSource
+    }
+
+    set itemsSource(value) {
+      super.itemsSource = value
+      if (value && this.failAssignment) {
+        this.failAssignment = false
+        this.realize(0)
+        throw new Error('assignment failed')
+      }
+    }
+  }
+
+  const ItemsRepeater =
+    createRepeater(FailingItemsRepeater)
+  const nativeRenderer = renderer()
+  assert.throws(
+    () => nativeRenderer.render(
+      jsx(ItemsRepeater, {
+        each: [{ id: 1, label: 'One' }],
+        key: (item) => item.id,
+        children: (item) =>
+          jsx(UI.TextBlock, { text: item.label }),
+      }),
+      new FakeWindow(),
+    ),
+    /assignment failed/,
+  )
+
+  const snapshot = nativeRenderer.inspector.snapshot()
+  assert.equal(snapshot.nodes.length, 0)
+  assert.equal(snapshot.diagnostics.activeNative, 0)
+})
 
 test('ItemsRepeater realizes a bounded native working set', () => {
   const ItemsRepeater = createRepeater()

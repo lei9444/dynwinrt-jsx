@@ -216,6 +216,25 @@ selection is required.
 
 Use `RenderHandle.update(nextTree)` to replace a mounted root, or `createHotRoot()` when a development integration needs to rerun a render factory.
 
+## Runtime inspection
+
+`Renderer.inspector` now exposes privacy-safe, JSON-serializable snapshots of
+active native/component records, reactive scope and dependency graphs, event
+and resource subscriptions, and recent renderer operations:
+
+```ts
+const snapshot = renderer.inspector.snapshot()
+```
+
+Operation recording is bounded to 200 entries by default. Configure
+`createRenderer({ inspector: { maxOperations } })`, or use `0` when only live
+ownership snapshots are required. Inspector records never include property or
+signal values.
+
+Render-handle disposal is now retryable when native child detachment throws.
+The handle remains undisposed, retains its reported roots, and rejects updates
+until a later `dispose()` succeeds.
+
 ## New subtree primitives
 
 - `Context.Provider` and `useContext()` pass values through renderer scopes.

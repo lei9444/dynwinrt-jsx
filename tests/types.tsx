@@ -48,6 +48,8 @@ import {
   type MaybeSignal,
   type NativePropertyPhase,
   type Renderer,
+  type RendererInspectionSnapshot,
+  type RendererInspectorOptions,
   type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
@@ -349,6 +351,15 @@ const textCapability: WinUIRendererCapability = 'text'
 const presetRenderer: Renderer = rendererPreset.createRenderer()
 void rendererPreset.capabilities[textCapability]
 void presetRenderer
+const inspectorOptions: RendererInspectorOptions = {
+  maxOperations: 128,
+}
+declare const inspectedRenderer: Renderer
+const inspectionSnapshot: RendererInspectionSnapshot =
+  inspectedRenderer.inspector.snapshot()
+void inspectorOptions
+void inspectionSnapshot.reactive.observers
+void inspectedRenderer.inspector.getOperations()
 const VirtualizedTypeList = createItemsRepeaterControl({
   ItemsRepeater: TypeItemsRepeater,
   ContentControl: TypeContentControl,

@@ -94,6 +94,7 @@ adoption map.
 | Native ItemsRepeater virtualization | `src/items-repeater.ts`, `src/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, and TeachingTip scopes | `src/overlays.ts` |
 | Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
+| Runtime inspection and bounded operation history | `src/inspector.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
 | Context | `src/context.ts` |
 | One-way and two-way props | `src/binding.ts` |
@@ -212,6 +213,9 @@ The built-in WinUI layer currently provides:
   native record mounts.
 - Full generated binding namespaces can create renderer presets with capability
   reporting and actionable missing-binding errors.
+- `Renderer.inspector` exposes bounded operation records plus active
+  native/component, reactive graph, subscription, resource, and ownership
+  snapshots without property or signal values.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters
@@ -245,7 +249,10 @@ specific enough that they cannot corrupt unrelated native properties.
    partially updated native collection.
 3. Exercise mount, update, replacement, removal, and repeated disposal.
 4. Check renderer diagnostics return to the previous active count.
-5. Use a real WinUI application when the change affects COM lifetime, thread
+5. Inspect `renderer.inspector.snapshot()` when ordering, subscriptions,
+   resources, or ownership are involved; do not add application values to
+   operation records.
+6. Use a real WinUI application when the change affects COM lifetime, thread
    affinity, resources, focus, or control behavior. Fake controls cannot prove
    those properties.
 

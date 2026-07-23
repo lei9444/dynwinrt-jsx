@@ -192,3 +192,19 @@ test('createRoot owns reactive cleanup', () => {
 
   assert.deepEqual(values, [0, 1])
 })
+
+test('throwing effect cleanup still detaches dependencies', () => {
+  const source = signal(0)
+  let runs = 0
+  const dispose = effect(() => {
+    source.value
+    runs += 1
+    return () => {
+      throw new Error('cleanup failed')
+    }
+  })
+
+  assert.throws(dispose, /cleanup failed/)
+  source.value = 1
+  assert.equal(runs, 1)
+})

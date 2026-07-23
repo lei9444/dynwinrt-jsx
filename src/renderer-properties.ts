@@ -10,6 +10,7 @@ import {
   onCleanup,
   runInScope,
   signal,
+  getReactiveScopeInspectionId,
   type ReactiveScope,
 } from './reactive'
 import {
@@ -24,6 +25,10 @@ import type {
   RendererErrorContext,
   RendererOptions,
 } from './renderer'
+import {
+  describeInspectionTarget,
+  type RendererInspectorRuntime,
+} from './inspector'
 
 type ComponentPropertySetter = (
   instance: object,
@@ -149,6 +154,7 @@ export class RendererPropertyService {
   constructor(
     private readonly options: RendererOptions,
     private readonly handleError: RendererErrorHandler,
+    private readonly inspector: RendererInspectorRuntime,
   ) {}
 
   applyProperties(
@@ -218,6 +224,7 @@ export class RendererPropertyService {
             adapters[property],
             controlledBindings.get(property),
             scope,
+            phase,
           )
           continue
         }
@@ -259,6 +266,7 @@ export class RendererPropertyService {
           adapters?.[property],
           controlledBindings.get(property),
           scope,
+          phase,
         )
       }
     }
@@ -296,6 +304,12 @@ export class RendererPropertyService {
 
       try {
         const callback = (...args: unknown[]) => {
+          this.inspector.record('event.invoke', {
+            scopeId:
+              getReactiveScopeInspectionId(scope),
+            target: describeInspectionTarget(target),
+            name: property,
+          })
           const current = isSignal(callbackSource)
             ? callbackSource.peek()
             : callbackSource
@@ -304,10 +318,30 @@ export class RendererPropertyService {
         const unsubscribe = (
           record[property] as (handler: unknown) => unknown
         ).call(target, callback)
-
         if (typeof unsubscribe === 'function') {
+          const subscriptionId =
+            this.inspector.registerSubscription(
+              'event',
+              scope,
+              target,
+              property,
+            )
           runInScope(scope, () => {
-            onCleanup(unsubscribe as () => void)
+            onCleanup(() => {
+              try {
+                ;(unsubscribe as () => void)()
+                this.inspector.releaseSubscription(
+                  subscriptionId,
+                )
+              }
+              catch (error) {
+                this.inspector.failSubscription(
+                  subscriptionId,
+                  error,
+                )
+                throw error
+              }
+            })
           })
         }
       }
@@ -334,16 +368,31 @@ export class RendererPropertyService {
     const resourceRevision = signal(0)
     let observedKind: ResourceReference['kind'] | undefined
     let unsubscribe: (() => void) | undefined
+    let resourceSubscriptionId: number | undefined
     let initialized = false
     const stopObserving = (): unknown => {
       const cleanup = unsubscribe
       unsubscribe = undefined
       observedKind = undefined
+      const inspectionSubscriptionId =
+        resourceSubscriptionId
+      resourceSubscriptionId = undefined
       try {
         cleanup?.()
+        if (inspectionSubscriptionId !== undefined) {
+          this.inspector.releaseSubscription(
+            inspectionSubscriptionId,
+          )
+        }
         return undefined
       }
       catch (error) {
+        if (inspectionSubscriptionId !== undefined) {
+          this.inspector.failSubscription(
+            inspectionSubscriptionId,
+            error,
+          )
+        }
         return error
       }
     }
@@ -370,16 +419,26 @@ export class RendererPropertyService {
               observationError = stopObserving()
             }
             observedKind = observationKind
-            const cleanup = this.options.observeResourceChanges?.(
-              target,
-              () => {
-                resourceRevision.value =
-                  resourceRevision.peek() + 1
-              },
-              observationKind,
-            )
-            if (typeof cleanup === 'function') {
-              unsubscribe = cleanup
+            if (this.options.observeResourceChanges) {
+              const cleanup =
+                this.options.observeResourceChanges(
+                  target,
+                  () => {
+                    resourceRevision.value =
+                      resourceRevision.peek() + 1
+                  },
+                  observationKind,
+                )
+              if (typeof cleanup === 'function') {
+                resourceSubscriptionId =
+                  this.inspector.registerSubscription(
+                    'resource',
+                    scope,
+                    target,
+                    `${property}:${observationKind}`,
+                  )
+                unsubscribe = cleanup
+              }
             }
           }
         }
@@ -395,6 +454,7 @@ export class RendererPropertyService {
             adapter,
             controlledBinding,
             scope,
+            phase,
           )
           if (
             observationError !== undefined &&
@@ -544,13 +604,21 @@ export class RendererPropertyService {
     adapter: NativeAdapter<object> | undefined,
     controlledBinding: ControlledPropertyBinding | undefined,
     scope: ReactiveScope,
+    phase: NativePropertyPhase,
   ): void {
+    this.inspector.record('property.apply', {
+      scopeId: getReactiveScopeInspectionId(scope),
+      target: describeInspectionTarget(target),
+      property,
+      name: phase,
+    })
     let value: unknown
     try {
       value = this.resolvePropertyValue(
         target,
         property,
         source,
+        scope,
       )
     }
     catch (error) {
@@ -624,10 +692,17 @@ export class RendererPropertyService {
     target: object,
     property: string,
     source: unknown,
+    scope: ReactiveScope,
   ): unknown {
     let value = source
 
     if (isResourceReference(value)) {
+      this.inspector.record('resource.resolve', {
+        scopeId: getReactiveScopeInspectionId(scope),
+        target: describeInspectionTarget(target),
+        property,
+        name: `${value.kind}:${value.key}`,
+      })
       if (!this.options.resolveResource) {
         if (value.fallback !== undefined) {
           value = value.fallback
@@ -715,6 +790,12 @@ export class RendererPropertyService {
         const cleanup = controlled.subscribe(
           target,
           () => {
+            this.inspector.record('event.invoke', {
+              scopeId:
+                getReactiveScopeInspectionId(scope),
+              target: describeInspectionTarget(target),
+              name: controlled.changeProperty,
+            })
             const value = controlled.read(target)
             if (suppressor.consume(value)) {
               return
@@ -798,10 +879,36 @@ export class RendererPropertyService {
         )
         bindings.set(property, binding)
         runInScope(scope, () => {
-          onCleanup(() => {
-            suppressor.clear()
-            cleanup?.()
-          })
+          if (typeof cleanup === 'function') {
+            const subscriptionId =
+              this.inspector.registerSubscription(
+                'event',
+                scope,
+                target,
+                controlled.changeProperty,
+              )
+            onCleanup(() => {
+              try {
+                suppressor.clear()
+                cleanup()
+                this.inspector.releaseSubscription(
+                  subscriptionId,
+                )
+              }
+              catch (error) {
+                this.inspector.failSubscription(
+                  subscriptionId,
+                  error,
+                )
+                throw error
+              }
+            })
+          }
+          else {
+            onCleanup(() => {
+              suppressor.clear()
+            })
+          }
         })
       }
       catch (error) {

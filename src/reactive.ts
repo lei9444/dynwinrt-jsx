@@ -24,6 +24,8 @@ export interface Signal<T> extends ReadonlySignal<T> {
 export type MaybeSignal<T> = T | ReadonlySignal<T>
 
 interface Dependency {
+  readonly inspectionId: number
+  readonly inspectionListenerCount?: number
   observers: Set<Observer>
   producer?: Observer
 }
@@ -35,11 +37,65 @@ type ScopeErrorHandler = (
 ) => boolean
 type MountCallback = () => void | Cleanup
 
+export interface ReactiveScopeInspectionMetadata {
+  readonly kind: string
+  readonly label?: string
+}
+
+export interface ReactiveScopeInspection {
+  readonly id: number
+  readonly parentId?: number
+  readonly kind: string
+  readonly label?: string
+  readonly disposed: boolean
+  readonly childIds: readonly number[]
+  readonly observerIds: readonly number[]
+  readonly dependencyIds: readonly number[]
+  readonly cleanupCount: number
+  readonly pendingMountCount: number
+  readonly handlesErrors: boolean
+}
+
+export interface ReactiveObserverInspection {
+  readonly id: number
+  readonly scopeId?: number
+  readonly kind: ObserverKind
+  readonly dependencyIds: readonly number[]
+  readonly outputDependencyId?: number
+  readonly running: boolean
+  readonly scheduled: boolean
+  readonly hasCleanup: boolean
+}
+
+export interface ReactiveDependencyInspection {
+  readonly id: number
+  readonly producerObserverId?: number
+  readonly observerIds: readonly number[]
+  readonly listenerCount: number
+}
+
+export interface ReactiveGraphInspection {
+  readonly rootScopeIds: readonly number[]
+  readonly scopes: readonly ReactiveScopeInspection[]
+  readonly observers: readonly ReactiveObserverInspection[]
+  readonly dependencies: readonly ReactiveDependencyInspection[]
+}
+
+let nextScopeInspectionId = 1
+let nextObserverInspectionId = 1
+let nextDependencyInspectionId = 1
+
 class ScopeImpl {
+  readonly inspectionId = nextScopeInspectionId++
   readonly children = new Set<ScopeImpl>()
   readonly cleanups = new Set<Cleanup>()
   readonly values = new Map<symbol, unknown>()
   readonly mounts: MountCallback[] = []
+  readonly observers = new Set<Observer>()
+  readonly subscribedDependencies =
+    new Map<Dependency, number>()
+  inspectionKind = 'scope'
+  inspectionLabel: string | undefined
   errorHandler: ScopeErrorHandler | undefined
   mountsFlushed = false
   disposed = false
@@ -83,6 +139,27 @@ class ScopeImpl {
     }
 
     this.mounts.push(callback)
+  }
+
+  addSubscribedDependency(
+    dependency: Dependency,
+  ): void {
+    this.subscribedDependencies.set(
+      dependency,
+      (this.subscribedDependencies.get(dependency) ?? 0) + 1,
+    )
+  }
+
+  removeSubscribedDependency(
+    dependency: Dependency,
+  ): void {
+    const count =
+      this.subscribedDependencies.get(dependency) ?? 0
+    if (count <= 1) {
+      this.subscribedDependencies.delete(dependency)
+      return
+    }
+    this.subscribedDependencies.set(dependency, count - 1)
   }
 
   flushMounts(): void {
@@ -133,6 +210,8 @@ class ScopeImpl {
       }
     }
     this.cleanups.clear()
+    this.observers.clear()
+    this.subscribedDependencies.clear()
     this.parent?.children.delete(this)
 
     if (firstError !== undefined && !reportScopeError(this.parent, firstError)) {
@@ -157,6 +236,7 @@ const pendingEffects = new Set<Observer>()
 const pendingAfterFlush: Array<() => void> = []
 
 class Observer {
+  readonly inspectionId = nextObserverInspectionId++
   readonly dependencies = new Set<Dependency>()
   cleanup: Cleanup | undefined
   disposed = false
@@ -170,7 +250,9 @@ class Observer {
     readonly scope: ScopeImpl | null,
     readonly kind: ObserverKind,
     readonly onError?: (error: unknown) => void,
-  ) {}
+  ) {
+    scope?.observers.add(this)
+  }
 
   track(dependency: Dependency): void {
     if (this.dependencies.has(dependency)) {
@@ -277,19 +359,27 @@ class Observer {
     this.disposed = true
     pendingComputed.delete(this)
     pendingEffects.delete(this)
+    let cleanupError: unknown
     try {
       this.cleanup?.()
-    } catch (error) {
-      if (!this.reportError(error)) {
-        throw error
+    }
+    catch (error) {
+      cleanupError = error
+    }
+    finally {
+      this.cleanup = undefined
+      for (const dependency of this.dependencies) {
+        dependency.observers.delete(this)
       }
+      this.dependencies.clear()
+      this.scope?.observers.delete(this)
     }
-    this.cleanup = undefined
-
-    for (const dependency of this.dependencies) {
-      dependency.observers.delete(this)
+    if (
+      cleanupError !== undefined &&
+      !this.reportError(cleanupError)
+    ) {
+      throw cleanupError
     }
-    this.dependencies.clear()
   }
 
   private reportError(error: unknown): boolean {
@@ -303,12 +393,17 @@ class Observer {
 }
 
 abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
+  readonly inspectionId = nextDependencyInspectionId++
   readonly __dynwinrtSignal = true as const
   readonly observers = new Set<Observer>()
   readonly listeners = new Set<(value: T, previous: T) => void>()
   producer: Observer | undefined
 
   protected constructor(protected currentValue: T) {}
+
+  get inspectionListenerCount(): number {
+    return this.listeners.size
+  }
 
   get value(): T {
     currentObserver?.track(this)
@@ -330,10 +425,13 @@ abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
       throw error
     }
 
+    const scope = currentScope
+    scope?.addSubscribedDependency(this)
     const unsubscribe = () => {
       this.listeners.delete(listener)
+      scope?.removeSubscribedDependency(this)
     }
-    return currentScope?.add(unsubscribe) ?? unsubscribe
+    return scope?.add(unsubscribe) ?? unsubscribe
   }
 
   protected publish(next: T, previous: T): void {
@@ -564,6 +662,178 @@ export function afterReactiveFlush(callback: () => void): void {
 
 function asScope(scope: ReactiveScope): ScopeImpl {
   return scope as ScopeImpl
+}
+
+export function setReactiveScopeInspection(
+  scope: ReactiveScope,
+  metadata: ReactiveScopeInspectionMetadata,
+): void {
+  const target = asScope(scope)
+  target.inspectionKind = metadata.kind
+  target.inspectionLabel = metadata.label
+}
+
+export function getReactiveScopeInspectionId(
+  scope: ReactiveScope,
+): number {
+  return asScope(scope).inspectionId
+}
+
+export function inspectReactiveScopes(
+  roots: readonly ReactiveScope[],
+): ReactiveGraphInspection {
+  const rootScopes = roots
+    .map(asScope)
+    .filter((scope) => !scope.disposed)
+  const scopes = new Set<ScopeImpl>()
+  const visitScope = (scope: ScopeImpl) => {
+    if (scopes.has(scope)) {
+      return
+    }
+    scopes.add(scope)
+    for (const child of scope.children) {
+      visitScope(child)
+    }
+  }
+  for (const root of rootScopes) {
+    visitScope(root)
+  }
+
+  const observers = new Set<Observer>()
+  const dependencies = new Set<Dependency>()
+  const visitObserver = (observer: Observer) => {
+    if (observer.disposed || observers.has(observer)) {
+      return
+    }
+    observers.add(observer)
+    if (observer.output) {
+      dependencies.add(observer.output)
+    }
+    for (const dependency of observer.dependencies) {
+      dependencies.add(dependency)
+      if (dependency.producer) {
+        visitObserver(dependency.producer)
+      }
+    }
+  }
+  for (const scope of scopes) {
+    for (const observer of scope.observers) {
+      visitObserver(observer)
+    }
+    for (const dependency of
+      scope.subscribedDependencies.keys()) {
+      dependencies.add(dependency)
+      if (dependency.producer) {
+        visitObserver(dependency.producer)
+      }
+    }
+  }
+
+  return {
+    rootScopeIds: rootScopes
+      .map((scope) => scope.inspectionId)
+      .sort((left, right) => left - right),
+    scopes: [...scopes]
+      .sort(
+        (left, right) =>
+          left.inspectionId - right.inspectionId,
+      )
+      .map((scope) => ({
+        id: scope.inspectionId,
+        ...(scope.parent && scopes.has(scope.parent)
+          ? { parentId: scope.parent.inspectionId }
+          : {}),
+        kind: scope.inspectionKind,
+        ...(scope.inspectionLabel
+          ? { label: scope.inspectionLabel }
+          : {}),
+        disposed: scope.disposed,
+        childIds: [...scope.children]
+          .filter((child) => scopes.has(child))
+          .map((child) => child.inspectionId)
+          .sort((left, right) => left - right),
+        observerIds: [...scope.observers]
+          .filter((observer) => observers.has(observer))
+          .map((observer) => observer.inspectionId)
+          .sort((left, right) => left - right),
+        dependencyIds: [...scope.observers]
+          .filter((observer) => observers.has(observer))
+          .flatMap((observer) => [
+            ...observer.dependencies,
+            ...(observer.output
+              ? [observer.output]
+              : []),
+          ])
+          .filter(
+            (dependency, index, values) =>
+              dependencies.has(dependency) &&
+              values.indexOf(dependency) === index,
+          )
+          .concat([
+            ...scope.subscribedDependencies.keys(),
+          ])
+          .filter(
+            (dependency, index, values) =>
+              dependencies.has(dependency) &&
+              values.indexOf(dependency) === index,
+          )
+          .map((dependency) => dependency.inspectionId)
+          .sort((left, right) => left - right),
+        cleanupCount: scope.cleanups.size,
+        pendingMountCount: scope.mounts.length,
+        handlesErrors: scope.errorHandler !== undefined,
+      })),
+    observers: [...observers]
+      .sort(
+        (left, right) =>
+          left.inspectionId - right.inspectionId,
+      )
+      .map((observer) => ({
+        id: observer.inspectionId,
+        ...(observer.scope && scopes.has(observer.scope)
+          ? { scopeId: observer.scope.inspectionId }
+          : {}),
+        kind: observer.kind,
+        dependencyIds: [...observer.dependencies]
+          .filter((dependency) =>
+            dependencies.has(dependency),
+          )
+          .map((dependency) => dependency.inspectionId)
+          .sort((left, right) => left - right),
+        ...(observer.output
+          ? {
+              outputDependencyId:
+                observer.output.inspectionId,
+            }
+          : {}),
+        running: observer.running,
+        scheduled:
+          pendingComputed.has(observer) ||
+          pendingEffects.has(observer),
+        hasCleanup: observer.cleanup !== undefined,
+      })),
+    dependencies: [...dependencies]
+      .sort(
+        (left, right) =>
+          left.inspectionId - right.inspectionId,
+      )
+      .map((dependency) => ({
+        id: dependency.inspectionId,
+        ...(dependency.producer &&
+        observers.has(dependency.producer)
+          ? {
+              producerObserverId:
+                dependency.producer.inspectionId,
+            }
+          : {}),
+        observerIds: [...dependency.observers]
+          .filter((observer) => observers.has(observer))
+          .map((observer) => observer.inspectionId)
+          .sort((left, right) => left - right),
+        listenerCount:
+          dependency.inspectionListenerCount ?? 0,
+      })),
+  }
 }
 
 export function createRoot<T>(

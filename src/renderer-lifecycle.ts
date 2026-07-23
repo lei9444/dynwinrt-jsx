@@ -1,5 +1,6 @@
 export interface MountedRecord {
   readonly nodes: readonly unknown[]
+  readonly disposed: boolean
   dispose(): void
 }
 
@@ -9,21 +10,26 @@ export interface MutableMountedRecord extends MountedRecord {
 
 export class RecordState implements MutableMountedRecord {
   private currentNodes: readonly unknown[] = []
-  private disposed = false
+  private isDisposed = false
 
   constructor(
     private readonly onNodesChanged: (
       nodes: readonly unknown[],
     ) => void,
     private readonly disposeCallback: () => void,
+    private readonly retryOnDisposeError = false,
   ) {}
 
   get nodes(): readonly unknown[] {
     return this.currentNodes
   }
 
+  get disposed(): boolean {
+    return this.isDisposed
+  }
+
   setNodes(nodes: readonly unknown[]): void {
-    if (this.disposed) {
+    if (this.isDisposed) {
       return
     }
 
@@ -41,11 +47,19 @@ export class RecordState implements MutableMountedRecord {
   }
 
   dispose(): void {
-    if (this.disposed) {
+    if (this.isDisposed) {
       return
     }
 
-    this.disposed = true
+    if (this.retryOnDisposeError) {
+      this.disposeCallback()
+      this.isDisposed = true
+      this.currentNodes = []
+      this.onNodesChanged(this.currentNodes)
+      return
+    }
+
+    this.isDisposed = true
     try {
       this.disposeCallback()
     }

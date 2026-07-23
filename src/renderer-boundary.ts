@@ -2,6 +2,7 @@ import {
   createScope,
   effect,
   runInScope,
+  setReactiveScopeInspection,
   setScopeErrorHandler,
   type ReactiveScope,
 } from './reactive'
@@ -48,6 +49,10 @@ export class RendererBoundaryService {
     parentScope: ReactiveScope,
   ): MountedRecord {
     const scope = createScope(parentScope)
+    setReactiveScopeInspection(scope, {
+      kind: 'boundary',
+      label: 'ErrorBoundary',
+    })
     let current: MountedRecord | undefined
     let disposed = false
     let mountingPrimary = false
@@ -65,14 +70,28 @@ export class RendererBoundaryService {
       () => {
         disposed = true
         transitioning = true
+        let firstError: unknown
         try {
           setScopeErrorHandler(scope, undefined)
-          current?.dispose()
+          try {
+            current?.dispose()
+          }
+          catch (error) {
+            firstError = error
+          }
           current = undefined
-          scope.dispose()
+          try {
+            scope.dispose()
+          }
+          catch (error) {
+            firstError ??= error
+          }
         }
         finally {
           transitioning = false
+        }
+        if (firstError !== undefined) {
+          throw firstError
         }
       },
     )

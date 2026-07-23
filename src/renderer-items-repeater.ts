@@ -22,6 +22,7 @@ interface ItemsRepeaterEntry {
   readonly host: object
   readonly controller: ItemsRepeaterChildController
   readonly index: Signal<number>
+  readonly inspectionNodeId: number
   keyToken: string
   item: unknown
   pooled: boolean
@@ -47,8 +48,11 @@ export interface RendererItemsRepeaterHost {
     context: RendererErrorContext,
     scope: ReactiveScope,
   ): void
-  markNativeCreated(): void
-  markNativeDisposed(): void
+  registerNative(
+    host: object,
+    scope: ReactiveScope,
+  ): number
+  releaseNative(id: number): void
 }
 
 export interface RendererItemsRepeaterController {
@@ -122,7 +126,8 @@ export class RendererItemsRepeaterService {
       descriptor: ItemDescriptor,
     ): ItemsRepeaterEntry => {
       const host = adapter.createElementHost()
-      this.host.markNativeCreated()
+      const inspectionNodeId =
+        this.host.registerNative(host, scope)
       const index = signal(descriptor.index)
       let controller: ItemsRepeaterChildController
       try {
@@ -133,13 +138,14 @@ export class RendererItemsRepeaterService {
         )
       }
       catch (error) {
-        this.host.markNativeDisposed()
+        this.host.releaseNative(inspectionNodeId)
         throw error
       }
       const entry: ItemsRepeaterEntry = {
         host,
         controller,
         index,
+        inspectionNodeId,
         keyToken: descriptor.token,
         item: descriptor.item,
         pooled: false,
@@ -536,14 +542,45 @@ export class RendererItemsRepeaterService {
     catch (error) {
       disposed = true
       let cleanupError: unknown
+      try {
+        adapter.clearItemsSource(instance)
+      }
+      catch (failure) {
+        cleanupError = failure
+      }
       if (factory !== undefined) {
         try {
           adapter.releaseElementFactory(factory)
         }
         catch (failure) {
-          cleanupError = failure
+          cleanupError ??= failure
         }
       }
+      for (const entry of entries) {
+        try {
+          entry.controller.dispose()
+        }
+        catch (failure) {
+          cleanupError ??= failure
+        }
+        finally {
+          this.host.releaseNative(
+            entry.inspectionNodeId,
+          )
+        }
+      }
+      entries.clear()
+      entryByHost.clear()
+      activeByKey.clear()
+      pooledByKey.clear()
+      pool.length = 0
+      preservedKeys.clear()
+      descriptors.clear()
+      tokenByKey.clear()
+      sourceValueByToken.clear()
+      source = undefined
+      sourceValues = []
+      factory = undefined
       if (cleanupError !== undefined) {
         throw new AggregateError(
           [error, cleanupError],
@@ -584,7 +621,9 @@ export class RendererItemsRepeaterService {
             firstError ??= error
           }
           finally {
-            this.host.markNativeDisposed()
+            this.host.releaseNative(
+              entry.inspectionNodeId,
+            )
           }
         }
         entries.clear()

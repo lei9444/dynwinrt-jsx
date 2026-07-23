@@ -796,12 +796,37 @@ The host is authoritative and assigns monotonically increasing revisions. Client
 
 `renderer.render()` returns a handle with `update()`, `dispose()`, `disposed`, `roots`, and `container`. `createHotRoot()` calls the supplied render function again and replaces the root tree on `refresh()`.
 
+If native child detachment fails, `dispose()` throws while the handle remains
+undisposed and reports the retained native roots. Do not call `update()` in
+this state; correct the native failure and retry `dispose()`.
+
 `createHotReloadSession()` adds monotonic version handling, stale reload
 rejection, and error fallback rendering. The generated app polls a version file
 from a `DispatcherQueueTimer`, so reload work executes on the WinUI STA while
 the main process and host-owned state remain alive.
 
 Renderer diagnostics expose active native/component counts and cumulative keyed-entry creation/reuse counts for leak checks.
+
+Every renderer also exposes a structured runtime inspector:
+
+```ts
+const renderer = createRenderer({
+  inspector: { maxOperations: 200 },
+})
+const snapshot = renderer.inspector.snapshot()
+```
+
+Snapshots include active renderer nodes, scope ownership, signal/effect
+dependency edges, event and resource subscriptions, renderer counters, and a
+bounded recent-operation log. Operation records contain only type names,
+property/event/resource identifiers, counts, sequence numbers, and error types;
+property values, signal values, application state, and error messages are never
+captured.
+
+Use `renderer.inspector.getOperations()` for the current bounded log and
+`clearOperations()` after collecting evidence. `maxOperations` defaults to 200,
+is capped at 10,000, and can be set to `0` to disable operation recording while
+retaining live snapshots.
 
 `createDiagnosticRecord()` and `formatDiagnosticRecord()` produce structured
 JSON events for startup, Worker failures, hot reload, and disposal evidence.
