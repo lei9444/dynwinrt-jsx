@@ -74,7 +74,7 @@ export function HomePage(context: AppContext) {
           direction * scroller.viewportWidth,
       ),
     )
-    scroller.scrollToHorizontalOffset(target)
+    scroller.changeView(target, null, null, true)
   }
   const selectedSection = signal<'recent' | 'favorites'>(
     'recent',
