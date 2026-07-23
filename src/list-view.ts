@@ -9,14 +9,23 @@ import {
 import { adapter } from './adapters'
 import { ChangeEchoSuppressor } from './change-echo'
 import {
+  computed,
+  onMount,
   readSignal,
+  signal,
   type MaybeSignal,
 } from './reactive'
 import type { NativeCollection } from './renderer'
 import { createVNode, type Child, type Component } from './vnode'
 import type { Focusable } from './focus'
+import {
+  coerceSelectedIndex,
+  createSelectedIndexAdapter,
+  type SelectorInstance,
+} from './selector'
 
-export interface ListViewInstance extends Focusable {
+export interface ListViewInstance
+  extends Focusable, SelectorInstance {
   readonly items: NativeCollection
   header: unknown
   footer: unknown
@@ -24,14 +33,6 @@ export interface ListViewInstance extends Focusable {
   selectedItem: unknown
   scrollIntoView(item: unknown, alignment?: number): void
   onSelectionChanged(callback: (...args: unknown[]) => void): () => void
-  registerPropertyChangedCallback?(
-    property: unknown,
-    callback: (sender: unknown, property: unknown) => void,
-  ): bigint
-  unregisterPropertyChangedCallback?(
-    property: unknown,
-    token: bigint,
-  ): void
 }
 
 export interface ListViewControlBindings<
@@ -102,56 +103,18 @@ function consumePendingSelectionEcho(
 export function createListViewControl<Instance extends ListViewInstance>(
   bindings: ListViewControlBindings<Instance>,
 ): Component<ListViewProps<Instance>> {
-  const coerceSelectedIndex = (value: unknown): number => {
-    if (
-      typeof value !== 'number' ||
-      !Number.isInteger(value) ||
-      value < -1
-    ) {
-      throw new RangeError(
-        'ListView selectedIndex must be an integer greater than or equal to -1.',
-      )
-    }
-    return value
-  }
-
   const selectedIndexAdapter =
     bindings.selectedIndexProperty !== undefined
-      ? adapter.controlled<Instance>(
-          {
-            changeProperty: 'onSelectedIndexChange',
-            read: (instance) => instance.selectedIndex,
-            write: (instance, value) => {
-              instance.selectedIndex = value as number
-            },
-            subscribe: (instance, callback) => {
-              if (
-                !instance.registerPropertyChangedCallback ||
-                !instance.unregisterPropertyChangedCallback
-              ) {
-                throw new Error(
-                  'selectedIndexProperty requires property-changed callback support.',
-                )
-              }
-              const token =
-                instance.registerPropertyChangedCallback(
-                  bindings.selectedIndexProperty,
-                  callback,
-                )
-              return () => {
-                instance.unregisterPropertyChangedCallback?.(
-                  bindings.selectedIndexProperty,
-                  token,
-                )
-              }
-            },
-            echo: 'setterScope',
-            maxPendingWrites: maxPendingSelections,
-          },
-          coerceSelectedIndex,
-        )
+      ? createSelectedIndexAdapter<Instance>({
+          property: bindings.selectedIndexProperty,
+          label: 'ListView',
+          maxPendingWrites: maxPendingSelections,
+        })
       : adapter.coercing<Instance>((value, instance) => {
-          const selectedIndex = coerceSelectedIndex(value)
+          const selectedIndex = coerceSelectedIndex(
+            value,
+            'ListView',
+          )
           recordPendingSelection(instance, selectedIndex)
           return selectedIndex
         })
@@ -173,12 +136,37 @@ export function createListViewControl<Instance extends ListViewInstance>(
 
   const MountedListView = (props: ListViewProps<Instance>): Child => {
     if (bindings.selectedIndexProperty !== undefined) {
-      return RawListView(
-        props as NativeComponentProps<
-          Instance,
-          ListViewAdapterProps<Instance>
-        >,
+      const controlledProps = props as ListViewProps<Instance> & {
+        selectedIndex?: MaybeSignal<number>
+      }
+      const {
+        selectedIndex,
+        ...rest
+      } = controlledProps
+      if (selectedIndex === undefined) {
+        return RawListView(
+          rest as NativeComponentProps<
+            Instance,
+            ListViewAdapterProps<Instance>
+          >,
+        )
+      }
+
+      const mounted = signal(false)
+      const delayedSelectedIndex = computed(() =>
+        mounted.value ? readSignal(selectedIndex) : -1,
       )
+      onMount(() => {
+        mounted.value = true
+      })
+
+      return RawListView({
+        ...rest,
+        selectedIndex: delayedSelectedIndex,
+      } as NativeComponentProps<
+        Instance,
+        ListViewAdapterProps<Instance>
+      >)
     }
 
     const {

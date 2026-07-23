@@ -2,6 +2,7 @@ import {
   ErrorBoundary,
   For,
   computed,
+  createComboBoxControl,
   createControls,
   createItemsRepeaterControl,
   createListViewControl,
@@ -17,6 +18,7 @@ import {
   AccessibilitySettings,
   AutomationProperties,
   Button,
+  ComboBox,
   ContentControl,
   FocusState,
   IElementFactory,
@@ -88,6 +90,11 @@ const SelfTestListView = createListViewControl({
   selectedIndexProperty: Selector.selectedIndexProperty,
 })
 
+const SelfTestComboBox = createComboBoxControl({
+  ComboBox,
+  selectedIndexProperty: Selector.selectedIndexProperty,
+})
+
 const SelfTestItemsRepeater = createItemsRepeaterControl({
   ItemsRepeater,
   ContentControl,
@@ -142,12 +149,21 @@ export function createNativeSelfTest(
   const secondLabelRef: RefObject<TextBlock> = { current: null }
   const inputRef: RefObject<TextBox> = { current: null }
   const selectionRef: RefObject<ListView> = { current: null }
+  const comboBoxRef: RefObject<ComboBox> = { current: null }
   const repeaterRef: RefObject<ItemsRepeater> = { current: null }
   const repeaterScrollRef: RefObject<ScrollViewer> = {
     current: null,
   }
   const selectedIndex = signal(0)
   const selectionChanges: number[] = []
+  const comboBoxIndex = signal(0)
+  const comboBoxChanges: number[] = []
+  const comboBoxItems = signal([
+    { id: 0, label: 'Combo zero' },
+    { id: 1, label: 'Combo one' },
+    { id: 2, label: 'Combo two' },
+  ])
+  let acceptComboBoxChange = true
   const selectionItems = signal([
     { id: 0, label: 'Selection zero' },
     { id: 1, label: 'Selection one' },
@@ -265,6 +281,26 @@ export function createNativeSelfTest(
           )}
         </For>
       </SelfTestListView>
+      <SelfTestComboBox
+        ref={comboBoxRef}
+        selectedIndex={comboBoxIndex}
+        onSelectedIndexChange={(index) => {
+          comboBoxChanges.push(index)
+          if (acceptComboBoxChange) {
+            comboBoxIndex.value = index
+          }
+        }}
+        header={<UI.TextBlock text="Combo selection" />}
+      >
+        <For
+          each={comboBoxItems}
+          key={(item) => item.id}
+        >
+          {(item) => (
+            <UI.TextBlock text={item.label} />
+          )}
+        </For>
+      </SelfTestComboBox>
       <UI.ScrollViewer
         ref={repeaterScrollRef}
         height={180}
@@ -403,12 +439,68 @@ export function createNativeSelfTest(
         }
       })
 
+      runCase(cases, 'controlled-combobox-selection', () => {
+        const comboBox = comboBoxRef.current
+        if (!comboBox) {
+          throw new Error('Controlled ComboBox did not mount.')
+        }
+
+        comboBoxChanges.length = 0
+        comboBoxIndex.value = 1
+        if (
+          comboBox.selectedIndex !== 1 ||
+          comboBoxChanges.length !== 0
+        ) {
+          throw new Error(
+            'Programmatic ComboBox selection leaked a callback.',
+          )
+        }
+
+        comboBox.selectedIndex = 2
+        if (
+          comboBoxIndex.value !== 2 ||
+          comboBoxChanges.at(-1) !== 2
+        ) {
+          throw new Error(
+            'Native ComboBox selection was not accepted.',
+          )
+        }
+
+        acceptComboBoxChange = false
+        comboBox.selectedIndex = 0
+        if (
+          comboBoxIndex.value !== 2 ||
+          comboBox.selectedIndex !== 2
+        ) {
+          throw new Error(
+            'Rejected ComboBox selection was not restored.',
+          )
+        }
+
+        comboBoxItems.value = [
+          { id: 0, label: 'Combo zero updated' },
+          { id: 1, label: 'Combo one updated' },
+          { id: 2, label: 'Combo two updated' },
+        ]
+        if (comboBox.selectedIndex !== comboBoxIndex.value) {
+          throw new Error(
+            'ComboBox selection diverged while updating items.',
+          )
+        }
+        acceptComboBoxChange = true
+      })
+
       runCase(cases, 'native-items-repeater-initial-window', () => {
         const repeater = repeaterRef.current
         const scroll = repeaterScrollRef.current
         if (!repeater || !scroll) {
           throw new Error('ItemsRepeater did not mount.')
         }
+        scroll.updateLayout()
+        repeater.updateLayout()
+        scroll.scrollToVerticalOffset(
+          scroll.scrollableHeight,
+        )
         scroll.updateLayout()
         repeater.updateLayout()
         const realized = virtualItems.value.reduce(
@@ -594,19 +686,14 @@ export function createNativeSelfTest(
             )
           }
 
-          const moved = repeater.tryGetElement(999)
-          if (!moved) {
-            throw new Error(
-              'ItemsRepeater did not realize the moved keyed row.',
-            )
-          }
+          repeater.getOrCreateElement(999)
           if (
             virtualMountByItem.get(0) !==
               firstVirtualMountId ||
             virtualIndexByItem.get(0)?.value !== 999
           ) {
             throw new Error(
-              'ItemsRepeater keyed row remounted or retained a stale index.',
+              `ItemsRepeater keyed row mismatch: mount=${virtualMountByItem.get(0)}, expectedMount=${firstVirtualMountId}, index=${virtualIndexByItem.get(0)?.value}.`,
             )
           }
           if (virtualIndexChanges === 0) {

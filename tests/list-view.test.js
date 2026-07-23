@@ -125,6 +125,12 @@ class CoercingFakeListView extends FakeListView {
   }
 }
 
+class ItemAwareFakeListView extends FakeListView {
+  coerceSelectedIndex(value) {
+    return value >= this.items.size ? -1 : value
+  }
+}
+
 class FakeVector {
   values = []
 
@@ -354,6 +360,35 @@ test('ListView can observe selectedIndex without the projected event', () => {
   const mounted = control
   handle.dispose()
   assert.equal(mounted.propertyHandlers.size, 0)
+})
+
+test('ListView mounts items before applying controlled selectedIndex', () => {
+  const selectedIndexProperty = {}
+  const UI = createControls({ TextBlock: FakeTextBlock })
+  const ListView = createListViewControl({
+    ListView: ItemAwareFakeListView,
+    selectedIndexProperty,
+  })
+  let control
+
+  const handle = renderer().render(
+    ListView({
+      ref(value) {
+        control = value
+      },
+      selectedIndex: 1,
+      onSelectedIndexChange() {},
+      children: [
+        UI.TextBlock({ text: 'One' }),
+        UI.TextBlock({ text: 'Two' }),
+      ],
+    }),
+    new FakePanel(),
+  )
+
+  assert.equal(control.items.size, 2)
+  assert.equal(control.selectedIndex, 1)
+  handle.dispose()
 })
 
 test('ListView suppresses dependency-property echoes after native coercion', () => {

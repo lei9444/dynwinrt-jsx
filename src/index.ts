@@ -81,6 +81,13 @@ export {
 } from './list-view'
 
 export {
+  createComboBoxControl,
+  type ComboBoxControlBindings,
+  type ComboBoxInstance,
+  type ComboBoxProps,
+} from './combo-box'
+
+export {
   createItemsRepeaterControl,
   type ItemsRepeaterControlBindings,
   type ItemsRepeaterInstance,

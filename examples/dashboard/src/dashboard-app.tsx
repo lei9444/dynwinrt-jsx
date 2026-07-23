@@ -5,6 +5,7 @@ import {
   computed,
   createContext,
   createControls,
+  createComboBoxControl,
   createFocusTarget,
   createFontFamily,
   createGridControl,
@@ -38,6 +39,7 @@ import {
   Button,
   CheckBox,
   ColumnDefinition,
+  ComboBox,
   ContentControl,
   ContentDialog,
   ContentDialogButton,
@@ -106,6 +108,10 @@ const AppNavigation = createNavigationViewControl<
   NavigationViewItem
 >({
   NavigationView,
+})
+const SettingsComboBox = createComboBoxControl({
+  ComboBox,
+  selectedIndexProperty: Selector.selectedIndexProperty,
 })
 const VirtualizedActivity = createItemsRepeaterControl({
   ItemsRepeater,
@@ -748,6 +754,12 @@ function SettingsPage(context: DashboardAppContext) {
   const themeToggle: RefObject<ToggleSwitchInstance> = {
     current: null,
   }
+  const density = signal(0)
+  const densityNames = [
+    'Comfortable',
+    'Compact',
+    'Spacious',
+  ] as const
   return (
     <Page
       title="Settings"
@@ -773,6 +785,32 @@ function SettingsPage(context: DashboardAppContext) {
               }
               themeController.setDark(isOn)
             }}
+          />
+          <SettingsComboBox
+            automationId="DensityComboBox"
+            selectedIndex={density}
+            onSelectedIndexChange={(index) => {
+              density.value = index
+            }}
+            header={
+              <UI.TextBlock text="Dashboard density" />
+            }
+            placeholderText="Choose density"
+            width={320}
+          >
+            {densityNames.map((name) => (
+              <UI.TextBlock
+                key={name}
+                text={name}
+              />
+            ))}
+          </SettingsComboBox>
+          <UI.TextBlock
+            text={computed(() =>
+              density.value >= 0
+                ? `Selected density: ${densityNames[density.value]}`
+                : 'No density selected',
+            )}
           />
           <UI.TextBlock text="Application state survives TSX hot reloads." />
           <UI.TextBlock text="Binding or native runtime changes restart the Worker." />

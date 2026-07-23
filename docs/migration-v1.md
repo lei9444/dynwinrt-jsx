@@ -177,6 +177,16 @@ signal for `selectedIndex` and write genuine native changes back from
 suppressed. Prefer `Selector.selectedIndexProperty` in the control bindings;
 `onSelectionChanged` remains available when the raw projected event works.
 
+## ComboBox selection
+
+Create ComboBox controls with `createComboBoxControl()`. JSX children populate
+the native items collection, `header` owns its JSX subtree, and
+`selectedIndex` is applied after items mount. `onSelectedIndexChange` receives
+genuine native changes; leave the source signal unchanged to reject and restore
+the model selection. The specialized control intentionally omits
+`selectedItem`; use a raw native ComboBox or its ref when projected-object
+selection is required.
+
 ## Root replacement
 
 Use `RenderHandle.update(nextTree)` to replace a mounted root, or `createHotRoot()` when a development integration needs to rerun a render factory.

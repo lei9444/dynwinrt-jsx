@@ -13,6 +13,7 @@ import {
   createBitmapIcon,
   createBitmapImage,
   createContext,
+  createComboBoxControl,
   createControls,
   createFocusTarget,
   createFontFamily,
@@ -106,6 +107,31 @@ class TypeListView {
   scrollIntoView(_item: unknown, _alignment?: number): void {}
   onSelectionChanged(
     _callback: (sender: TypeListView, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+  registerPropertyChangedCallback(
+    _property: unknown,
+    _callback: (sender: unknown, property: unknown) => void,
+  ): bigint {
+    return 1n
+  }
+  unregisterPropertyChangedCallback(
+    _property: unknown,
+    _token: bigint,
+  ): void {}
+}
+
+class TypeComboBox {
+  readonly items = new TypeVector()
+  header: unknown = null
+  selectedIndex = -1
+  selectedItem: unknown = null
+  placeholderText = ''
+  isEditable = false
+
+  onSelectionChanged(
+    _callback: (sender: TypeComboBox, args: unknown) => void,
   ): () => void {
     return () => {}
   }
@@ -377,6 +403,10 @@ const List = createListViewControl({
   ListView: TypeListView,
   selectedIndexProperty: {},
 })
+const Combo = createComboBoxControl({
+  ComboBox: TypeComboBox,
+  selectedIndexProperty: {},
+})
 const listScroll = createListViewScrollTarget<TypeListView>()
 const navItem = createNavigationItem(
   {
@@ -526,6 +556,19 @@ export const typeCheckedTree = (
     >
       <UI.TextBlock text="Item" />
     </List>
+    <Combo
+      selectedIndex={signal(0)}
+      onSelectedIndexChange={(index, sender) => {
+        sender.selectedIndex = index
+      }}
+      header={<UI.TextBlock text="Priority" />}
+      placeholderText="Choose"
+    >
+      <UI.TextBlock text="Low" />
+      <UI.TextBlock text="High" />
+    </Combo>
+    {/* @ts-expect-error Specialized ComboBox selection is controlled by index. */}
+    <Combo selectedItem={{}} />
     <ControlledTypeList
       selectedIndex={signal(0)}
       onSelectedIndexChange={(index, instance) => {

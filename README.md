@@ -471,12 +471,44 @@ const selectedIndex = signal(-1)
 </Tasks>
 ```
 
-Programmatic `selectedIndex` writes suppress their matching native change.
+Items and named slots mount before the initial controlled `selectedIndex` is
+applied. Programmatic selection writes suppress their matching native change.
 Supplying `Selector.selectedIndexProperty` uses a dependency-property callback,
 which avoids relying on generic WinRT event-delegate projection. Raw
 `onSelectionChanged` remains available when that projected event is usable.
 `createListViewScrollTarget()` provides a typed
 `scrollIntoView()` ref; use `createFocusTarget()` for focus.
+
+Use `createComboBoxControl()` for owned item/header content and controlled
+selection:
+
+```tsx
+const Priority = createComboBoxControl({
+  ComboBox,
+  selectedIndexProperty: Selector.selectedIndexProperty,
+})
+const priority = signal(0)
+
+<Priority
+  selectedIndex={priority}
+  onSelectedIndexChange={(index) => {
+    priority.value = index
+  }}
+  header={<UI.TextBlock text="Priority" />}
+  placeholderText="Choose priority"
+>
+  <UI.TextBlock text="Low" />
+  <UI.TextBlock text="High" />
+</Priority>
+```
+
+The adapter mounts items before applying the initial selection and restores a
+rejected native selection after the current reactive flush. The specialized
+control intentionally supports controlled `selectedIndex` only because generic
+`selectedItem` readback does not preserve projected JavaScript identity. Use a
+raw native ComboBox or its ref when `selectedItem` is required. Raw
+`onSelectionChanged`, `onDropDownOpened`, and `onDropDownClosed` remain
+available.
 
 Common automation metadata is available directly on native JSX controls:
 

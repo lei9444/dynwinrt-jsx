@@ -71,6 +71,7 @@ export class RendererItemsRepeaterService {
     const activeByKey = new Map<string, ItemsRepeaterEntry>()
     const pooledByKey = new Map<string, ItemsRepeaterEntry>()
     const pool: ItemsRepeaterEntry[] = []
+    const preservedKeys = new Set<string>()
     const tokenByKey = new Map<Key, string>()
     const sourceValueByToken = new Map<string, unknown>()
     let descriptors = new Map<string, ItemDescriptor>()
@@ -113,7 +114,8 @@ export class RendererItemsRepeaterService {
         pooledByKey.delete(entry.keyToken)
       }
       entry.pooled = false
-      entry.reserved = false
+      entry.reserved =
+        preservedKeys.has(entry.keyToken)
     }
 
     const createEntry = (
@@ -236,8 +238,11 @@ export class RendererItemsRepeaterService {
       }
       entry.pooled = true
       entry.reserved =
-        updatingSource &&
-        descriptors.has(entry.keyToken)
+        preservedKeys.has(entry.keyToken) ||
+        (
+          updatingSource &&
+          descriptors.has(entry.keyToken)
+        )
       pool.push(entry)
       pooledByKey.set(entry.keyToken, entry)
     }
@@ -360,6 +365,8 @@ export class RendererItemsRepeaterService {
         : adapter.createItemsSource(next.sourceValues)
       const previousDescriptors = descriptors
       const previousSourceValues = [...sourceValues]
+      const previousPreservedKeys =
+        new Set(preservedKeys)
       const snapshots = [...entries].map((entry) => ({
         entry,
         keyToken: entry.keyToken,
@@ -371,8 +378,20 @@ export class RendererItemsRepeaterService {
 
       descriptors = next.descriptors
       try {
+        const activeKeys = [...activeByKey.keys()]
+        preservedKeys.clear()
+        for (const token of activeKeys) {
+          if (descriptors.has(token)) {
+            preservedKeys.add(token)
+          }
+        }
         for (const entry of pool) {
-          entry.reserved = false
+          entry.reserved =
+            preservedKeys.has(entry.keyToken)
+        }
+        for (const entry of activeByKey.values()) {
+          entry.reserved =
+            preservedKeys.has(entry.keyToken)
         }
         for (const entry of entries) {
           const descriptor =
@@ -438,6 +457,10 @@ export class RendererItemsRepeaterService {
       }
       catch (error) {
         descriptors = previousDescriptors
+        preservedKeys.clear()
+        for (const token of previousPreservedKeys) {
+          preservedKeys.add(token)
+        }
         let rollbackError: unknown
         try {
           for (const snapshot of snapshots) {
@@ -569,6 +592,7 @@ export class RendererItemsRepeaterService {
         activeByKey.clear()
         pooledByKey.clear()
         pool.length = 0
+        preservedKeys.clear()
         descriptors.clear()
         tokenByKey.clear()
         sourceValueByToken.clear()

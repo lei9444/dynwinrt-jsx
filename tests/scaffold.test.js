@@ -126,6 +126,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     .classes
   for (const control of [
     'BitmapIcon',
+    'ComboBox',
     'ContentControl',
     'ContentDialog',
     'Flyout',

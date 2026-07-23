@@ -245,6 +245,8 @@ test('ItemsRepeater preserves keyed hosts and item scope across reorder', () => 
   const source = repeater.itemsSource
 
   items.value = [...initial].reverse()
+  repeater.recycle(0)
+  repeater.realize(0)
   const moved = repeater.realize(initial.length - 1)
 
   assert.equal(repeater.itemsSource, source)

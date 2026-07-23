@@ -73,6 +73,7 @@
             "Button",
             "CheckBox",
             "ColumnDefinition",
+            "ComboBox",
             "ContentControl",
             "ContentDialog",
             "Flyout",

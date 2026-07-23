@@ -30,3 +30,6 @@ report.*.*.*.*.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Windows SDK packages and generated files
+.winapp
