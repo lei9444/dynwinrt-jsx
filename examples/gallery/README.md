@@ -42,3 +42,13 @@ Search matches every whitespace-separated token against page titles,
 descriptions, categories, and tags. Theme, interaction, recent-page, and
 favorite-page state persist under
 `%LOCALAPPDATA%\dynwinrt-jsx\gallery\state.json`.
+
+The Gallery enables the optional UI-thread heartbeat by default. Diagnostics
+shows heartbeat acknowledgement, inspector ownership counts, subscriptions,
+and recent operations. Timeout evidence is saved beside `state.json` as
+`heartbeat-timeout.json`; the Export button writes
+`inspector-snapshot.json`.
+
+Set `DYNWINRT_JSX_HEARTBEAT=0` to disable heartbeat monitoring, or override
+`DYNWINRT_JSX_HEARTBEAT_TIMEOUT_MS`, `DYNWINRT_JSX_HEARTBEAT_PATH`, and
+`DYNWINRT_JSX_INSPECTOR_EXPORT_PATH`.

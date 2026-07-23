@@ -828,6 +828,39 @@ Use `renderer.inspector.getOperations()` for the current bounded log and
 is capped at 10,000, and can be set to `0` to disable operation recording while
 retaining live snapshots.
 
+Use the optional Worker heartbeat when the Host must detect a blocked WinUI UI
+thread. `createRendererHeartbeatController()` emits inspector snapshots from a
+`DispatcherQueueTimer`; `createRendererHeartbeatMonitor()` tracks startup,
+healthy, timeout, and recovery states in the Host:
+
+```ts
+// Worker
+const heartbeat = createRendererHeartbeatController({
+  dispatcherQueue: window.dispatcherQueue,
+  renderer,
+  onHeartbeat: (value) => parentPort.postMessage({
+    type: 'heartbeat',
+    value,
+  }),
+  onError,
+})
+
+// Host
+const monitor = createRendererHeartbeatMonitor({
+  timeoutMs: 5000,
+  schedule(callback, intervalMs) {
+    const timer = setInterval(callback, intervalMs)
+    return () => clearInterval(timer)
+  },
+  onTimeout: saveLastHeartbeatEvidence,
+})
+```
+
+The heartbeat is optional and independent of rendering. A shared
+`BigInt64Array` created by `createRendererHeartbeatSharedState()` can return
+Host acknowledgements and export status to a Worker whose Node message
+callbacks are paused inside the native WinUI loop.
+
 `createDiagnosticRecord()` and `formatDiagnosticRecord()` produce structured
 JSON events for startup, Worker failures, hot reload, and disposal evidence.
 

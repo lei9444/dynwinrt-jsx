@@ -552,6 +552,8 @@ identity, and manifest dependencies in a provenance document.
       graphs, event subscriptions, resource lookup, and lifecycle ownership.
 - [x] Expose the inspector through stable APIs usable by local tooling and
       coding agents.
+- [x] Add optional UI-thread heartbeat, Host timeout/recovery monitoring, and
+      last-snapshot evidence export.
 - [ ] Add multi-Window renderer and projection scopes with independent state,
       errors, closing, and secondary-window lifecycle.
 

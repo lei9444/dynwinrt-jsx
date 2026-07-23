@@ -235,6 +235,11 @@ Render-handle disposal is now retryable when native child detachment throws.
 The handle remains undisposed, retains its reported roots, and rejects updates
 until a later `dispose()` succeeds.
 
+`dynwinrt-jsx/worker` now exports an optional DispatcherQueue-based renderer
+heartbeat controller, and `dynwinrt-jsx/host` exports its timeout monitor and
+shared acknowledgement state. Applications decide whether to enable it and
+where timeout or inspector JSON evidence is written.
+
 ## New subtree primitives
 
 - `Context.Provider` and `useContext()` pass values through renderer scopes.

@@ -24,3 +24,16 @@ export {
   type JsonStateStore,
   type JsonStateStoreOptions,
 } from './persistence'
+
+export {
+  createRendererHeartbeatSharedState,
+  createRendererHeartbeatMonitor,
+  getRendererHeartbeatSharedState,
+  rendererHeartbeatSharedStateIndex,
+  rendererHeartbeatSharedStateLength,
+  type RendererHeartbeat,
+  type RendererHeartbeatMonitor,
+  type RendererHeartbeatMonitorOptions,
+  type RendererHeartbeatMonitorStatus,
+  type RendererHeartbeatState,
+} from './heartbeat'

@@ -5,6 +5,7 @@ import {
   effect,
   signal,
   type Cleanup,
+  type RendererInspectionSnapshot,
   type RendererDiagnostics,
   type Signal,
 } from 'dynwinrt-jsx'
@@ -18,6 +19,16 @@ import type { AppState } from './app-state'
 
 export type { AppState } from './app-state'
 export type { GalleryRoute } from './gallery-data'
+
+export interface GalleryInspectorSummary {
+  readonly nodes: number
+  readonly scopes: number
+  readonly observers: number
+  readonly dependencies: number
+  readonly subscriptions: number
+  readonly cleanupFailures: number
+  readonly operations: readonly string[]
+}
 
 export interface AppModel {
   readonly status: Signal<AppState['status']>
@@ -33,6 +44,15 @@ export interface AppModel {
   readonly hotVersion: Signal<number>
   readonly lastError: Signal<string | null>
   readonly diagnostics: Signal<RendererDiagnostics>
+  readonly heartbeatStatus: Signal<
+    'starting' | 'connected' | 'timedOut' | 'disabled'
+  >
+  readonly heartbeatSequence: Signal<number>
+  readonly heartbeatSentAt: Signal<string | null>
+  readonly heartbeatAcknowledgedAt: Signal<string | null>
+  readonly heartbeatTimeoutAt: Signal<string | null>
+  readonly inspectorSummary: Signal<GalleryInspectorSummary>
+  readonly inspectorExportStatus: Signal<string>
   readonly searchResults: ReturnType<
     typeof computed<ReturnType<typeof searchGalleryPages>>
   >
@@ -42,6 +62,21 @@ export interface AppModel {
   setSearchQuery(value: string): void
   recordInteraction(): void
   setDarkTheme(value: boolean): void
+  updateInspection(snapshot: RendererInspectionSnapshot): void
+  heartbeatSent(
+    sequence: number,
+    sentAt: number,
+    snapshot: RendererInspectionSnapshot,
+  ): void
+  heartbeatAcknowledged(
+    sequence: number,
+    receivedAt: number,
+    recovered: boolean,
+  ): void
+  heartbeatTimedOut(detectedAt: number): void
+  heartbeatDisabled(): void
+  inspectorExported(path: string): void
+  inspectorExportFailed(message: string): void
   snapshot(status?: AppState['status']): AppState
   dispose(): void
 }
@@ -85,6 +120,24 @@ export function createAppModel(
       listEntriesCreated: 0,
       listEntriesReused: 0,
     })
+    const heartbeatStatus =
+      signal<AppModel['heartbeatStatus']['value']>('starting')
+    const heartbeatSequence = signal(0)
+    const heartbeatSentAt = signal<string | null>(null)
+    const heartbeatAcknowledgedAt =
+      signal<string | null>(null)
+    let lastAcknowledgedSequence = 0
+    const heartbeatTimeoutAt = signal<string | null>(null)
+    const inspectorSummary = signal<GalleryInspectorSummary>({
+      nodes: 0,
+      scopes: 0,
+      observers: 0,
+      dependencies: 0,
+      subscriptions: 0,
+      cleanupFailures: 0,
+      operations: [],
+    })
+    const inspectorExportStatus = signal('Not exported.')
     const searchResults = computed(() =>
       searchGalleryPages(searchQuery.value),
     )
@@ -126,6 +179,13 @@ export function createAppModel(
       hotVersion,
       lastError,
       diagnostics,
+      heartbeatStatus,
+      heartbeatSequence,
+      heartbeatSentAt,
+      heartbeatAcknowledgedAt,
+      heartbeatTimeoutAt,
+      inspectorSummary,
+      inspectorExportStatus,
       searchResults,
       interactionText,
       navigate(nextRoute) {
@@ -189,6 +249,67 @@ export function createAppModel(
           darkTheme.value = value
           markChanged()
         })
+      },
+      updateInspection(inspection) {
+        diagnostics.value = inspection.diagnostics
+        inspectorSummary.value = {
+          nodes: inspection.nodes.length,
+          scopes: inspection.reactive.scopes.length,
+          observers: inspection.reactive.observers.length,
+          dependencies:
+            inspection.reactive.dependencies.length,
+          subscriptions: inspection.subscriptions.length,
+          cleanupFailures: inspection.subscriptions.filter(
+            (subscription) =>
+              subscription.status === 'cleanupFailed',
+          ).length,
+          operations: inspection.operations
+            .slice(-12)
+            .map((operation) => {
+              const detail = [
+                operation.target,
+                operation.property ?? operation.name,
+              ].filter(Boolean).join('.')
+              return `${operation.sequence}. ${operation.kind}${
+                detail ? ` · ${detail}` : ''
+              }`
+            }),
+        }
+      },
+      heartbeatSent(sequence, sentAt, inspection) {
+        heartbeatSequence.value = sequence
+        heartbeatSentAt.value =
+          new Date(sentAt).toISOString()
+        this.updateInspection(inspection)
+      },
+      heartbeatAcknowledged(
+        sequence,
+        receivedAt,
+        _recovered,
+      ) {
+        if (sequence <= lastAcknowledgedSequence) {
+          return
+        }
+        lastAcknowledgedSequence = sequence
+        heartbeatStatus.value = 'connected'
+        heartbeatAcknowledgedAt.value =
+          new Date(receivedAt).toISOString()
+      },
+      heartbeatTimedOut(detectedAt) {
+        heartbeatStatus.value = 'timedOut'
+        heartbeatTimeoutAt.value =
+          new Date(detectedAt).toISOString()
+      },
+      heartbeatDisabled() {
+        heartbeatStatus.value = 'disabled'
+      },
+      inspectorExported(path) {
+        inspectorExportStatus.value =
+          `Exported to ${path}`
+      },
+      inspectorExportFailed(message) {
+        inspectorExportStatus.value =
+          `Export failed: ${message}`
       },
       snapshot,
       dispose,

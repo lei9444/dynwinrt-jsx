@@ -216,6 +216,8 @@ The built-in WinUI layer currently provides:
 - `Renderer.inspector` exposes bounded operation records plus active
   native/component, reactive graph, subscription, resource, and ownership
   snapshots without property or signal values.
+- Optional DispatcherQueue heartbeats send recent inspector snapshots to a Host
+  monitor that detects startup hangs, UI-thread timeouts, and recovery.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters

@@ -11,6 +11,18 @@ import type {
   RendererDiagnostics,
 } from './renderer'
 import type { Child } from './vnode'
+import type {
+  RendererHeartbeat,
+} from './heartbeat'
+
+export type {
+  RendererHeartbeat,
+} from './heartbeat'
+export {
+  getRendererHeartbeatSharedState,
+  rendererHeartbeatSharedStateIndex,
+  rendererHeartbeatSharedStateLength,
+} from './heartbeat'
 
 export interface WinUIWorkerClosingArgs {
   cancel: boolean
@@ -530,6 +542,135 @@ export interface FileHotReloadTimer {
 
 export interface FileHotReloadDispatcherQueue {
   createTimer(): FileHotReloadTimer
+}
+
+export interface RendererHeartbeatOptions {
+  readonly dispatcherQueue: FileHotReloadDispatcherQueue
+  readonly renderer: Renderer
+  readonly onHeartbeat: (
+    heartbeat: RendererHeartbeat,
+  ) => void
+  readonly onError: (error: unknown) => void
+  readonly intervalDuration?: bigint
+  readonly now?: () => number
+}
+
+export interface RendererHeartbeatController {
+  readonly sequence: number
+  readonly disposed: boolean
+  readonly lastHeartbeat: RendererHeartbeat | null
+  emit(): void
+  dispose(): void
+}
+
+export function createRendererHeartbeatController(
+  options: RendererHeartbeatOptions,
+): RendererHeartbeatController {
+  const intervalDuration =
+    options.intervalDuration ?? 10_000_000n
+  if (intervalDuration <= 0n) {
+    throw new RangeError(
+      'Renderer heartbeat intervalDuration must be positive.',
+    )
+  }
+  const now = options.now ?? Date.now
+  const timer = options.dispatcherQueue.createTimer()
+  timer.interval = { duration: intervalDuration }
+  timer.isRepeating = true
+  let sequence = 0
+  let disposed = false
+  let disposeRequested = false
+  let timerStopped = false
+  let timerUnsubscribed = false
+  let lastHeartbeat: RendererHeartbeat | null = null
+
+  const emit = () => {
+    if (disposed || disposeRequested) {
+      return
+    }
+    try {
+      sequence += 1
+      lastHeartbeat = {
+        sequence,
+        sentAt: now(),
+        snapshot: options.renderer.inspector.snapshot(),
+      }
+      options.onHeartbeat(lastHeartbeat)
+    }
+    catch (error) {
+      options.onError(error)
+    }
+  }
+  const timerSubscription = timer.onTick(emit)
+  try {
+    timer.start()
+    emit()
+  }
+  catch (error) {
+    let cleanupError: unknown
+    for (const cleanup of [
+      () => timer.stop(),
+      timerSubscription,
+    ]) {
+      try {
+        cleanup()
+      }
+      catch (failure) {
+        cleanupError ??= failure
+      }
+    }
+    if (cleanupError !== undefined) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'Renderer heartbeat failed to start and roll back.',
+      )
+    }
+    throw error
+  }
+
+  return {
+    get sequence() {
+      return sequence
+    },
+    get disposed() {
+      return disposed
+    },
+    get lastHeartbeat() {
+      return lastHeartbeat
+    },
+    emit,
+    dispose() {
+      if (disposed) {
+        return
+      }
+      disposeRequested = true
+      let firstError: unknown
+      if (!timerStopped) {
+        try {
+          timer.stop()
+          timerStopped = true
+        }
+        catch (error) {
+          firstError ??= error
+        }
+      }
+      if (!timerUnsubscribed) {
+        try {
+          timerSubscription()
+          timerUnsubscribed = true
+        }
+        catch (error) {
+          firstError ??= error
+        }
+      }
+      if (timerStopped && timerUnsubscribed) {
+        disposed = true
+      }
+      if (firstError !== undefined) {
+        throw firstError
+      }
+    },
+  }
 }
 
 export interface FileHotReloadOptions {

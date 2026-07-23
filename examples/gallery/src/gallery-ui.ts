@@ -114,6 +114,7 @@ export interface AppContext {
   readonly renderer: Renderer
   readonly window: Window
   refreshDiagnostics(): void
+  exportDiagnostics(): void
 }
 
 export const ThemeControllerContext = createContext<{

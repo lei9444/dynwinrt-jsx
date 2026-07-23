@@ -67,12 +67,18 @@ $stderrPath = Join-Path $evidenceRoot "gallery.stderr.log"
 $screenshotPath = Join-Path $evidenceRoot "gallery.png"
 $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
+$heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
+$inspectorExportPath = Join-Path $evidenceRoot "inspector-snapshot.json"
 Remove-Item -Path $smokeStatePath -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":[],"favoritePageIds":[]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
+$env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
+$env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
 
 & npm.cmd run build
 if ($LASTEXITCODE -ne 0) {
@@ -262,6 +268,85 @@ try {
         "--timeout", "$TimeoutMilliseconds"
     )
     Invoke-WinApp @(
+        "ui", "wait-for", "GalleryHeartbeatStatus",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GalleryInspectorSummary",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $heartbeatDeadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    $expectedHeartbeatStatus =
+        if ($env:DYNWINRT_JSX_HEARTBEAT -eq "0") {
+            "disabled"
+        }
+        else {
+            "connected"
+        }
+    $heartbeatReady = $false
+    while ([DateTime]::UtcNow -lt $heartbeatDeadline) {
+        $heartbeatJson = Invoke-WinApp @(
+            "ui", "get-property", "GalleryHeartbeatStatus",
+            "-w", "$windowHandle",
+            "--json"
+        ) -Capture
+        $heartbeat = $heartbeatJson | ConvertFrom-Json
+        if (
+            [string]$heartbeat.properties.Name -match
+            "Heartbeat: $expectedHeartbeatStatus"
+        ) {
+            $heartbeatReady = $true
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not $heartbeatReady) {
+        throw "The Gallery heartbeat did not reach '$expectedHeartbeatStatus'."
+    }
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryInspectorExport",
+        "-w", "$windowHandle"
+    )
+    $exportDeadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while (
+        -not (Test-Path $inspectorExportPath) -and
+        [DateTime]::UtcNow -lt $exportDeadline
+    ) {
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not (Test-Path $inspectorExportPath)) {
+        throw "The Gallery inspector snapshot was not exported."
+    }
+    $statusDeadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    $exportAcknowledged = $false
+    while ([DateTime]::UtcNow -lt $statusDeadline) {
+        $statusJson = Invoke-WinApp @(
+            "ui", "get-property", "GalleryInspectorExportStatus",
+            "-w", "$windowHandle",
+            "--json"
+        ) -Capture
+        $exportStatus = $statusJson | ConvertFrom-Json
+        if ([string]$exportStatus.properties.Name -match "Exported to") {
+            $exportAcknowledged = $true
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not $exportAcknowledged) {
+        throw "The Gallery did not acknowledge the inspector export."
+    }
+    $inspectorExport = Get-Content $inspectorExportPath -Raw |
+        ConvertFrom-Json
+    if (
+        $inspectorExport.type -ne "renderer-inspector" -or
+        $null -eq $inspectorExport.snapshot.nodes -or
+        $null -eq $inspectorExport.snapshot.operations
+    ) {
+        throw "The Gallery inspector export is invalid."
+    }
+    Invoke-WinApp @(
         "ui", "invoke", "SettingsItem",
         "-w", "$windowHandle"
     )
@@ -288,4 +373,7 @@ finally {
             Stop-Process -Id $appProcess.Id -Force
         }
     }
+    Remove-Item Env:DYNWINRT_JSX_STATE_PATH -ErrorAction SilentlyContinue
+    Remove-Item Env:DYNWINRT_JSX_HEARTBEAT_PATH -ErrorAction SilentlyContinue
+    Remove-Item Env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH -ErrorAction SilentlyContinue
 }

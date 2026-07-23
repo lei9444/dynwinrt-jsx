@@ -7,6 +7,7 @@ const workerPath = require.resolve('../dist/worker.js')
 assert.equal(require.resolve('dynwinrt-jsx/worker'), workerPath)
 const {
   createFileHotReloadController,
+  createRendererHeartbeatController,
   installWinUIWindowLifecycle,
   runWinUIWorkerApp,
 } = require('dynwinrt-jsx/worker')
@@ -698,4 +699,189 @@ test('file hot reload controller applies versions and disposes once', async () =
   controller.dispose()
   assert.equal(controller.disposed, true)
   assert.deepEqual(order.slice(-2), ['stop', 'unsubscribe'])
+})
+
+test('renderer heartbeat emits inspector snapshots and disposes once', () => {
+  let tick
+  let now = 10
+  const order = []
+  const heartbeats = []
+  const errors = []
+  const controller = createRendererHeartbeatController({
+    dispatcherQueue: {
+      createTimer() {
+        return {
+          interval: { duration: 0n },
+          isRepeating: false,
+          onTick(callback) {
+            tick = callback
+            return () => order.push('unsubscribe')
+          },
+          start() {
+            order.push('start')
+          },
+          stop() {
+            order.push('stop')
+          },
+        }
+      },
+    },
+    renderer: {
+      inspector: {
+        snapshot() {
+          return {
+            timestamp: now,
+            diagnostics: idleDiagnostics,
+            nodes: [],
+            reactive: {
+              rootScopeIds: [],
+              scopes: [],
+              observers: [],
+              dependencies: [],
+            },
+            subscriptions: [],
+            operations: [],
+          }
+        },
+      },
+    },
+    intervalDuration: 20n,
+    now: () => {
+      now += 1
+      return now
+    },
+    onHeartbeat(value) {
+      heartbeats.push(value)
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.deepEqual(order, ['start'])
+  assert.equal(controller.sequence, 1)
+  assert.equal(heartbeats[0].sequence, 1)
+  tick()
+  assert.equal(controller.sequence, 2)
+  assert.equal(heartbeats[1].sentAt, 12)
+  assert.equal(controller.lastHeartbeat, heartbeats[1])
+  assert.deepEqual(errors, [])
+
+  controller.dispose()
+  controller.dispose()
+  assert.equal(controller.disposed, true)
+  assert.deepEqual(order.slice(-2), ['stop', 'unsubscribe'])
+  tick()
+  assert.equal(controller.sequence, 2)
+})
+
+test('renderer heartbeat validates intervals and reports tick errors', () => {
+  assert.throws(
+    () => createRendererHeartbeatController({
+      dispatcherQueue: {
+        createTimer() {
+          throw new Error('timer should not be created')
+        },
+      },
+      renderer: {},
+      onHeartbeat() {},
+      onError() {},
+      intervalDuration: 0n,
+    }),
+    /intervalDuration must be positive/,
+  )
+
+  let tick
+  const errors = []
+  const controller = createRendererHeartbeatController({
+    dispatcherQueue: {
+      createTimer() {
+        return {
+          interval: { duration: 0n },
+          isRepeating: false,
+          onTick(callback) {
+            tick = callback
+            return () => {}
+          },
+          start() {},
+          stop() {},
+        }
+      },
+    },
+    renderer: {
+      inspector: {
+        snapshot() {
+          throw new Error('snapshot failed')
+        },
+      },
+    },
+    onHeartbeat() {},
+    onError(error) {
+      errors.push(error)
+    },
+  })
+  assert.match(errors[0].message, /snapshot failed/)
+  tick()
+  assert.equal(errors.length, 2)
+  controller.dispose()
+})
+
+test('renderer heartbeat retries failed timer cleanup', () => {
+  let stopAttempts = 0
+  let unsubscribeAttempts = 0
+  const controller = createRendererHeartbeatController({
+    dispatcherQueue: {
+      createTimer() {
+        return {
+          interval: { duration: 0n },
+          isRepeating: false,
+          onTick() {
+            return () => {
+              unsubscribeAttempts += 1
+            }
+          },
+          start() {},
+          stop() {
+            stopAttempts += 1
+            if (stopAttempts === 1) {
+              throw new Error('stop failed')
+            }
+          },
+        }
+      },
+    },
+    renderer: {
+      inspector: {
+        snapshot() {
+          return {
+            timestamp: 0,
+            diagnostics: idleDiagnostics,
+            nodes: [],
+            reactive: {
+              rootScopeIds: [],
+              scopes: [],
+              observers: [],
+              dependencies: [],
+            },
+            subscriptions: [],
+            operations: [],
+          }
+        },
+      },
+    },
+    onHeartbeat() {},
+    onError(error) {
+      throw error
+    },
+  })
+
+  assert.throws(
+    () => controller.dispose(),
+    /stop failed/,
+  )
+  assert.equal(controller.disposed, false)
+  controller.dispose()
+  assert.equal(controller.disposed, true)
+  assert.equal(stopAttempts, 2)
+  assert.equal(unsubscribeAttempts, 1)
 })

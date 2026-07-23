@@ -8,9 +8,13 @@ import {
 } from 'dynwinrt-jsx'
 import {
   createFileHotReloadController,
+  createRendererHeartbeatController,
+  getRendererHeartbeatSharedState,
+  rendererHeartbeatSharedStateIndex,
   runWinUIWorkerApp,
   type FileHotReloadFileSystem,
   type FileHotReloadMessage,
+  type RendererHeartbeat,
 } from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
 import * as WinUIBindings from '#winapp/bindings'
@@ -65,6 +69,9 @@ const {
   workerData: {
     statePort: StatePort
     hotStatePath: string | null
+    heartbeatEnabled: boolean
+    heartbeatState: SharedArrayBuffer
+    inspectorExportPath: string
     initialState: AppState
   }
 }
@@ -92,6 +99,9 @@ const FallbackUI = createControls({
 const moduleId = './app.js'
 const modulePath = require.resolve(moduleId)
 const fileSystem = require('node:fs') as FileHotReloadFileSystem
+const heartbeatState = getRendererHeartbeatSharedState(
+  workerData.heartbeatState,
+)
 
 const loadApp = (invalidate: boolean): AppModule => {
   if (invalidate) {
@@ -144,12 +154,88 @@ const exitCode = runWinUIWorkerApp({
       bridge,
       workerData.initialState,
     )
+    if (!workerData.heartbeatEnabled) {
+      model.heartbeatDisabled()
+    }
+    let lastTimeoutCount = 0n
+    let lastExportRevision = 0n
+    const refreshHostDiagnostics = () => {
+      const timeoutCount = Atomics.load(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.timeoutCount,
+      )
+      const timeoutAt = Atomics.load(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.timeoutAt,
+      )
+      if (
+        timeoutCount > lastTimeoutCount &&
+        timeoutAt > 0n
+      ) {
+        lastTimeoutCount = timeoutCount
+        model.heartbeatTimedOut(Number(timeoutAt))
+      }
+      const acknowledgedSequence = Atomics.load(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedSequence,
+      )
+      const acknowledgedAt = Atomics.load(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedAt,
+      )
+      if (
+        acknowledgedSequence > 0n &&
+        acknowledgedAt >= timeoutAt
+      ) {
+        model.heartbeatAcknowledged(
+          Number(acknowledgedSequence),
+          Number(acknowledgedAt),
+          timeoutCount > 0n,
+        )
+      }
+      const exportRevision = Atomics.load(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportRevision,
+      )
+      if (exportRevision > lastExportRevision) {
+        lastExportRevision = exportRevision
+        const exportStatus = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.exportStatus,
+        )
+        if (exportStatus === 1n) {
+          model.inspectorExported(
+            workerData.inspectorExportPath,
+          )
+        }
+        else if (exportStatus === -1n) {
+          model.inspectorExportFailed(
+            'The Host could not write the snapshot.',
+          )
+        }
+      }
+    }
     const context: AppContext = {
       model,
       renderer,
       window,
       refreshDiagnostics() {
-        model.diagnostics.value = renderer.diagnostics
+        model.updateInspection(
+          renderer.inspector.snapshot(),
+        )
+      },
+      exportDiagnostics() {
+        model.inspectorExportStatus.value =
+          `Export requested: ${workerData.inspectorExportPath}`
+        Atomics.store(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.exportStatus,
+          0n,
+        )
+        parentPort.postMessage({
+          type: 'inspector-export',
+          value: renderer.inspector.snapshot(),
+        })
       },
     }
 
@@ -228,10 +314,132 @@ const exitCode = runWinUIWorkerApp({
               })
             },
           })
+        let hostStatusController:
+          | {
+              dispose(): void
+            }
+          | undefined
+        if (!workerData.heartbeatEnabled) {
+          const timer =
+            window.dispatcherQueue.createTimer()
+          timer.interval = { duration: 2_500_000n }
+          timer.isRepeating = true
+          const unsubscribe =
+            timer.onTick(refreshHostDiagnostics)
+          try {
+            timer.start()
+          }
+          catch (error) {
+            let cleanupError: unknown
+            try {
+              unsubscribe()
+            }
+            catch (failure) {
+              cleanupError = failure
+            }
+            if (cleanupError !== undefined) {
+              throw new AggregateError(
+                [error, cleanupError],
+                'Host status timer failed to start and roll back.',
+              )
+            }
+            throw error
+          }
+          let disposed = false
+          let stopCompleted = false
+          let unsubscribeCompleted = false
+          hostStatusController = {
+            dispose() {
+              if (disposed) {
+                return
+              }
+              let firstError: unknown
+              if (!stopCompleted) {
+                try {
+                  timer.stop()
+                  stopCompleted = true
+                }
+                catch (error) {
+                  firstError ??= error
+                }
+              }
+              if (!unsubscribeCompleted) {
+                try {
+                  unsubscribe()
+                  unsubscribeCompleted = true
+                }
+                catch (error) {
+                  firstError ??= error
+                }
+              }
+              if (
+                stopCompleted &&
+                unsubscribeCompleted
+              ) {
+                disposed = true
+              }
+              if (firstError !== undefined) {
+                throw firstError
+              }
+            },
+          }
+        }
+        const heartbeatController =
+          workerData.heartbeatEnabled
+            ? createRendererHeartbeatController({
+                dispatcherQueue:
+                  window.dispatcherQueue,
+                renderer,
+                onHeartbeat(
+                  heartbeat: RendererHeartbeat,
+                ) {
+                  refreshHostDiagnostics()
+                  model.heartbeatSent(
+                    heartbeat.sequence,
+                    heartbeat.sentAt,
+                    heartbeat.snapshot,
+                  )
+                  parentPort.postMessage({
+                    type: 'heartbeat',
+                    value: heartbeat,
+                  })
+                },
+                onError(error) {
+                  const message =
+                    error instanceof Error
+                      ? error.stack ?? error.message
+                      : String(error)
+                  model.lastError.value = message
+                  parentPort.postMessage({
+                    type: 'heartbeat-error',
+                    message,
+                  })
+                },
+              })
+            : undefined
 
         return {
           disposeBeforeRender() {
-            hotReloadController?.dispose()
+            model.heartbeatDisabled()
+            parentPort.postMessage({
+              type: 'heartbeat-suspend',
+            })
+            let firstError: unknown
+            for (const controller of [
+              hotReloadController,
+              hostStatusController,
+              heartbeatController,
+            ]) {
+              try {
+                controller?.dispose()
+              }
+              catch (error) {
+                firstError ??= error
+              }
+            }
+            if (firstError !== undefined) {
+              throw firstError
+            }
           },
         }
       },

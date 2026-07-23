@@ -12,6 +12,10 @@ const {
   createStateBridge,
   createDiagnosticRecord,
   createJsonStateStore,
+  createRendererHeartbeatSharedState,
+  createRendererHeartbeatMonitor,
+  getRendererHeartbeatSharedState,
+  rendererHeartbeatSharedStateIndex,
   formatDiagnosticRecord,
 } = require('dynwinrt-jsx/host')
 const {
@@ -65,6 +69,53 @@ const initialState = {
   status: 'starting',
   persistenceError: loadedState.error,
 }
+
+function readPositiveInteger(name, fallback) {
+  const raw = process.env[name]
+  if (raw === undefined) {
+    return fallback
+  }
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer.`)
+  }
+  return value
+}
+
+function writeJsonAtomic(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  const temporaryPath = `${filePath}.${process.pid}.tmp`
+  try {
+    fs.writeFileSync(
+      temporaryPath,
+      `${JSON.stringify(value, null, 2)}\n`,
+    )
+    fs.renameSync(temporaryPath, filePath)
+  }
+  catch (error) {
+    fs.rmSync(temporaryPath, { force: true })
+    throw error
+  }
+}
+
+const heartbeatEnabled =
+  process.env.DYNWINRT_JSX_HEARTBEAT !== '0'
+const heartbeatTimeoutMs = readPositiveInteger(
+  'DYNWINRT_JSX_HEARTBEAT_TIMEOUT_MS',
+  5_000,
+)
+const heartbeatEvidencePath =
+  process.env.DYNWINRT_JSX_HEARTBEAT_PATH ??
+  path.join(
+    path.dirname(statePath),
+    'heartbeat-timeout.json',
+  )
+const inspectorExportPath =
+  process.env.DYNWINRT_JSX_INSPECTOR_EXPORT_PATH ??
+  path.join(
+    path.dirname(statePath),
+    'inspector-snapshot.json',
+  )
 if (loadedState.error) {
   console.warn(formatDiagnosticRecord(createDiagnosticRecord(
     'app-host',
@@ -79,6 +130,12 @@ if (loadedState.error) {
 }
 
 const { port1, port2 } = new MessageChannel()
+const heartbeatStateBuffer =
+  createRendererHeartbeatSharedState()
+const heartbeatState =
+  getRendererHeartbeatSharedState(
+    heartbeatStateBuffer,
+  )
 const bridge = createStateBridge(
   createMessageTransport(port1),
   {
@@ -104,11 +161,63 @@ const worker = new Worker(
     workerData: {
       statePort: port2,
       hotStatePath: hotEnabled ? hotStatePath : null,
+      heartbeatEnabled,
+      heartbeatState: heartbeatStateBuffer,
+      inspectorExportPath,
       initialState,
     },
     transferList: [port2],
   },
 )
+const heartbeatMonitor = heartbeatEnabled
+  ? createRendererHeartbeatMonitor({
+      timeoutMs: heartbeatTimeoutMs,
+      schedule(callback, intervalMs) {
+        const timer = setInterval(callback, intervalMs)
+        timer.unref()
+        return () => clearInterval(timer)
+      },
+      onTimeout(status) {
+        const detectedAt = Date.now()
+        Atomics.store(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutAt,
+          BigInt(detectedAt),
+        )
+        Atomics.store(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutCount,
+          BigInt(status.timeoutCount),
+        )
+        try {
+          writeJsonAtomic(heartbeatEvidencePath, {
+            version: 1,
+            type: 'heartbeat-timeout',
+            detectedAt:
+              new Date(detectedAt).toISOString(),
+            monitor: status,
+          })
+          console.error(
+            `WinUI heartbeat timed out; evidence saved to ${heartbeatEvidencePath}.`,
+          )
+        }
+        catch (error) {
+          console.error(
+            `Failed to save heartbeat evidence: ${
+              error instanceof Error
+                ? error.stack ?? error.message
+                : String(error)
+            }`,
+          )
+        }
+      },
+      onRecovered(status) {
+        console.log(
+          `WinUI heartbeat recovered at sequence ${status.lastSequence}.`,
+        )
+      },
+    })
+  : null
 
 const hotWatchedFiles = []
 let hotVersion = 0
@@ -240,6 +349,60 @@ worker.on('message', (message) => {
     if (message.message) {
       console.error(message.message)
     }
+  } else if (message?.type === 'heartbeat') {
+    if (heartbeatMonitor?.receive(message.value)) {
+      const status = heartbeatMonitor.snapshot()
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedAt,
+        BigInt(status.lastReceivedAt),
+      )
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedSequence,
+        BigInt(status.lastSequence),
+      )
+    }
+  } else if (message?.type === 'heartbeat-error') {
+    console.error(message.message)
+  } else if (message?.type === 'heartbeat-suspend') {
+    heartbeatMonitor?.dispose()
+  } else if (message?.type === 'inspector-export') {
+    try {
+      writeJsonAtomic(inspectorExportPath, {
+        version: 1,
+        type: 'renderer-inspector',
+        exportedAt: new Date().toISOString(),
+        snapshot: message.value,
+      })
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportStatus,
+        1n,
+      )
+      Atomics.add(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportRevision,
+        1n,
+      )
+    }
+    catch (error) {
+      const exportError =
+        error instanceof Error
+          ? error.stack ?? error.message
+          : String(error)
+      console.error(exportError)
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportStatus,
+        -1n,
+      )
+      Atomics.add(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportRevision,
+        1n,
+      )
+    }
   }
 })
 worker.on('error', (error) => {
@@ -251,6 +414,7 @@ worker.on('exit', (code) => {
     fs.unwatchFile(filePath)
   }
   bridge.dispose()
+  heartbeatMonitor?.dispose()
   port1.close()
   if (hotEnabled) {
     fs.rmSync(hotStatePath, { force: true })
