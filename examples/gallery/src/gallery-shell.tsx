@@ -100,6 +100,17 @@ import { SplitViewPage } from './pages/layout/split-view'
 import { StackPanelPage } from './pages/layout/stack-panel'
 import { VariableSizedWrapGridPage } from './pages/layout/variable-sized-wrap-grid'
 import { ViewboxPage } from './pages/layout/viewbox'
+import { MenusToolbarsCategoryPage } from './pages/menus-toolbars'
+import { AppBarButtonPage } from './pages/menus-toolbars/app-bar-button'
+import { AppBarSeparatorPage } from './pages/menus-toolbars/app-bar-separator'
+import { AppBarToggleButtonPage } from './pages/menus-toolbars/app-bar-toggle-button'
+import { CommandBarPage } from './pages/menus-toolbars/command-bar'
+import { CommandBarFlyoutPage } from './pages/menus-toolbars/command-bar-flyout'
+import { MenuBarPage } from './pages/menus-toolbars/menu-bar'
+import { MenuFlyoutPage } from './pages/menus-toolbars/menu-flyout'
+import { SwipeControlPage } from './pages/menus-toolbars/swipe-control'
+import { StandardUICommandPage } from './pages/menus-toolbars/standard-ui-command'
+import { XamlUICommandPage } from './pages/menus-toolbars/xaml-ui-command'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -202,6 +213,26 @@ function renderSamplePage(
       return <VariableSizedWrapGridPage {...context} />
     case 'viewbox':
       return <ViewboxPage {...context} />
+    case 'app-bar-button':
+      return <AppBarButtonPage {...context} />
+    case 'app-bar-separator':
+      return <AppBarSeparatorPage {...context} />
+    case 'app-bar-toggle-button':
+      return <AppBarToggleButtonPage {...context} />
+    case 'command-bar':
+      return <CommandBarPage {...context} />
+    case 'command-bar-flyout':
+      return <CommandBarFlyoutPage {...context} />
+    case 'menu-bar':
+      return <MenuBarPage {...context} />
+    case 'menu-flyout':
+      return <MenuFlyoutPage {...context} />
+    case 'swipe-control':
+      return <SwipeControlPage {...context} />
+    case 'standard-ui-command':
+      return <StandardUICommandPage {...context} />
+    case 'xaml-ui-command':
+      return <XamlUICommandPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -230,6 +261,8 @@ function renderRoute(
       return <StatusInfoCategoryPage {...context} />
     case 'category-layout':
       return <LayoutCategoryPage {...context} />
+    case 'category-menus-toolbars':
+      return <MenusToolbarsCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -412,6 +445,24 @@ export function Shell(context: AppContext) {
     ],
     'category-layout',
   )
+  const menusToolbarsItem = createNavigationGroup(
+    'MenusToolbars',
+    'Menus & toolbars',
+    Symbol.Bullets,
+    [
+      'app-bar-button',
+      'app-bar-separator',
+      'app-bar-toggle-button',
+      'command-bar',
+      'command-bar-flyout',
+      'menu-bar',
+      'menu-flyout',
+      'swipe-control',
+      'standard-ui-command',
+      'xaml-ui-command',
+    ],
+    'category-menus-toolbars',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -440,12 +491,7 @@ export function Shell(context: AppContext) {
     dialogsFlyoutsItem,
     layoutItem,
     createNavigationGroup('Media', 'Media', Symbol.Play, []),
-    createNavigationGroup(
-      'MenusToolbars',
-      'Menus & toolbars',
-      Symbol.Bullets,
-      [],
-    ),
+    menusToolbarsItem,
     createNavigationGroup('Motion', 'Motion', Symbol.Sync, []),
     createNavigationGroup(
       'Navigation',
@@ -496,6 +542,10 @@ export function Shell(context: AppContext) {
   )
   routeItems.set('category-status-info', statusInfoItem)
   routeItems.set('category-layout', layoutItem)
+  routeItems.set(
+    'category-menus-toolbars',
+    menusToolbarsItem,
+  )
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -563,6 +613,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-layout')
               return
             }
+            if (currentPage?.category === 'Menus & toolbars') {
+              context.model.navigate('category-menus-toolbars')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -621,6 +675,7 @@ export function Shell(context: AppContext) {
               route === 'category-dialogs-flyouts' ||
               route === 'category-status-info' ||
               route === 'category-layout' ||
+              route === 'category-menus-toolbars' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

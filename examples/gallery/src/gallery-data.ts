@@ -430,6 +430,106 @@ export const galleryPages = [
     image: 'ControlImages/Viewbox.png',
   },
   {
+    id: 'app-bar-button',
+    category: 'Menus & toolbars',
+    title: 'AppBarButton',
+    subtitle: 'A labeled command button for command surfaces.',
+    description:
+      'Combine labels, icons, tooltips, and attached native flyouts.',
+    tags: ['appbarbutton', 'command', 'button', 'toolbar', 'flyout'],
+    image: 'ControlImages/AppBarButton.png',
+  },
+  {
+    id: 'app-bar-separator',
+    category: 'Menus & toolbars',
+    title: 'AppBarSeparator',
+    subtitle: 'Visually separates groups of app bar commands.',
+    description:
+      'Divide primary or secondary CommandBar commands without adding an interactive action.',
+    tags: ['appbarseparator', 'separator', 'commandbar', 'toolbar'],
+    image: 'ControlImages/AppBarSeparator.png',
+  },
+  {
+    id: 'app-bar-toggle-button',
+    category: 'Menus & toolbars',
+    title: 'AppBarToggleButton',
+    subtitle: 'A command button with persistent checked state.',
+    description:
+      'Use icon, label, tooltip, compact display, and checked state in command surfaces.',
+    tags: ['appbartogglebutton', 'toggle', 'command', 'toolbar'],
+    image: 'ControlImages/AppBarToggleButton.png',
+  },
+  {
+    id: 'command-bar',
+    category: 'Menus & toolbars',
+    title: 'CommandBar',
+    subtitle: 'Presents primary commands and an overflow menu.',
+    description:
+      'Own primary and secondary command collections with label, open, and sticky behavior.',
+    tags: ['commandbar', 'commands', 'overflow', 'toolbar', 'appbar'],
+    image: 'ControlImages/CommandBar.png',
+  },
+  {
+    id: 'command-bar-flyout',
+    category: 'Menus & toolbars',
+    title: 'CommandBarFlyout',
+    subtitle: 'Shows command collections in a contextual flyout.',
+    description:
+      'Attach primary and secondary app bar commands to a target through a native flyout.',
+    tags: ['commandbarflyout', 'flyout', 'commands', 'context menu'],
+    image: 'ControlImages/CommandBarFlyout.png',
+  },
+  {
+    id: 'menu-bar',
+    category: 'Menus & toolbars',
+    title: 'MenuBar',
+    subtitle: 'Displays top-level menus with nested commands.',
+    description:
+      'Build File, Edit, and View menus with separators, submenus, toggles, and radio items.',
+    tags: ['menubar', 'menu', 'submenu', 'commands', 'toolbar'],
+    image: 'ControlImages/MenuBar.png',
+  },
+  {
+    id: 'menu-flyout',
+    category: 'Menus & toolbars',
+    title: 'MenuFlyout',
+    subtitle: 'Displays a light-dismiss menu of commands.',
+    description:
+      'Use standard, toggle, radio, separator, icon, and cascading menu items.',
+    tags: ['menuflyout', 'menu', 'context menu', 'submenu', 'radio'],
+    image: 'ControlImages/MenuFlyout.png',
+  },
+  {
+    id: 'swipe-control',
+    category: 'Menus & toolbars',
+    title: 'SwipeControl',
+    subtitle: 'Reveals or executes contextual actions through swipe gestures.',
+    description:
+      'Configure left and right SwipeItems collections in reveal or execute mode.',
+    tags: ['swipecontrol', 'swipe', 'actions', 'reveal', 'execute'],
+    image: 'ControlImages/SwipeControl.png',
+  },
+  {
+    id: 'standard-ui-command',
+    category: 'Menus & toolbars',
+    title: 'StandardUICommand',
+    subtitle: 'Provides platform-defined command labels, icons, and behavior.',
+    description:
+      'Share one standard command across app bar, menu, and swipe command surfaces.',
+    tags: ['standarduicommand', 'command', 'delete', 'shared', 'toolbar'],
+    image: 'ControlImages/StandardUICommand.png',
+  },
+  {
+    id: 'xaml-ui-command',
+    category: 'Menus & toolbars',
+    title: 'XamlUICommand',
+    subtitle: 'Defines a reusable custom command with shared presentation.',
+    description:
+      'Share a label, description, icon source, and ExecuteRequested handler across controls.',
+    tags: ['xamluicommand', 'command', 'execute', 'reusable', 'toolbar'],
+    image: 'ControlImages/XamlUICommand.png',
+  },
+  {
     id: 'content-dialog',
     category: 'Dialogs & flyouts',
     title: 'ContentDialog',
@@ -503,6 +603,7 @@ export type GalleryRoute =
   | 'category-dialogs-flyouts'
   | 'category-status-info'
   | 'category-layout'
+  | 'category-menus-toolbars'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -529,6 +630,10 @@ export const statusInfoPages = galleryPages.filter(
 
 export const layoutPages = galleryPages.filter(
   (page) => page.category === 'Layout',
+)
+
+export const menusToolbarsPages = galleryPages.filter(
+  (page) => page.category === 'Menus & toolbars',
 )
 
 export const galleryCategories = [

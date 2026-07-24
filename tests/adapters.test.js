@@ -446,6 +446,65 @@ test('named and default slot adapters own child lifetimes', () => {
   assert.equal(mountedControl.actions.size, 0)
 })
 
+test('self collection slots own children on collection objects', () => {
+  class SelfCollection extends TestVector {}
+  const UI = createControls({ Text: TestText })
+  let collection
+  const Collection = native(SelfCollection, {
+    children: adapter.selfCollection(),
+  })
+  const root = new TestHost()
+  const handle = renderer().render(
+    Collection({
+      ref(value) {
+        collection = value
+      },
+      children: [
+        UI.Text({ text: 'One' }),
+        UI.Text({ text: 'Two' }),
+      ],
+    }),
+    root,
+  )
+
+  assert.deepEqual(
+    collection.values.map((item) => item.text),
+    ['One', 'Two'],
+  )
+  const mountedCollection = collection
+  handle.dispose()
+  assert.equal(mountedCollection.size, 0)
+})
+
+test('collection slot getters resolve mutable collection views', () => {
+  class IndirectCollectionControl {
+    observableItems = {}
+    mutableItems = new TestVector()
+  }
+  const UI = createControls({ Text: TestText })
+  let control
+  const Control = native(IndirectCollectionControl, {
+    children: adapter.collectionSlotFrom(
+      (instance) => instance.mutableItems,
+    ),
+  })
+  const root = new TestHost()
+  const handle = renderer().render(
+    Control({
+      ref(value) {
+        control = value
+      },
+      children: UI.Text({ text: 'Item' }),
+    }),
+    root,
+  )
+
+  assert.equal(control.mutableItems.getAt(0).text, 'Item')
+  const mountedControl = control
+  handle.dispose()
+  assert.equal(mountedControl.mutableItems.size, 0)
+})
+
 test('slot afterSync failures leave native ownership consistent', () => {
   const UI = createControls({ Text: TestText })
   class SingleSlotControl {

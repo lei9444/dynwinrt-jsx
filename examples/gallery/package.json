@@ -77,6 +77,9 @@
         {
           "namespace": "Microsoft.UI.Xaml.Controls",
           "classes": [
+            "AppBarButton",
+            "AppBarSeparator",
+            "AppBarToggleButton",
             "AutoSuggestBox",
             "Border",
             "Button",
@@ -88,6 +91,8 @@
             "ColumnDefinition",
             "ColorPicker",
             "ComboBox",
+            "CommandBar",
+            "CommandBarFlyout",
             "ContentDialog",
             "ContentControl",
             "DatePicker",
@@ -110,9 +115,12 @@
             "LinedFlowLayout",
             "ListView",
             "ListViewItem",
+            "MenuBar",
+            "MenuBarItem",
             "MenuFlyout",
             "MenuFlyoutItem",
             "MenuFlyoutSeparator",
+            "MenuFlyoutSubItem",
             "NavigationView",
             "NavigationViewItem",
             "NavigationViewItemHeader",
@@ -123,6 +131,7 @@
             "ProgressRing",
             "RadioButton",
             "RadioButtons",
+            "RadioMenuFlyoutItem",
             "RatingControl",
             "RefreshContainer",
             "RefreshVisualizer",
@@ -135,7 +144,11 @@
             "StackPanel",
             "StackLayout",
             "SplitButton",
+            "SplitMenuFlyoutItem",
             "SplitView",
+            "SwipeControl",
+            "SwipeItem",
+            "SwipeItems",
             "SymbolIcon",
             "SymbolIconSource",
             "TeachingTip",
@@ -143,6 +156,7 @@
             "TextBox",
             "TimePicker",
             "TitleBar",
+            "ToggleMenuFlyoutItem",
             "ToggleSplitButton",
             "ToggleSwitch",
             "ToolTip",
@@ -153,6 +167,13 @@
             "UniformGridLayout",
             "VariableSizedWrapGrid",
             "Viewbox"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Input",
+          "classes": [
+            "StandardUICommand",
+            "XamlUICommand"
           ]
         },
         {

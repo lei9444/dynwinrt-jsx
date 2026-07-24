@@ -639,6 +639,10 @@ const invalidGridLength: WinUIGridLength = {
   gridUnitType: 3,
 }
 void invalidGridLength
+adapter.collectionSlotFrom(
+  (panel: TypePanel) => panel.children,
+)
+adapter.selfCollection<TypeVector>()
 
 const name = signal('name')
 const oneWayBinding = bind.oneWay(name, 'text')

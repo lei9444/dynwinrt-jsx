@@ -84,6 +84,7 @@ $dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.pn
 $dialogsFlyoutsCategoryScreenshotPath = Join-Path $evidenceRoot "dialogs-flyouts-category.png"
 $statusInfoCategoryScreenshotPath = Join-Path $evidenceRoot "status-info-category.png"
 $layoutCategoryScreenshotPath = Join-Path $evidenceRoot "layout-category.png"
+$menusToolbarsCategoryScreenshotPath = Join-Path $evidenceRoot "menus-toolbars-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -302,6 +303,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryMenusToolbarsCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "MenusToolbarsCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open AppBarButton",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $menusToolbarsCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open XamlUICommand",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -349,6 +374,16 @@ try {
         [pscustomobject]@{ Name = "Open StackPanel"; Heading = "StackPanelPageHeading"; Probe = "GalleryLayoutStackPanelSample"; Query = "stackpanel spacing" },
         [pscustomobject]@{ Name = "Open VariableSizedWrapGrid"; Heading = "VariableSizedWrapGridPageHeading"; Probe = "GalleryLayoutVariableSizedWrapGridSample"; Query = "variablesizedwrapgrid span" },
         [pscustomobject]@{ Name = "Open Viewbox"; Heading = "ViewboxPageHeading"; Probe = "GalleryLayoutViewboxSample"; Query = "viewbox stretch" },
+        [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
+        [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
+        [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
+        [pscustomobject]@{ Name = "Open CommandBar"; Heading = "CommandBarPageHeading"; Probe = "GalleryCommandBarControl"; Query = "commandbar overflow" },
+        [pscustomobject]@{ Name = "Open CommandBarFlyout"; Heading = "CommandBarFlyoutPageHeading"; Probe = "GalleryCommandBarFlyoutShow"; Query = "commandbarflyout context" },
+        [pscustomobject]@{ Name = "Open MenuBar"; Heading = "MenuBarPageHeading"; Probe = "GalleryMenuBarControl"; Query = "menubar submenu" },
+        [pscustomobject]@{ Name = "Open MenuFlyout"; Heading = "MenuFlyoutPageHeading"; Probe = "GalleryMenuFlyoutBasicShow"; Query = "menuflyout radio" },
+        [pscustomobject]@{ Name = "Open SwipeControl"; Heading = "SwipeControlPageHeading"; Probe = "GalleryMenusSwipeRevealSample"; Query = "swipecontrol reveal" },
+        [pscustomobject]@{ Name = "Open StandardUICommand"; Heading = "StandardUICommandPageHeading"; Probe = "GalleryStandardUICommandButton"; Query = "standarduicommand delete" },
+        [pscustomobject]@{ Name = "Open XamlUICommand"; Heading = "XamlUICommandPageHeading"; Probe = "GalleryXamlUICommandPrimary"; Query = "xamluicommand reusable" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -1075,6 +1110,101 @@ try {
             Invoke-WinApp @(
                 "ui", "set-value", "GalleryViewboxWidth", "260",
                 "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "AppBarToggleButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAppBarToggleButtonControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Pinned.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CommandBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCommandBarRun",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "CommandBar action simulated.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CommandBarFlyoutPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCommandBarFlyoutShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryCommandBarFlyoutCopy",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "MenuBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "File",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMenuBarNew",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMenuBarNew",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "New selected.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "MenuFlyoutPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMenuFlyoutBasicShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMenuFlyoutOpen",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMenuFlyoutOpen",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Open selected.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "StandardUICommandPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStandardUICommandButton",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Delete command executed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "XamlUICommandPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryXamlUICommandPrimary",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Archive command executed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
             )
         }
         if ($route.Heading -eq "SelectionPageHeading") {

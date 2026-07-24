@@ -191,6 +191,11 @@ const UI = createControls({
 })
 ```
 
+Use `adapter.collectionSlotFrom()` when the generated property exposes an
+observable or read-only interface but a mutable collection view is available.
+Use `adapter.selfCollection()` when the projected object is itself the native
+collection, such as `SwipeItems`.
+
 Writable generated properties become JSX properties. Generated `onX(callback)` methods become typed event properties. Use `native()` when a class needs custom construction.
 
 Primitive children become native `TextBlock` instances. Primitive `content`, `header`, `onContent`, and `offContent` values are also converted to `TextBlock`; Boolean `isChecked` values on nullable ToggleButton-family controls are boxed as `IReference<Boolean>` when the required generated bindings are supplied. Nullable `CalendarDatePicker.date`, `DatePicker.selectedDate`, and `TimePicker.selectedTime` values are likewise boxed as their generated `IReference<DateTime>` or `IReference<TimeSpan>` projections. Controls with non-nullable properties continue to receive their native struct or primitive value directly.

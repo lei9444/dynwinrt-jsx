@@ -355,6 +355,8 @@ Account for these limits when designing a feature:
 - Static and theme resources resolve through the target element, ancestor
   resources, and application resources.
 - Complex collections and named content slots need explicit adapters.
+- Use collection-slot getters for projected read-only/observable collection
+  properties and self-collection slots for WinRT objects that are collections.
 - There is no CSS-like styling system or integrated DevTools.
 - All WinUI reads and writes must remain on the UI STA.
 

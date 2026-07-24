@@ -41,6 +41,10 @@
 - Added the complete WinUI Gallery Layout category with Border, Canvas,
   Expander, Grid, RelativePanel, SplitView, StackPanel,
   VariableSizedWrapGrid, and Viewbox.
+- Added collection-slot getters and self-collection child adapters for
+  observable command collections and collection-valued WinRT objects.
+- Added the complete WinUI Gallery Menus & toolbars category with app bar,
+  command bar, menu, swipe, and reusable command samples.
 
 ## 1.0.0
 

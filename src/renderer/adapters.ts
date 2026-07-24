@@ -86,14 +86,32 @@ export interface NativeCollectionAdapter<Instance> {
   readonly label?: string
 }
 
-export interface NativeSlotAdapter<Instance> {
+interface NativeSlotAdapterBase<Instance> {
   readonly kind: 'slot'
-  readonly strategy: 'single' | 'collection'
-  readonly property: Extract<keyof Instance, string>
   readonly beforeSync?: (instance: Instance) => void
   readonly afterSync?: (instance: Instance) => void
   readonly finallySync?: (instance: Instance) => void
 }
+
+export type NativeSlotAdapter<Instance> =
+  & NativeSlotAdapterBase<Instance>
+  & (
+    | {
+      readonly strategy: 'single'
+      readonly property: string
+      readonly get?: never
+    }
+    | {
+      readonly strategy: 'collection'
+      readonly property: string
+      readonly get?: never
+    }
+    | {
+      readonly strategy: 'collection'
+      readonly property?: never
+      readonly get: (instance: object) => unknown
+    }
+  )
 
 export interface NativeItemsRepeaterData<Item = unknown> {
   readonly readItems: () => readonly Item[]
@@ -274,6 +292,35 @@ export const adapter = {
       kind: 'slot',
       strategy: 'collection',
       property,
+      ...options,
+    }
+  },
+  collectionSlotFrom<Instance>(
+    get: (instance: Instance) => unknown,
+    options: {
+      readonly beforeSync?: (instance: Instance) => void
+      readonly afterSync?: (instance: Instance) => void
+      readonly finallySync?: (instance: Instance) => void
+    } = {},
+  ): NativeSlotAdapter<Instance> {
+    return {
+      kind: 'slot',
+      strategy: 'collection',
+      get: (instance) => get(instance as Instance),
+      ...options,
+    }
+  },
+  selfCollection<Instance>(
+    options: {
+      readonly beforeSync?: (instance: Instance) => void
+      readonly afterSync?: (instance: Instance) => void
+      readonly finallySync?: (instance: Instance) => void
+    } = {},
+  ): NativeSlotAdapter<Instance> {
+    return {
+      kind: 'slot',
+      strategy: 'collection',
+      get: (instance) => instance,
       ...options,
     }
   },

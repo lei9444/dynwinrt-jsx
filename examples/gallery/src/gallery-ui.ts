@@ -16,6 +16,9 @@ import {
 } from 'dynwinrt-jsx'
 import {
   AutoSuggestBox,
+  AppBarButton,
+  AppBarSeparator,
+  AppBarToggleButton,
   Border,
   Button,
   CalendarDatePicker,
@@ -25,6 +28,8 @@ import {
   ColumnDefinition,
   ColorPicker,
   ComboBox,
+  CommandBar,
+  CommandBarFlyout,
   ContentControl,
   DatePicker,
   DropDownButton,
@@ -47,8 +52,12 @@ import {
   ItemsView,
   ListView,
   ListViewItem,
+  MenuBar,
+  MenuBarItem,
   MenuFlyout,
   MenuFlyoutItem,
+  MenuFlyoutSeparator,
+  MenuFlyoutSubItem,
   NavigationView,
   NavigationViewItem,
   NumberBox,
@@ -58,6 +67,7 @@ import {
   PropertyValue,
   RadioButton,
   RadioButtons,
+  RadioMenuFlyoutItem,
   RatingControl,
   RefreshContainer,
   RelativePanel,
@@ -70,14 +80,19 @@ import {
   Slider,
   StackPanel,
   SplitButton,
+  SplitMenuFlyoutItem,
   SplitView,
   SymbolIcon,
+  SwipeControl,
+  SwipeItem,
+  SwipeItems,
   TeachingTip,
   TextBlock,
   TextBox,
   TimePicker,
   TitleBar,
   ToggleButton,
+  ToggleMenuFlyoutItem,
   ToggleSplitButton,
   ToggleSwitch,
   TreeView,
@@ -87,9 +102,13 @@ import {
   Window,
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
+import { commandBarCollection } from './command-bar-collection'
 
 export const UI = createControls({
   AutoSuggestBox,
+  AppBarButton,
+  AppBarSeparator,
+  AppBarToggleButton,
   Border,
   Button,
   CalendarDatePicker,
@@ -110,13 +129,18 @@ export const UI = createControls({
   InfoBar,
   Image,
   ListViewItem,
+  MenuBar,
+  MenuBarItem,
   MenuFlyout,
   MenuFlyoutItem,
+  MenuFlyoutSeparator,
+  MenuFlyoutSubItem,
   NumberBox,
   PasswordBox,
   ProgressBar,
   ProgressRing,
   RadioButton,
+  RadioMenuFlyoutItem,
   RatingControl,
   RefreshContainer,
   RelativePanel,
@@ -124,14 +148,17 @@ export const UI = createControls({
   ScrollViewer,
   SelectorBarItem,
   Slider,
+  SplitMenuFlyoutItem,
   StackPanel,
   SymbolIcon,
+  SwipeItem,
   TeachingTip,
   TextBlock,
   TextBox,
   TimePicker,
   TitleBar,
   ToggleButton,
+  ToggleMenuFlyoutItem,
   ToggleSwitch,
   VariableSizedWrapGrid,
   Viewbox,
@@ -146,6 +173,72 @@ export const GalleryInfoBar = native<
   adapters: {
     action: adapter.slot('actionButton'),
   },
+})
+export const GalleryAppBarButton = native(AppBarButton, {
+  displayName: 'AppBarButton',
+  children: adapter.slot('flyout'),
+})
+export const GalleryCommandBar = native<
+  CommandBar,
+  {
+    secondaryCommands?: MaybeSignal<Child>
+  }
+>(CommandBar, {
+  displayName: 'CommandBar',
+  adapters: {
+    secondaryCommands: adapter.collectionSlotFrom(
+      (instance) =>
+        commandBarCollection(
+          instance.secondaryCommands,
+        ),
+    ),
+  },
+  children: adapter.collectionSlotFrom(
+    (instance) =>
+      commandBarCollection(
+        instance.primaryCommands,
+      ),
+  ),
+})
+export const GalleryCommandBarFlyout = native<
+  CommandBarFlyout,
+  {
+    secondaryCommands?: MaybeSignal<Child>
+  }
+>(CommandBarFlyout, {
+  displayName: 'CommandBarFlyout',
+  adapters: {
+    secondaryCommands: adapter.collectionSlotFrom(
+      (instance) =>
+        commandBarCollection(
+          instance.secondaryCommands,
+        ),
+    ),
+  },
+  children: adapter.collectionSlotFrom(
+    (instance) =>
+      commandBarCollection(
+        instance.primaryCommands,
+      ),
+  ),
+})
+export const GallerySwipeItems = native(SwipeItems, {
+  displayName: 'SwipeItems',
+  children: adapter.selfCollection(),
+})
+export const GallerySwipeControl = native<
+  SwipeControl,
+  {
+    leftItemsContent?: MaybeSignal<Child>
+    rightItemsContent?: MaybeSignal<Child>
+  }
+>(SwipeControl, {
+  displayName: 'SwipeControl',
+  adapters: {
+    leftItemsContent: adapter.slot('leftItems'),
+    rightItemsContent: adapter.slot('rightItems'),
+  },
+  children: adapter.slot('content'),
 })
 export const GallerySplitView = native<
   SplitView,
@@ -258,6 +351,8 @@ export const GalleryTreeView = native<
 })
 
 export type NavigationInstance = InstanceType<typeof NavigationView>
+export type AppBarToggleButtonInstance =
+  InstanceType<typeof AppBarToggleButton>
 export type ButtonInstance = InstanceType<typeof Button>
 export type BorderInstance = InstanceType<typeof Border>
 export type CalendarViewInstance = InstanceType<typeof CalendarView>

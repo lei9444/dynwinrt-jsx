@@ -262,6 +262,9 @@ export function resolveSlotAdapter(
   descriptor: NativeSlotAdapter<object>,
 ): ChildAdapter | null {
   const record = owner as Record<string, unknown>
+  const slot = descriptor.get
+    ? descriptor.get(owner)
+    : record[descriptor.property]
   const resolved = descriptor.strategy === 'single'
     ? new SinglePropertyAdapter(
       record,
@@ -269,7 +272,7 @@ export function resolveSlotAdapter(
     )
     : collectionAdapter(
         options,
-        record[descriptor.property],
+        slot,
         owner,
       )
   if (
