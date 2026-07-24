@@ -580,6 +580,56 @@ export const galleryPages = [
     image: 'ControlImages/TabView.png',
   },
   {
+    id: 'annotated-scroll-bar',
+    category: 'Scrolling',
+    title: 'AnnotatedScrollBar',
+    subtitle: 'Adds labeled positions to a vertical scroll rail.',
+    description:
+      'Connect an AnnotatedScrollBar controller to ScrollView and provide labeled offsets and detail tooltips.',
+    tags: ['annotatedscrollbar', 'annotated scroll', 'labels', 'navigation'],
+    image: 'ControlImages/AnnotatedScrollBar.png',
+  },
+  {
+    id: 'pips-pager',
+    category: 'Scrolling',
+    title: 'PipsPager',
+    subtitle: 'Navigates paginated content with compact glyphs.',
+    description:
+      'Configure page count, selected index, orientation, navigation buttons, and wrap behavior.',
+    tags: ['pipspager', 'pagination', 'dots', 'pages', 'carousel'],
+    image: 'ControlImages/PipsPager.png',
+  },
+  {
+    id: 'scroll-view',
+    category: 'Scrolling',
+    title: 'ScrollView',
+    subtitle: 'Provides modern scrolling, panning, and zooming.',
+    description:
+      'Pan and zoom large content while observing offsets and programmatic scroll and zoom completion.',
+    tags: ['scrollview', 'pan', 'zoom', 'scrolling', 'scrollpresenter'],
+    image: 'ControlImages/ScrollView.png',
+  },
+  {
+    id: 'scroll-viewer',
+    category: 'Scrolling',
+    title: 'ScrollViewer',
+    subtitle: 'Provides classic content scrolling and zooming.',
+    description:
+      'Use a reactive controller to track offsets, viewport size, boundaries, and ChangeView operations.',
+    tags: ['scrollviewer', 'scroll', 'zoom', 'offset', 'viewport'],
+    image: 'ControlImages/ScrollViewer.png',
+  },
+  {
+    id: 'semantic-zoom',
+    category: 'Scrolling',
+    title: 'SemanticZoom',
+    subtitle: 'Switches between detailed and summary collection views.',
+    description:
+      'Own related zoomed-in and zoomed-out list views and toggle the active semantic representation.',
+    tags: ['semanticzoom', 'semantic zoom', 'grouped view', 'collection'],
+    image: 'ControlImages/SemanticZoom.png',
+  },
+  {
     id: 'content-dialog',
     category: 'Dialogs & flyouts',
     title: 'ContentDialog',
@@ -655,6 +705,7 @@ export type GalleryRoute =
   | 'category-layout'
   | 'category-menus-toolbars'
   | 'category-navigation'
+  | 'category-scrolling'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -689,6 +740,10 @@ export const menusToolbarsPages = galleryPages.filter(
 
 export const navigationPages = galleryPages.filter(
   (page) => page.category === 'Navigation',
+)
+
+export const scrollingPages = galleryPages.filter(
+  (page) => page.category === 'Scrolling',
 )
 
 export const galleryCategories = [

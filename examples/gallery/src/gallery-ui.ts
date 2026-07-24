@@ -19,6 +19,8 @@ import {
   AppBarButton,
   AppBarSeparator,
   AppBarToggleButton,
+  AnnotatedScrollBar,
+  AnnotatedScrollBarLabel,
   Border,
   BreadcrumbBar,
   Button,
@@ -63,6 +65,7 @@ import {
   NavigationViewItem,
   NumberBox,
   PasswordBox,
+  PipsPager,
   Pivot,
   PivotItem,
   ProgressBar,
@@ -76,7 +79,9 @@ import {
   RelativePanel,
   RepeatButton,
   RowDefinition,
+  ScrollView,
   ScrollViewer,
+  SemanticZoom,
   Selector,
   SelectorBar,
   SelectorBarItem,
@@ -143,6 +148,7 @@ export const UI = createControls({
   MenuFlyoutSubItem,
   NumberBox,
   PasswordBox,
+  PipsPager,
   PivotItem,
   ProgressBar,
   ProgressRing,
@@ -152,6 +158,7 @@ export const UI = createControls({
   RefreshContainer,
   RelativePanel,
   RepeatButton,
+  ScrollView,
   ScrollViewer,
   SelectorBarItem,
   Slider,
@@ -289,6 +296,35 @@ export const GalleryTabView = native<
   children: adapter.collectionSlotFrom(
     (instance) => instance.tabItems,
   ),
+})
+export const GalleryAnnotatedScrollBar = native<
+  AnnotatedScrollBar,
+  {
+    labelItems?: MaybeSignal<
+      readonly AnnotatedScrollBarLabel[]
+    >
+  }
+>(AnnotatedScrollBar, {
+  displayName: 'AnnotatedScrollBar',
+  adapters: {
+    labelItems: adapter.collection({
+      get: (instance) => instance.labels,
+      label: 'AnnotatedScrollBar labels',
+    }),
+  },
+})
+export const GallerySemanticZoom = native<
+  SemanticZoom,
+  {
+    zoomedInContent?: MaybeSignal<Child>
+    zoomedOutContent?: MaybeSignal<Child>
+  }
+>(SemanticZoom, {
+  displayName: 'SemanticZoom',
+  adapters: {
+    zoomedInContent: adapter.slot('zoomedInView'),
+    zoomedOutContent: adapter.slot('zoomedOutView'),
+  },
 })
 export const LayoutGrid = createGridControl({
   Grid,

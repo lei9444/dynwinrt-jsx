@@ -86,6 +86,7 @@ $statusInfoCategoryScreenshotPath = Join-Path $evidenceRoot "status-info-categor
 $layoutCategoryScreenshotPath = Join-Path $evidenceRoot "layout-category.png"
 $menusToolbarsCategoryScreenshotPath = Join-Path $evidenceRoot "menus-toolbars-category.png"
 $navigationCategoryScreenshotPath = Join-Path $evidenceRoot "navigation-category.png"
+$scrollingCategoryScreenshotPath = Join-Path $evidenceRoot "scrolling-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -352,6 +353,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryScrollingCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "ScrollingCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open AnnotatedScrollBar",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $scrollingCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open SemanticZoom",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -414,6 +439,11 @@ try {
         [pscustomobject]@{ Name = "Open Pivot"; Heading = "PivotPageHeading"; Probe = "GalleryPivotControl"; Query = "pivot tabbed" },
         [pscustomobject]@{ Name = "Open SelectorBar"; Heading = "SelectorBarPageHeading"; Probe = "GallerySelectorBarControl"; Query = "selectorbar segmented" },
         [pscustomobject]@{ Name = "Open TabView"; Heading = "TabViewPageHeading"; Probe = "GalleryTabViewControl"; Query = "tabview documents" },
+        [pscustomobject]@{ Name = "Open AnnotatedScrollBar"; Heading = "AnnotatedScrollBarPageHeading"; Probe = "GalleryAnnotatedScrollBarSample"; Query = "annotatedscrollbar labels" },
+        [pscustomobject]@{ Name = "Open PipsPager"; Heading = "PipsPagerPageHeading"; Probe = "GalleryPipsPagerControl"; Query = "pipspager pagination" },
+        [pscustomobject]@{ Name = "GalleryOpenPage-scroll-view"; Heading = "ScrollViewPageHeading"; Probe = "GalleryScrollViewSample"; Query = "scrollview pan zoom" },
+        [pscustomobject]@{ Name = "GalleryOpenPage-scroll-viewer"; Heading = "ScrollViewerPageHeading"; Probe = "GalleryScrollViewerSample"; Query = "scrollviewer viewport" },
+        [pscustomobject]@{ Name = "Open SemanticZoom"; Heading = "SemanticZoomPageHeading"; Probe = "GallerySemanticZoomSample"; Query = "semanticzoom grouped" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -1323,6 +1353,101 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "Native tab count: 3",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "AnnotatedScrollBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value",
+                "GalleryAnnotatedScrollBarMaxHeight", "240",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Maximum height: 240",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAnnotatedScrollBarGold",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Visible section: Gold.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PipsPagerPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "Next page",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Page 2 of 8 selected",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ScrollViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryScrollViewDown",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Scroll completed at",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ScrollViewerPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryScrollViewerDown",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Can scroll up: yes",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SemanticZoomPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GallerySemanticZoomToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Zoomed-out view active.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GallerySemanticZoomSelectLayout",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomSelectLayout",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected group: Layout",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GallerySemanticZoomToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Zoomed-in view active.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

@@ -49,6 +49,8 @@
   replace projected mutable collection views after loading.
 - Added the complete WinUI Gallery Navigation category with BreadcrumbBar,
   NavigationView, Pivot, SelectorBar, and TabView.
+- Added the complete WinUI Gallery Scrolling category with AnnotatedScrollBar,
+  PipsPager, ScrollView, ScrollViewer, and SemanticZoom.
 
 ## 1.0.0
 

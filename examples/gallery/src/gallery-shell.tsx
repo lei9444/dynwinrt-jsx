@@ -117,6 +117,12 @@ import { NavigationViewPage } from './pages/navigation/navigation-view'
 import { PivotPage } from './pages/navigation/pivot'
 import { SelectorBarPage } from './pages/navigation/selector-bar'
 import { TabViewPage } from './pages/navigation/tab-view'
+import { ScrollingCategoryPage } from './pages/scrolling'
+import { AnnotatedScrollBarPage } from './pages/scrolling/annotated-scroll-bar'
+import { PipsPagerPage } from './pages/scrolling/pips-pager'
+import { ScrollViewPage } from './pages/scrolling/scroll-view'
+import { ScrollViewerPage } from './pages/scrolling/scroll-viewer'
+import { SemanticZoomPage } from './pages/scrolling/semantic-zoom'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -249,6 +255,16 @@ function renderSamplePage(
       return <SelectorBarPage {...context} />
     case 'tab-view':
       return <TabViewPage {...context} />
+    case 'annotated-scroll-bar':
+      return <AnnotatedScrollBarPage {...context} />
+    case 'pips-pager':
+      return <PipsPagerPage {...context} />
+    case 'scroll-view':
+      return <ScrollViewPage {...context} />
+    case 'scroll-viewer':
+      return <ScrollViewerPage {...context} />
+    case 'semantic-zoom':
+      return <SemanticZoomPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -281,6 +297,8 @@ function renderRoute(
       return <MenusToolbarsCategoryPage {...context} />
     case 'category-navigation':
       return <NavigationCategoryPage {...context} />
+    case 'category-scrolling':
+      return <ScrollingCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -494,6 +512,19 @@ export function Shell(context: AppContext) {
     ],
     'category-navigation',
   )
+  const scrollingItem = createNavigationGroup(
+    'Scrolling',
+    'Scrolling',
+    Symbol.Forward,
+    [
+      'annotated-scroll-bar',
+      'pips-pager',
+      'scroll-view',
+      'scroll-viewer',
+      'semantic-zoom',
+    ],
+    'category-scrolling',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -525,12 +556,7 @@ export function Shell(context: AppContext) {
     menusToolbarsItem,
     createNavigationGroup('Motion', 'Motion', Symbol.Sync, []),
     navigationItem,
-    createNavigationGroup(
-      'Scrolling',
-      'Scrolling',
-      Symbol.Forward,
-      [],
-    ),
+    scrollingItem,
     createNavigationGroup('Shell', 'Shell', Symbol.Repair, []),
     createNavigationGroup(
       'Text',
@@ -573,6 +599,7 @@ export function Shell(context: AppContext) {
     menusToolbarsItem,
   )
   routeItems.set('category-navigation', navigationItem)
+  routeItems.set('category-scrolling', scrollingItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -648,6 +675,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-navigation')
               return
             }
+            if (currentPage?.category === 'Scrolling') {
+              context.model.navigate('category-scrolling')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -708,6 +739,7 @@ export function Shell(context: AppContext) {
               route === 'category-layout' ||
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
+              route === 'category-scrolling' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

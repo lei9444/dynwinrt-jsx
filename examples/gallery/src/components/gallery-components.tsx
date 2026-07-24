@@ -488,6 +488,7 @@ export function PageLink(props: {
   )
   return (
     <UI.Button
+      automationId={`GalleryOpenPage-${props.page.id}`}
       automationName={`Open ${props.page.title}`}
       {...(props.gridRow === undefined
         ? {}
