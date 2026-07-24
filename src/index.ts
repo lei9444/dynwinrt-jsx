@@ -18,7 +18,7 @@ export {
   type ReadonlySignal,
   type Signal,
   type SubscribeOptions,
-} from './reactive'
+} from './core/reactive'
 
 export {
   adapter,
@@ -31,7 +31,7 @@ export {
   type NativePropertyPhase,
   type NativePropertyMode,
   type NativeSlotAdapter,
-} from './adapters'
+} from './renderer/adapters'
 
 export {
   createControls,
@@ -49,7 +49,7 @@ export {
   type NativeValueForProperty,
   type Ref,
   type RefObject,
-} from './native'
+} from './renderer/native'
 
 export {
   createGridControl,
@@ -60,7 +60,7 @@ export {
   type WinUIGridLength,
   type WinUIGridTrack,
   type WinUIGridUnitType,
-} from './grid'
+} from './winui/grid'
 
 export {
   createNavigationItem,
@@ -69,7 +69,7 @@ export {
   type NavigationItemOptions,
   type NavigationViewCollectionProps,
   type NavigationViewControlBindings,
-} from './navigation'
+} from './winui/navigation'
 
 export {
   createListViewControl,
@@ -79,27 +79,27 @@ export {
   type ListViewProps,
   type ListViewScrollTarget,
   type ListViewSelectionProps,
-} from './list-view'
+} from './winui/list-view'
 
 export {
   createComboBoxControl,
   type ComboBoxControlBindings,
   type ComboBoxInstance,
   type ComboBoxProps,
-} from './combo-box'
+} from './winui/combo-box'
 
 export {
   createScrollViewerController,
   type ScrollViewerController,
   type ScrollViewerInstance,
-} from './scroll-viewer'
+} from './winui/scroll-viewer'
 
 export {
   createSelectorBarControl,
   type SelectorBarControlBindings,
   type SelectorBarInstance,
   type SelectorBarProps,
-} from './selector-bar'
+} from './winui/selector-bar'
 
 export {
   createItemsRepeaterControl,
@@ -107,13 +107,13 @@ export {
   type ItemsRepeaterInstance,
   type ItemsRepeaterItemHost,
   type ItemsRepeaterProps,
-} from './items-repeater'
+} from './winui/items-repeater'
 
 export {
   createFontIcon,
   createSymbolIcon,
   type FontIconOptions,
-} from './icons'
+} from './winui/icons'
 
 export {
   boxNullable,
@@ -133,13 +133,13 @@ export {
   type RelativeUriConstructor,
   type SolidColorBrushConstructor,
   type UriConstructor,
-} from './values'
+} from './winui/values'
 
 export {
   showContentDialog,
   type ContentDialogLike,
   type ContentDialogOptions,
-} from './dialog'
+} from './winui/dialog'
 
 export {
   createTeachingTip,
@@ -154,13 +154,13 @@ export {
   type TeachingTipController,
   type TeachingTipLike,
   type TeachingTipOptions,
-} from './overlays'
+} from './winui/overlays'
 
 export {
   createFocusTarget,
   type Focusable,
   type FocusTarget,
-} from './focus'
+} from './winui/focus'
 
 export {
   assertRendererIdle,
@@ -170,7 +170,7 @@ export {
   hasActiveRendererRecords,
   type DiagnosticLevel,
   type DiagnosticRecord,
-} from './diagnostics'
+} from './runtime/diagnostics'
 
 export type {
   ReactiveDependencyInspection,
@@ -186,14 +186,14 @@ export type {
   RendererInspectorOptions,
   RendererOperationKind,
   RendererOperationRecord,
-} from './inspector'
+} from './renderer/inspector'
 
 export {
   createJsonStateStore,
   type JsonStateLoadResult,
   type JsonStateStore,
   type JsonStateStoreOptions,
-} from './persistence'
+} from './runtime/persistence'
 
 export {
   createRenderer,
@@ -205,7 +205,7 @@ export {
   type RendererErrorContext,
   type RendererDiagnostics,
   type RendererOptions,
-} from './renderer'
+} from './renderer/renderer'
 
 export {
   createAttachedPropertySetters,
@@ -226,7 +226,7 @@ export {
   type AttachedPropertyRegistration,
   type AttachedPropertyRegistrations,
   type WinUIThickness,
-} from './winui'
+} from './winui/winui'
 
 export {
   ErrorBoundary,
@@ -239,14 +239,14 @@ export {
   type PortalProps,
   type ShowProps,
   type VirtualForProps,
-} from './control-flow'
+} from './core/control-flow'
 
 export {
   createContext,
   useContext,
   type Context,
   type ContextProviderProps,
-} from './context'
+} from './core/context'
 
 export {
   createMessageTransport,
@@ -256,7 +256,7 @@ export {
   type StateBridge,
   type StateBridgeOptions,
   type StateBridgeRole,
-} from './bridge'
+} from './runtime/bridge'
 
 export {
   createHotReloadSession,
@@ -264,14 +264,14 @@ export {
   type HotReloadOptions,
   type HotReloadSession,
   type HotRoot,
-} from './hot'
+} from './renderer/hot'
 
 export {
   bind,
   oneWay,
   twoWay,
   type BindingEquals,
-} from './binding'
+} from './core/binding'
 
 export {
   resource,
@@ -279,11 +279,11 @@ export {
   isThemeResourceReference,
   type ResourceReference,
   type ThemeResourceReference,
-} from './resource'
+} from './winui/resource'
 
 export {
   theme,
-} from './theme'
+} from './winui/theme'
 
 export {
   createStyleRecipe,
@@ -298,17 +298,17 @@ export {
   type StyleVariantSelection,
   type WinUIElevation,
   type WinUITypographyToken,
-} from './style'
+} from './winui/style'
 
 export {
   createWinUIThemeController,
   type WinUIThemeController,
   type WinUIThemeControllerOptions,
-} from './theme-controller'
+} from './winui/theme-controller'
 
 export type {
   WinUIResourceOverrides,
-} from './winui-resources'
+} from './winui/winui-resources'
 
 export {
   Fragment,
@@ -322,4 +322,4 @@ export {
   type PortalNode,
   type PrimitiveChild,
   type VNode,
-} from './vnode'
+} from './core/vnode'

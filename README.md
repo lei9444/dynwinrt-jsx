@@ -162,6 +162,18 @@ an independently consumable framework.
 
 The library has no direct runtime dependency on dynwinrt. Applications provide generated classes to `createControls()` and `createWinUIRenderer()`.
 
+## Source layout
+
+The root of `src/` contains only package entry points. Implementation modules
+are grouped by responsibility:
+
+| Directory | Responsibility |
+|---|---|
+| `src/core/` | Signals, VNodes, Context, control flow, and bindings |
+| `src/renderer/` | Native mounting, adapters, lifecycle, hot replacement, and inspection |
+| `src/winui/` | WinUI controls, values, resources, themes, and styling |
+| `src/runtime/` | State bridge, persistence, diagnostics, and heartbeat |
+
 ## Core API
 
 ### Native controls

@@ -73,36 +73,31 @@ adoption map.
 
 | Area | Files |
 |---|---|
-| Signals, scheduling, scopes, lifecycle | `src/reactive.ts` |
-| VNode and JSX descriptors | `src/vnode.ts`, `src/jsx-runtime.ts` |
-| Native control typing and factories | `src/native.ts` |
-| Adapter descriptors and child strategies | `src/adapters.ts` |
-| Controlled-value echo suppression | `src/change-echo.ts`, `src/renderer-properties.ts` |
-| Native, component, fragment, and owned mount core | `src/renderer.ts` |
-| Dynamic, keyed list, and portal orchestration | `src/renderer-control-flow.ts` |
-| Native property, resource, and event updates | `src/renderer-properties.ts` |
-| Native child shapes and adapters | `src/renderer-children.ts` |
-| Mounted record lifetime | `src/renderer-lifecycle.ts` |
-| ErrorBoundary ownership and fallback | `src/renderer-boundary.ts` |
-| WinUI resources, converters, attached props | `src/winui.ts` |
-| URI, image, brush, font, icon, and nullable values | `src/values.ts` |
-| Grid definitions and track helpers | `src/grid.ts` |
-| Native collection transactions | `src/native-collection.ts` |
-| NavigationView and navigation items | `src/navigation.ts` |
-| ListView selection, focus, and scrolling | `src/list-view.ts` |
-| Selector and ComboBox controlled selection | `src/selector.ts`, `src/combo-box.ts` |
-| SelectorBar ownership and ScrollViewer state | `src/selector-bar.ts`, `src/scroll-viewer.ts` |
-| Native ItemsRepeater virtualization | `src/items-repeater.ts`, `src/renderer-items-repeater.ts` |
-| Flyout, MenuFlyout, and TeachingTip scopes | `src/overlays.ts` |
-| Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
-| Runtime inspection and bounded operation history | `src/inspector.ts` |
-| `Show`, `For`, boundaries, portals, windowing | `src/control-flow.ts` |
-| Context | `src/context.ts` |
-| One-way and two-way props | `src/binding.ts` |
-| Worker state synchronization | `src/bridge.ts` |
+| Signals, scheduling, scopes, lifecycle | `src/core/reactive.ts` |
+| VNode and JSX descriptors | `src/core/vnode.ts`, `src/jsx-runtime.ts` |
+| `Show`, `For`, boundaries, portals, windowing | `src/core/control-flow.ts` |
+| Context and binding helpers | `src/core/context.ts`, `src/core/binding.ts` |
+| Native control typing and factories | `src/renderer/native.ts` |
+| Adapter descriptors and child strategies | `src/renderer/adapters.ts` |
+| Controlled-value echo suppression | `src/renderer/change-echo.ts`, `src/renderer/renderer-properties.ts` |
+| Native, component, fragment, and owned mount core | `src/renderer/renderer.ts` |
+| Dynamic, keyed list, and portal orchestration | `src/renderer/renderer-control-flow.ts` |
+| Native property, resource, and event updates | `src/renderer/renderer-properties.ts` |
+| Native child shapes and adapters | `src/renderer/renderer-children.ts` |
+| Mounted record lifetime and boundaries | `src/renderer/renderer-lifecycle.ts`, `src/renderer/renderer-boundary.ts` |
+| Runtime inspection and bounded operation history | `src/renderer/inspector.ts` |
+| WinUI resources, converters, attached props | `src/winui/winui.ts`, `src/winui/winui-resources.ts` |
+| URI, image, brush, font, icon, and nullable values | `src/winui/values.ts`, `src/winui/icons.ts` |
+| Grid and navigation helpers | `src/winui/grid.ts`, `src/winui/navigation.ts` |
+| ListView, ComboBox, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/selector.ts` |
+| SelectorBar ownership and ScrollViewer state | `src/winui/selector-bar.ts`, `src/winui/scroll-viewer.ts` |
+| Native ItemsRepeater virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
+| Flyout, MenuFlyout, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
+| Theme resources, tokens, and recipes | `src/winui/resource.ts`, `src/winui/theme.ts`, `src/winui/style.ts` |
+| Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
+| Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/heartbeat.ts` |
 | Worker Window lifecycle and file hot reload | `src/worker.ts` |
-| Validated atomic JSON persistence | `src/persistence.ts` |
-| Root replacement | `src/hot.ts` |
+| Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
 | Representative native app | `examples/dashboard` |
@@ -261,7 +256,7 @@ specific enough that they cannot corrupt unrelated native properties.
    affinity, resources, focus, or control behavior. Fake controls cannot prove
    those properties.
 
-`src/renderer.ts` is already large. Prefer extracting a focused helper or
+`src/renderer/renderer.ts` is already large. Prefer extracting a focused helper or
 service over adding another unrelated responsibility to it.
 
 ## Changing the public API

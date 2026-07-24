@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Grouped implementation modules under core, renderer, winui, and runtime directories while preserving package entry points.
 - Added a reactive ScrollViewer controller and an owned, controlled SelectorBar adapter.
 - Added optional DispatcherQueue renderer heartbeats, Host timeout/recovery monitoring, shared acknowledgements, and Gallery inspector export.
 - Added privacy-safe renderer inspection snapshots and bounded lifecycle, property, event, child, resource, list, and error operation records.

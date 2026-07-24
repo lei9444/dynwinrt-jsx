@@ -6,7 +6,7 @@ export {
   type StateBridge,
   type StateBridgeOptions,
   type StateBridgeRole,
-} from './bridge'
+} from './runtime/bridge'
 
 export {
   assertRendererIdle,
@@ -16,14 +16,14 @@ export {
   hasActiveRendererRecords,
   type DiagnosticLevel,
   type DiagnosticRecord,
-} from './diagnostics'
+} from './runtime/diagnostics'
 
 export {
   createJsonStateStore,
   type JsonStateLoadResult,
   type JsonStateStore,
   type JsonStateStoreOptions,
-} from './persistence'
+} from './runtime/persistence'
 
 export {
   createRendererHeartbeatSharedState,
@@ -36,4 +36,4 @@ export {
   type RendererHeartbeatMonitorOptions,
   type RendererHeartbeatMonitorStatus,
   type RendererHeartbeatState,
-} from './heartbeat'
+} from './runtime/heartbeat'

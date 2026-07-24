@@ -4,7 +4,7 @@ import {
   type Child,
   type Key,
   type VNode,
-} from './vnode'
+} from './core/vnode'
 
 export { Fragment }
 

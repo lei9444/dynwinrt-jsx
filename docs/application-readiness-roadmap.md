@@ -491,14 +491,14 @@ identity, and manifest dependencies in a provenance document.
 - [x] Add a typed `runWinUIWorkerApp()` API that owns
       `Application.start/create`, Window setup, renderer/model composition,
       startup errors, activation, and exit.
-- [x] Split `src/renderer.ts` into focused mount, property, event, children,
+- [x] Split `src/renderer/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,
-        assignment, events, and cleanup into `renderer-properties.ts`.
+        assignment, events, and cleanup into `src/renderer/renderer-properties.ts`.
   - [x] Extract collection, single-child, items, and named-slot adapter
-        resolution into `renderer-children.ts`.
+        resolution into `src/renderer/renderer-children.ts`.
   - [x] Extract mounted-record node tracking and idempotent disposal into
-        `renderer-lifecycle.ts`.
+        `src/renderer/renderer-lifecycle.ts`.
   - [x] Extract dynamic/list/portal mount orchestration from the core Renderer.
   - [x] Extract ErrorBoundary ownership and fallback replacement into a focused
         boundary service.

@@ -9,9 +9,10 @@ test('host entry avoids renderer and WinUI modules', () => {
 
   for (const modulePath of [
     hostPath,
-    require.resolve('../dist/bridge.js'),
-    require.resolve('../dist/diagnostics.js'),
-    require.resolve('../dist/persistence.js'),
+    require.resolve('../dist/runtime/bridge.js'),
+    require.resolve('../dist/runtime/diagnostics.js'),
+    require.resolve('../dist/runtime/persistence.js'),
+    require.resolve('../dist/runtime/heartbeat.js'),
   ]) {
     delete require.cache[modulePath]
   }
@@ -24,9 +25,9 @@ test('host entry avoids renderer and WinUI modules', () => {
 
   for (const modulePath of [
     require.resolve('../dist/index.js'),
-    require.resolve('../dist/renderer.js'),
-    require.resolve('../dist/winui.js'),
-    require.resolve('../dist/control-flow.js'),
+    require.resolve('../dist/renderer/renderer.js'),
+    require.resolve('../dist/winui/winui.js'),
+    require.resolve('../dist/core/control-flow.js'),
   ]) {
     assert.equal(require.cache[modulePath], undefined)
   }

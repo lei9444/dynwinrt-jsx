@@ -1,28 +1,28 @@
 import {
   assertRendererIdle,
-} from './diagnostics'
+} from './runtime/diagnostics'
 import {
   createHotReloadSession,
   type HotReloadSession,
-} from './hot'
+} from './renderer/hot'
 import type {
   RenderHandle,
   Renderer,
   RendererDiagnostics,
-} from './renderer'
-import type { Child } from './vnode'
+} from './renderer/renderer'
+import type { Child } from './core/vnode'
 import type {
   RendererHeartbeat,
-} from './heartbeat'
+} from './runtime/heartbeat'
 
 export type {
   RendererHeartbeat,
-} from './heartbeat'
+} from './runtime/heartbeat'
 export {
   getRendererHeartbeatSharedState,
   rendererHeartbeatSharedStateIndex,
   rendererHeartbeatSharedStateLength,
-} from './heartbeat'
+} from './runtime/heartbeat'
 
 export interface WinUIWorkerClosingArgs {
   cancel: boolean
