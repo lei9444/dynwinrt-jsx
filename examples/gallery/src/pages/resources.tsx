@@ -1,19 +1,27 @@
-import { styles, theme, thickness, tokens } from 'dynwinrt-jsx'
+import {
+  signal,
+  styles,
+  theme,
+  thickness,
+  tokens,
+} from 'dynwinrt-jsx'
 import { type AppContext, UI } from '../gallery-ui'
 import { Page, SampleCard } from '../components/gallery-components'
 
 export function ResourcesPage(context: AppContext) {
+  const status = signal('Theme resources are resolved natively.')
   return (
     <Page
-      title="Resources and styling"
-      subtitle="Native theme resources combine with typed tokens and recipes."
+      title="Resources"
+      subtitle="Reusable native values keep colors, spacing, and surfaces consistent."
       automationId="ResourcesPageHeading"
       pageId="resources"
       model={context.model}
     >
       <SampleCard
-        title="Typed style recipes"
-        description="Recipes produce ordinary native JSX props and can accept signals."
+        automationId="GalleryResourcesSample"
+        title="Theme resources and design tokens"
+        description="Theme references and tokens resolve to ordinary native WinUI property values."
         code={`
 <UI.Border {...styles.card({ surface: 'layer' })}>
   <UI.TextBlock {...styles.heading({ level: 'subtitle' })} />
@@ -40,10 +48,19 @@ export function ResourcesPage(context: AppContext) {
             />
           </UI.Border>
           <UI.Button
+            automationId="GalleryResourcesAccent"
             {...styles.button({ variant: 'accent' })}
+            onClick={() => {
+              status.value = 'Accent resource button invoked.'
+              context.model.recordInteraction()
+            }}
           >
             Accent recipe
           </UI.Button>
+          <UI.TextBlock
+            automationId="GalleryResourcesStatus"
+            text={status}
+          />
         </UI.StackPanel>
       </SampleCard>
     </Page>

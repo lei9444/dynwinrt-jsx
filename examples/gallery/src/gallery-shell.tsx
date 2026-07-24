@@ -130,6 +130,13 @@ import { RichEditBoxPage } from './pages/text/rich-edit-box'
 import { RichTextBlockPage } from './pages/text/rich-text-block'
 import { TextBlockPage } from './pages/text/text-block'
 import { TextBoxPage } from './pages/text/text-box'
+import { FundamentalsCategoryPage } from './pages/fundamentals'
+import { StylePage } from './pages/fundamentals/style'
+import { BindingPage } from './pages/fundamentals/binding'
+import { TemplatesPage } from './pages/fundamentals/templates'
+import { CustomUserControlsPage } from './pages/fundamentals/custom-user-controls'
+import { XamlConditionsPage } from './pages/fundamentals/xaml-conditions'
+import { ScratchPadPage } from './pages/fundamentals/scratch-pad'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -284,6 +291,18 @@ function renderSamplePage(
       return <TextBlockPage {...context} />
     case 'text-box':
       return <TextBoxPage {...context} />
+    case 'style':
+      return <StylePage {...context} />
+    case 'binding':
+      return <BindingPage {...context} />
+    case 'templates':
+      return <TemplatesPage {...context} />
+    case 'custom-user-controls':
+      return <CustomUserControlsPage {...context} />
+    case 'xaml-conditions':
+      return <XamlConditionsPage {...context} />
+    case 'scratch-pad':
+      return <ScratchPadPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -320,6 +339,8 @@ function renderRoute(
       return <ScrollingCategoryPage {...context} />
     case 'category-text':
       return <TextCategoryPage {...context} />
+    case 'category-fundamentals':
+      return <FundamentalsCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -561,19 +582,36 @@ export function Shell(context: AppContext) {
     ],
     'category-text',
   )
+  const fundamentalsItem = createNavigationGroup(
+    'Fundamentals',
+    'Fundamentals',
+    Symbol.Library,
+    [
+      'resources',
+      'style',
+      'binding',
+      'templates',
+      'custom-user-controls',
+      'xaml-conditions',
+      'scratch-pad',
+    ],
+    'category-fundamentals',
+  )
+  const frameworkItem = createNavigationGroup(
+    'Framework',
+    'Framework',
+    Symbol.Document,
+    ['signals', 'selection'],
+  )
   const navigationItems = [
     homeItem,
-    createNavigationGroup(
-      'Fundamentals',
-      'Fundamentals',
-      Symbol.Library,
-      ['signals', 'selection'],
-    ),
+    frameworkItem,
+    fundamentalsItem,
     createNavigationGroup(
       'Design',
       'Design',
       Symbol.Highlight,
-      ['resources', 'icons'],
+      ['icons'],
     ),
     createNavigationGroup(
       'Accessibility',
@@ -632,6 +670,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-navigation', navigationItem)
   routeItems.set('category-scrolling', scrollingItem)
   routeItems.set('category-text', textItem)
+  routeItems.set('category-fundamentals', fundamentalsItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -715,6 +754,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-text')
               return
             }
+            if (currentPage?.category === 'Fundamentals') {
+              context.model.navigate('category-fundamentals')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -777,6 +820,7 @@ export function Shell(context: AppContext) {
               route === 'category-navigation' ||
               route === 'category-scrolling' ||
               route === 'category-text' ||
+              route === 'category-fundamentals' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

@@ -18,13 +18,15 @@ The pages cover:
 - a responsive Collections category landing page with links to all seven
   controls;
 - the complete Date & time, Dialogs & flyouts, Status & info, Layout,
-  Menus & toolbars, Navigation, Scrolling, and Text categories;
+  Menus & toolbars, Navigation, Scrolling, Text, and Fundamentals categories;
 - BreadcrumbBar, NavigationView, Pivot, SelectorBar, and TabView navigation
   samples with native collection ownership and interaction;
 - AnnotatedScrollBar, PipsPager, ScrollView, ScrollViewer, and SemanticZoom
   samples with native scrolling and view-change interaction;
 - AutoSuggestBox, NumberBox, PasswordBox, RichEditBox, RichTextBlock,
   TextBlock, and TextBox samples;
+- Resources, Style, Binding, Templates, Custom & User Controls,
+  XAML Conditions, and Scratch Pad fundamentals;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

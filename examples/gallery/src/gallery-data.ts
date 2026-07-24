@@ -731,13 +731,73 @@ export const galleryPages = [
   },
   {
     id: 'resources',
-    category: 'Design',
-    title: 'Resources and styling',
-    subtitle: 'Theme resources, tokens, and typed style recipes.',
+    category: 'Fundamentals',
+    title: 'Resources',
+    subtitle: 'Reusable native values for consistent UI.',
     description:
-      'Reuse native resources and signal-backed style recipes without CSS or DOM styling concepts.',
-    tags: ['theme', 'resource', 'style', 'token', 'design'],
+      'Reuse theme resources, design tokens, brushes, and spacing values without CSS or DOM styling concepts.',
+    tags: ['theme', 'resource', 'resourcedictionary', 'token', 'fundamentals'],
     image: 'ControlImages/ColorPaletteResources.png',
+  },
+  {
+    id: 'style',
+    category: 'Fundamentals',
+    title: 'Style',
+    subtitle: 'Reusable native property recipes.',
+    description:
+      'Apply typed card, heading, and button recipes to keep native control visuals consistent.',
+    tags: ['style', 'recipe', 'setter', 'basedon', 'fundamentals'],
+    image: 'ControlImages/CodeTagIcon.png',
+  },
+  {
+    id: 'binding',
+    category: 'Fundamentals',
+    title: 'Binding',
+    subtitle: 'Connects signals to native properties and events.',
+    description:
+      'Use one-way and feedback-safe two-way binding props for automatic native synchronization.',
+    tags: ['binding', 'two way', 'one way', 'signal', 'data'],
+    image: 'ControlImages/CodeTagIcon.png',
+  },
+  {
+    id: 'templates',
+    category: 'Fundamentals',
+    title: 'Templates',
+    subtitle: 'Reusable native visual structure.',
+    description:
+      'Compose function components and keyed lists as typed TSX equivalents for item templates.',
+    tags: ['templates', 'datatemplate', 'controltemplate', 'component', 'for'],
+    image: 'ControlImages/CodeTagIcon.png',
+  },
+  {
+    id: 'custom-user-controls',
+    category: 'Fundamentals',
+    title: 'Custom & User Controls',
+    subtitle: 'Reusable components with custom behavior.',
+    description:
+      'Encapsulate native layouts, signals, events, and lifecycle in function components.',
+    tags: ['custom control', 'usercontrol', 'component', 'reusable'],
+    image: 'ControlImages/CustomControls.png',
+  },
+  {
+    id: 'xaml-conditions',
+    category: 'Fundamentals',
+    title: 'XAML Conditions',
+    subtitle: 'Conditionally owns native branches.',
+    description:
+      'Use reactive Show branches for feature flags and application-specific runtime conditions.',
+    tags: ['xaml conditions', 'conditional', 'show', 'feature flag'],
+    image: 'ControlImages/CodeTagIcon.png',
+  },
+  {
+    id: 'scratch-pad',
+    category: 'Fundamentals',
+    title: 'Scratch Pad',
+    subtitle: 'Experiments with simple native TSX.',
+    description:
+      'Adjust text and properties live in a small signal-driven native playground.',
+    tags: ['scratch pad', 'playground', 'sandbox', 'tsx'],
+    image: 'ControlImages/ScratchPad.png',
   },
   {
     id: 'icons',
@@ -767,6 +827,7 @@ export type GalleryRoute =
   | 'category-navigation'
   | 'category-scrolling'
   | 'category-text'
+  | 'category-fundamentals'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -809,6 +870,10 @@ export const scrollingPages = galleryPages.filter(
 
 export const textPages = galleryPages.filter(
   (page) => page.category === 'Text',
+)
+
+export const fundamentalsPages = galleryPages.filter(
+  (page) => page.category === 'Fundamentals',
 )
 
 export const galleryCategories = [

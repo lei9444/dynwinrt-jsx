@@ -53,6 +53,9 @@
   PipsPager, ScrollView, ScrollViewer, and SemanticZoom.
 - Added the complete WinUI Gallery Text category with AutoSuggestBox,
   NumberBox, PasswordBox, RichEditBox, RichTextBlock, TextBlock, and TextBox.
+- Added the complete WinUI Gallery Fundamentals category with Resources,
+  Style, Binding, Templates, Custom & User Controls, XAML Conditions, and
+  Scratch Pad.
 
 ## 1.0.0
 
