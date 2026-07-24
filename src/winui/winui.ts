@@ -40,6 +40,8 @@ export interface WinUIBindings extends WinUIResourceBindings {
   readonly TextBlock?: TextBlockConstructor
   readonly Grid?: object
   readonly Canvas?: object
+  readonly RelativePanel?: object
+  readonly VariableSizedWrapGrid?: object
   readonly ToolTipService?: object
   readonly AutomationProperties?: object
   readonly PropertyValue?: PropertyValueType
@@ -69,6 +71,8 @@ export type WinUIRendererCapability =
   | 'resourceOverrides'
   | 'grid'
   | 'canvas'
+  | 'relativePanel'
+  | 'variableSizedWrapGrid'
   | 'toolTip'
   | 'automation'
 
@@ -132,7 +136,33 @@ function createCapabilities(
     canvas: hasStaticMethods(bindings.Canvas, [
       'setLeft',
       'setTop',
+      'setZIndex',
     ]),
+    relativePanel: hasStaticMethods(bindings.RelativePanel, [
+      'setAbove',
+      'setBelow',
+      'setLeftOf',
+      'setRightOf',
+      'setAlignHorizontalCenterWith',
+      'setAlignVerticalCenterWith',
+      'setAlignLeftWith',
+      'setAlignTopWith',
+      'setAlignRightWith',
+      'setAlignBottomWith',
+      'setAlignLeftWithPanel',
+      'setAlignTopWithPanel',
+      'setAlignRightWithPanel',
+      'setAlignBottomWithPanel',
+      'setAlignHorizontalCenterWithPanel',
+      'setAlignVerticalCenterWithPanel',
+    ]),
+    variableSizedWrapGrid: hasStaticMethods(
+      bindings.VariableSizedWrapGrid,
+      [
+        'setRowSpan',
+        'setColumnSpan',
+      ],
+    ),
     toolTip: hasStaticMethods(bindings.ToolTipService, [
       'setToolTip',
       'setPlacement',
@@ -245,6 +275,101 @@ export function createWinUIAttachedPropertyRegistrations(
     canvasTop: {
       owner: bindings.Canvas,
       method: 'setTop',
+      optional: true,
+    },
+    canvasZIndex: {
+      owner: bindings.Canvas,
+      method: 'setZIndex',
+      optional: true,
+    },
+    relativePanelAbove: {
+      owner: bindings.RelativePanel,
+      method: 'setAbove',
+      optional: true,
+    },
+    relativePanelBelow: {
+      owner: bindings.RelativePanel,
+      method: 'setBelow',
+      optional: true,
+    },
+    relativePanelLeftOf: {
+      owner: bindings.RelativePanel,
+      method: 'setLeftOf',
+      optional: true,
+    },
+    relativePanelRightOf: {
+      owner: bindings.RelativePanel,
+      method: 'setRightOf',
+      optional: true,
+    },
+    relativePanelAlignHorizontalCenterWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignHorizontalCenterWith',
+      optional: true,
+    },
+    relativePanelAlignVerticalCenterWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignVerticalCenterWith',
+      optional: true,
+    },
+    relativePanelAlignLeftWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignLeftWith',
+      optional: true,
+    },
+    relativePanelAlignTopWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignTopWith',
+      optional: true,
+    },
+    relativePanelAlignRightWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignRightWith',
+      optional: true,
+    },
+    relativePanelAlignBottomWith: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignBottomWith',
+      optional: true,
+    },
+    relativePanelAlignLeftWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignLeftWithPanel',
+      optional: true,
+    },
+    relativePanelAlignTopWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignTopWithPanel',
+      optional: true,
+    },
+    relativePanelAlignRightWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignRightWithPanel',
+      optional: true,
+    },
+    relativePanelAlignBottomWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignBottomWithPanel',
+      optional: true,
+    },
+    relativePanelAlignHorizontalCenterWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignHorizontalCenterWithPanel',
+      optional: true,
+    },
+    relativePanelAlignVerticalCenterWithPanel: {
+      owner: bindings.RelativePanel,
+      method: 'setAlignVerticalCenterWithPanel',
+      optional: true,
+    },
+    variableSizedWrapGridRowSpan: {
+      owner: bindings.VariableSizedWrapGrid,
+      method: 'setRowSpan',
+      optional: true,
+    },
+    variableSizedWrapGridColumnSpan: {
+      owner: bindings.VariableSizedWrapGrid,
+      method: 'setColumnSpan',
       optional: true,
     },
     toolTip: {

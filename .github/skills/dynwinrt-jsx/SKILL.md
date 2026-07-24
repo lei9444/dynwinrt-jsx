@@ -203,7 +203,8 @@ The built-in WinUI layer currently provides:
   and transactional `resourceOverrides`.
 - Typed design tokens, signal-backed style recipes, and a centralized WinUI
   theme controller.
-- Canvas left and top attached setters.
+- Canvas left, top, and z-index attached setters.
+- RelativePanel relationship and VariableSizedWrapGrid span attached setters.
 - ToolTip content, placement, and placement-target attached setters.
 - Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.

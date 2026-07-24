@@ -20,6 +20,7 @@ import {
   Button,
   CalendarDatePicker,
   CalendarView,
+  Canvas,
   CheckBox,
   ColumnDefinition,
   ColorPicker,
@@ -59,6 +60,7 @@ import {
   RadioButtons,
   RatingControl,
   RefreshContainer,
+  RelativePanel,
   RepeatButton,
   RowDefinition,
   ScrollViewer,
@@ -68,6 +70,7 @@ import {
   Slider,
   StackPanel,
   SplitButton,
+  SplitView,
   SymbolIcon,
   TeachingTip,
   TextBlock,
@@ -79,6 +82,8 @@ import {
   ToggleSwitch,
   TreeView,
   TreeViewNode,
+  VariableSizedWrapGrid,
+  Viewbox,
   Window,
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
@@ -89,6 +94,7 @@ export const UI = createControls({
   Button,
   CalendarDatePicker,
   CalendarView,
+  Canvas,
   CheckBox,
   ColorPicker,
   DatePicker,
@@ -113,6 +119,7 @@ export const UI = createControls({
   RadioButton,
   RatingControl,
   RefreshContainer,
+  RelativePanel,
   RepeatButton,
   ScrollViewer,
   SelectorBarItem,
@@ -126,6 +133,8 @@ export const UI = createControls({
   TitleBar,
   ToggleButton,
   ToggleSwitch,
+  VariableSizedWrapGrid,
+  Viewbox,
 })
 export const GalleryInfoBar = native<
   InfoBar,
@@ -137,6 +146,18 @@ export const GalleryInfoBar = native<
   adapters: {
     action: adapter.slot('actionButton'),
   },
+})
+export const GallerySplitView = native<
+  SplitView,
+  {
+    paneContent?: MaybeSignal<Child>
+  }
+>(SplitView, {
+  displayName: 'SplitView',
+  adapters: {
+    paneContent: adapter.slot('pane'),
+  },
+  children: adapter.slot('content'),
 })
 export const LayoutGrid = createGridControl({
   Grid,

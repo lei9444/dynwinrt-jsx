@@ -36,6 +36,11 @@
   conversion.
 - Added the complete WinUI Gallery Status & info category with InfoBadge,
   InfoBar, ProgressBar, ProgressRing, and ToolTip.
+- Added typed Canvas ZIndex, RelativePanel relationship, and
+  VariableSizedWrapGrid span attached properties.
+- Added the complete WinUI Gallery Layout category with Border, Canvas,
+  Expander, Grid, RelativePanel, SplitView, StackPanel,
+  VariableSizedWrapGrid, and Viewbox.
 
 ## 1.0.0
 

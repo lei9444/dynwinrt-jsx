@@ -83,6 +83,7 @@
             "BitmapIcon",
             "CalendarDatePicker",
             "CalendarView",
+            "Canvas",
             "CheckBox",
             "ColumnDefinition",
             "ColorPicker",
@@ -125,6 +126,7 @@
             "RatingControl",
             "RefreshContainer",
             "RefreshVisualizer",
+            "RelativePanel",
             "RowDefinition",
             "ScrollViewer",
             "SelectorBar",
@@ -133,6 +135,7 @@
             "StackPanel",
             "StackLayout",
             "SplitButton",
+            "SplitView",
             "SymbolIcon",
             "SymbolIconSource",
             "TeachingTip",
@@ -147,7 +150,9 @@
             "TreeView",
             "TreeViewItem",
             "TreeViewNode",
-            "UniformGridLayout"
+            "UniformGridLayout",
+            "VariableSizedWrapGrid",
+            "Viewbox"
           ]
         },
         {

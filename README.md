@@ -651,6 +651,18 @@ controls accept typed tooltip attached properties directly:
 Primitive tooltip values are converted to native `TextBlock` content; pass a
 projected `ToolTip` instance for offsets, placement, or custom content.
 
+Canvas z-order, RelativePanel sibling/panel relationships, and
+VariableSizedWrapGrid spans are also available as typed attached JSX props:
+
+```tsx
+<UI.Border canvasZIndex={2} />
+<UI.Border
+  relativePanelRightOf={anchor}
+  relativePanelAlignTopWith={anchor}
+/>
+<UI.Border variableSizedWrapGridColumnSpan={2} />
+```
+
 Custom registrations require the named static setter. Add the matching prop to
 a specialized `native<Instance, ExtraProps>()` component contract so TSX remains
 strict.

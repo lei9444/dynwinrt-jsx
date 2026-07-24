@@ -333,7 +333,9 @@ function normalizePageIds(
               ? 'progress-bar'
               : value === 'choices-status'
                 ? 'info-bar'
-                : value
+                : value === 'layout'
+                  ? 'grid'
+                  : value
     const page = findGalleryPage(
       normalizedValue,
     )

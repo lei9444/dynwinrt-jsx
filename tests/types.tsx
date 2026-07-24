@@ -805,6 +805,9 @@ export const typeCheckedTree = (
         variant: signal<'standard' | 'accent'>('accent'),
       })}
       isEnabled={enabled}
+      canvasZIndex={2}
+      relativePanelAlignRightWithPanel
+      variableSizedWrapGridColumnSpan={2}
       toolTip="Increment the current count"
       toolTipPlacement={1}
       onClick={clickHandler}

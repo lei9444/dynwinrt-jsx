@@ -83,6 +83,7 @@ $collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-catego
 $dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.png"
 $dialogsFlyoutsCategoryScreenshotPath = Join-Path $evidenceRoot "dialogs-flyouts-category.png"
 $statusInfoCategoryScreenshotPath = Join-Path $evidenceRoot "status-info-category.png"
+$layoutCategoryScreenshotPath = Join-Path $evidenceRoot "layout-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -92,7 +93,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -130,6 +131,8 @@ try {
         $migratedState.favoritePageIds -notcontains "progress-bar" -or
         $migratedState.recentPageIds -notcontains "info-bar" -or
         $migratedState.favoritePageIds -notcontains "info-bar" -or
+        $migratedState.recentPageIds -notcontains "grid" -or
+        $migratedState.favoritePageIds -notcontains "grid" -or
         $migratedState.recentPageIds -contains "buttons" -or
         $migratedState.favoritePageIds -contains "buttons" -or
         $migratedState.recentPageIds -contains "collections" -or
@@ -139,7 +142,9 @@ try {
         $migratedState.recentPageIds -contains "range-progress" -or
         $migratedState.favoritePageIds -contains "range-progress" -or
         $migratedState.recentPageIds -contains "choices-status" -or
-        $migratedState.favoritePageIds -contains "choices-status"
+        $migratedState.favoritePageIds -contains "choices-status" -or
+        $migratedState.recentPageIds -contains "layout" -or
+        $migratedState.favoritePageIds -contains "layout"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
     }
@@ -273,6 +278,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryLayoutCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "LayoutCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open Border",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $layoutCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open Viewbox",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -311,7 +340,15 @@ try {
         [pscustomobject]@{ Name = "Open Flyout"; Heading = "FlyoutPageHeading"; Probe = "GalleryFlyoutShow"; Query = "flyout confirmation" },
         [pscustomobject]@{ Name = "Open Popup"; Heading = "PopupPageHeading"; Probe = "GalleryPopupShow"; Query = "popup offset" },
         [pscustomobject]@{ Name = "Open TeachingTip"; Heading = "TeachingTipPageHeading"; Probe = "GalleryTeachingTipTargetedShow"; Query = "teachingtip guidance" },
-        [pscustomobject]@{ Name = "Open Grid and layout"; Heading = "LayoutPageHeading"; Probe = $null; Query = "grid layout" },
+        [pscustomobject]@{ Name = "Open Border"; Heading = "BorderPageHeading"; Probe = "GalleryLayoutBorderSample"; Query = "border thickness" },
+        [pscustomobject]@{ Name = "Open Canvas"; Heading = "CanvasPageHeading"; Probe = "GalleryLayoutCanvasSample"; Query = "canvas zindex" },
+        [pscustomobject]@{ Name = "Open Expander"; Heading = "ExpanderPageHeading"; Probe = "GalleryLayoutExpanderDirectionSample"; Query = "expander" },
+        [pscustomobject]@{ Name = "Open Grid"; Heading = "GridPageHeading"; Probe = "GalleryLayoutGridSample"; Query = "grid spacing" },
+        [pscustomobject]@{ Name = "Open RelativePanel"; Heading = "RelativePanelPageHeading"; Probe = "GalleryLayoutRelativePanelSample"; Query = "relativepanel align" },
+        [pscustomobject]@{ Name = "Open SplitView"; Heading = "SplitViewPageHeading"; Probe = "GalleryLayoutSplitViewSample"; Query = "splitview pane" },
+        [pscustomobject]@{ Name = "Open StackPanel"; Heading = "StackPanelPageHeading"; Probe = "GalleryLayoutStackPanelSample"; Query = "stackpanel spacing" },
+        [pscustomobject]@{ Name = "Open VariableSizedWrapGrid"; Heading = "VariableSizedWrapGridPageHeading"; Probe = "GalleryLayoutVariableSizedWrapGridSample"; Query = "variablesizedwrapgrid span" },
+        [pscustomobject]@{ Name = "Open Viewbox"; Heading = "ViewboxPageHeading"; Probe = "GalleryLayoutViewboxSample"; Query = "viewbox stretch" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -996,6 +1033,47 @@ try {
         if ($route.Heading -eq "ToolTipPageHeading") {
             Invoke-WinApp @(
                 "ui", "invoke", "GalleryToolTipSimpleButton",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "BorderPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryBorderThickness", "6",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "CanvasPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryCanvasZIndex", "4",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "GridPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryGridRowSpacing", "12",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "SplitViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySplitViewMessages",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Messages",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "StackPanelPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryStackPanelSpacing", "12",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "ViewboxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryViewboxWidth", "260",
                 "-w", "$windowHandle"
             )
         }

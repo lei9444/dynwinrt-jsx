@@ -340,14 +340,94 @@ export const galleryPages = [
     image: 'ControlImages/TimePicker.png',
   },
   {
-    id: 'layout',
+    id: 'border',
     category: 'Layout',
-    title: 'Grid and layout',
-    subtitle: 'Typed Grid tracks and attached positioning.',
+    title: 'Border',
+    subtitle: 'Draws a background and border around one child.',
     description:
-      'Declare rows, columns, spacing, and attached Grid properties with native WinUI layout semantics.',
-    tags: ['grid', 'layout', 'row', 'column', 'spacing'],
+      'Configure border thickness, border brush, background, and owned child content.',
+    tags: ['border', 'background', 'brush', 'thickness', 'layout'],
+    image: 'ControlImages/Border.png',
+  },
+  {
+    id: 'canvas',
+    category: 'Layout',
+    title: 'Canvas',
+    subtitle: 'Positions children with absolute coordinates and z-order.',
+    description:
+      'Use Canvas.Left, Canvas.Top, and Canvas.ZIndex attached properties for explicit placement.',
+    tags: ['canvas', 'absolute', 'position', 'zindex', 'layout'],
+    image: 'ControlImages/Canvas.png',
+  },
+  {
+    id: 'expander',
+    category: 'Layout',
+    title: 'Expander',
+    subtitle: 'Shows or hides content beneath a header.',
+    description:
+      'Configure headers, content alignment, expanded state, and upward or downward expansion.',
+    tags: ['expander', 'expand', 'collapse', 'header', 'layout'],
+    image: 'ControlImages/Expander.png',
+  },
+  {
+    id: 'grid',
+    category: 'Layout',
+    title: 'Grid',
+    subtitle: 'Arranges children in typed rows and columns.',
+    description:
+      'Control track sizes, row and column spacing, and attached child positions.',
+    tags: ['grid', 'row', 'column', 'spacing', 'layout'],
     image: 'ControlImages/Grid.png',
+  },
+  {
+    id: 'relative-panel',
+    category: 'Layout',
+    title: 'RelativePanel',
+    subtitle: 'Positions children relative to siblings and panel edges.',
+    description:
+      'Express right-of, below, sibling alignment, and panel alignment constraints.',
+    tags: ['relativepanel', 'relative', 'align', 'position', 'layout'],
+    image: 'ControlImages/RelativePanel.png',
+  },
+  {
+    id: 'split-view',
+    category: 'Layout',
+    title: 'SplitView',
+    subtitle: 'Displays a pane beside or over application content.',
+    description:
+      'Own separate pane and content slots with configurable display mode, placement, and lengths.',
+    tags: ['splitview', 'pane', 'navigation', 'overlay', 'layout'],
+    image: 'ControlImages/SplitView.png',
+  },
+  {
+    id: 'stack-panel',
+    category: 'Layout',
+    title: 'StackPanel',
+    subtitle: 'Stacks children vertically or horizontally.',
+    description:
+      'Switch orientation and spacing while preserving native child order.',
+    tags: ['stackpanel', 'stack', 'orientation', 'spacing', 'layout'],
+    image: 'ControlImages/StackPanel.png',
+  },
+  {
+    id: 'variable-sized-wrap-grid',
+    category: 'Layout',
+    title: 'VariableSizedWrapGrid',
+    subtitle: 'Wraps fixed cells whose children can span rows or columns.',
+    description:
+      'Configure item size, orientation, row span, column span, and maximum rows or columns.',
+    tags: ['variablesizedwrapgrid', 'wrap', 'rowspan', 'columnspan', 'layout'],
+    image: 'ControlImages/VariableSizedWrapGrid.png',
+  },
+  {
+    id: 'viewbox',
+    category: 'Layout',
+    title: 'Viewbox',
+    subtitle: 'Scales one child to fit the available space.',
+    description:
+      'Adjust size, stretch mode, and stretch direction for complex child content.',
+    tags: ['viewbox', 'scale', 'stretch', 'resize', 'layout'],
+    image: 'ControlImages/Viewbox.png',
   },
   {
     id: 'content-dialog',
@@ -422,6 +502,7 @@ export type GalleryRoute =
   | 'category-date-time'
   | 'category-dialogs-flyouts'
   | 'category-status-info'
+  | 'category-layout'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -444,6 +525,10 @@ export const dialogsFlyoutsPages = galleryPages.filter(
 
 export const statusInfoPages = galleryPages.filter(
   (page) => page.category === 'Status & info',
+)
+
+export const layoutPages = galleryPages.filter(
+  (page) => page.category === 'Layout',
 )
 
 export const galleryCategories = [

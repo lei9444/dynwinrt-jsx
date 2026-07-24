@@ -56,6 +56,10 @@ class TestTimePicker {
 test('WinUI renderer preset detects and applies generated binding capabilities', () => {
   const toolTips = new WeakMap()
   const toolTipPlacements = new WeakMap()
+  const canvasZIndexes = new WeakMap()
+  const relativeRightOf = new WeakMap()
+  const relativeAlignRightWithPanel = new WeakMap()
+  const wrapGridRowSpans = new WeakMap()
   const bindings = {
     TextBlock: TestTextBlock,
     PropertyValue: {
@@ -100,6 +104,37 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
     Canvas: {
       setLeft() {},
       setTop() {},
+      setZIndex(target, value) {
+        canvasZIndexes.set(target, value)
+      },
+    },
+    RelativePanel: {
+      setAbove() {},
+      setBelow() {},
+      setLeftOf() {},
+      setRightOf(target, value) {
+        relativeRightOf.set(target, value)
+      },
+      setAlignHorizontalCenterWith() {},
+      setAlignVerticalCenterWith() {},
+      setAlignLeftWith() {},
+      setAlignTopWith() {},
+      setAlignRightWith() {},
+      setAlignBottomWith() {},
+      setAlignLeftWithPanel() {},
+      setAlignTopWithPanel() {},
+      setAlignRightWithPanel(target, value) {
+        relativeAlignRightWithPanel.set(target, value)
+      },
+      setAlignBottomWithPanel() {},
+      setAlignHorizontalCenterWithPanel() {},
+      setAlignVerticalCenterWithPanel() {},
+    },
+    VariableSizedWrapGrid: {
+      setRowSpan(target, value) {
+        wrapGridRowSpans.set(target, value)
+      },
+      setColumnSpan() {},
     },
     ToolTipService: {
       setToolTip(target, value) {
@@ -135,6 +170,8 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
     resourceOverrides: true,
     grid: true,
     canvas: true,
+    relativePanel: true,
+    variableSizedWrapGrid: true,
     toolTip: true,
     automation: true,
   })
@@ -186,9 +223,14 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
   switchHandle.dispose()
 
   const contentWindow = new TestWindow()
+  const relativeTarget = {}
   const contentHandle = preset.createRenderer().render(
     UI.ContentControl({
       content: 'Hello',
+      canvasZIndex: 4,
+      relativePanelRightOf: relativeTarget,
+      relativePanelAlignRightWithPanel: true,
+      variableSizedWrapGridRowSpan: 2,
       toolTip: 'More information',
       toolTipPlacement: 1,
     }),
@@ -200,6 +242,16 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
     'More information',
   )
   assert.equal(toolTipPlacements.get(contentWindow.content), 1)
+  assert.equal(canvasZIndexes.get(contentWindow.content), 4)
+  assert.equal(
+    relativeRightOf.get(contentWindow.content),
+    relativeTarget,
+  )
+  assert.equal(
+    relativeAlignRightWithPanel.get(contentWindow.content),
+    true,
+  )
+  assert.equal(wrapGridRowSpans.get(contentWindow.content), 2)
   contentHandle.dispose()
 
   const date = { universalTime: 133_986_528_000_000_000n }

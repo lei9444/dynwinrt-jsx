@@ -82,6 +82,25 @@ export interface NativeCommonProps<Value> {
   gridColumnSpan?: MaybeSignal<number>
   canvasLeft?: MaybeSignal<number>
   canvasTop?: MaybeSignal<number>
+  canvasZIndex?: MaybeSignal<number>
+  relativePanelAbove?: MaybeSignal<object>
+  relativePanelBelow?: MaybeSignal<object>
+  relativePanelLeftOf?: MaybeSignal<object>
+  relativePanelRightOf?: MaybeSignal<object>
+  relativePanelAlignHorizontalCenterWith?: MaybeSignal<object>
+  relativePanelAlignVerticalCenterWith?: MaybeSignal<object>
+  relativePanelAlignLeftWith?: MaybeSignal<object>
+  relativePanelAlignTopWith?: MaybeSignal<object>
+  relativePanelAlignRightWith?: MaybeSignal<object>
+  relativePanelAlignBottomWith?: MaybeSignal<object>
+  relativePanelAlignLeftWithPanel?: MaybeSignal<boolean>
+  relativePanelAlignTopWithPanel?: MaybeSignal<boolean>
+  relativePanelAlignRightWithPanel?: MaybeSignal<boolean>
+  relativePanelAlignBottomWithPanel?: MaybeSignal<boolean>
+  relativePanelAlignHorizontalCenterWithPanel?: MaybeSignal<boolean>
+  relativePanelAlignVerticalCenterWithPanel?: MaybeSignal<boolean>
+  variableSizedWrapGridRowSpan?: MaybeSignal<number>
+  variableSizedWrapGridColumnSpan?: MaybeSignal<number>
   toolTip?: MaybeSignal<unknown>
   toolTipPlacement?: MaybeSignal<number>
   toolTipPlacementTarget?: MaybeSignal<object>

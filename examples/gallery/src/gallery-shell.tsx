@@ -90,7 +90,16 @@ import { InfoBarPage } from './pages/status-info/info-bar'
 import { ProgressBarPage } from './pages/status-info/progress-bar'
 import { ProgressRingPage } from './pages/status-info/progress-ring'
 import { ToolTipPage } from './pages/status-info/tool-tip'
-import { LayoutPage } from './pages/layout'
+import { LayoutCategoryPage } from './pages/layout/index'
+import { BorderPage } from './pages/layout/border'
+import { CanvasPage } from './pages/layout/canvas'
+import { ExpanderPage } from './pages/layout/expander'
+import { GridPage } from './pages/layout/grid'
+import { RelativePanelPage } from './pages/layout/relative-panel'
+import { SplitViewPage } from './pages/layout/split-view'
+import { StackPanelPage } from './pages/layout/stack-panel'
+import { VariableSizedWrapGridPage } from './pages/layout/variable-sized-wrap-grid'
+import { ViewboxPage } from './pages/layout/viewbox'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -175,8 +184,24 @@ function renderSamplePage(
       return <PopupPage {...context} />
     case 'teaching-tip':
       return <TeachingTipPage {...context} />
-    case 'layout':
-      return <LayoutPage {...context} />
+    case 'border':
+      return <BorderPage {...context} />
+    case 'canvas':
+      return <CanvasPage {...context} />
+    case 'expander':
+      return <ExpanderPage {...context} />
+    case 'grid':
+      return <GridPage {...context} />
+    case 'relative-panel':
+      return <RelativePanelPage {...context} />
+    case 'split-view':
+      return <SplitViewPage {...context} />
+    case 'stack-panel':
+      return <StackPanelPage {...context} />
+    case 'variable-sized-wrap-grid':
+      return <VariableSizedWrapGridPage {...context} />
+    case 'viewbox':
+      return <ViewboxPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -203,6 +228,8 @@ function renderRoute(
       return <DialogsFlyoutsCategoryPage {...context} />
     case 'category-status-info':
       return <StatusInfoCategoryPage {...context} />
+    case 'category-layout':
+      return <LayoutCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -368,6 +395,23 @@ export function Shell(context: AppContext) {
     ],
     'category-status-info',
   )
+  const layoutItem = createNavigationGroup(
+    'Layout',
+    'Layout',
+    Symbol.Page,
+    [
+      'border',
+      'canvas',
+      'expander',
+      'grid',
+      'relative-panel',
+      'split-view',
+      'stack-panel',
+      'variable-sized-wrap-grid',
+      'viewbox',
+    ],
+    'category-layout',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -394,12 +438,7 @@ export function Shell(context: AppContext) {
     collectionsItem,
     dateTimeItem,
     dialogsFlyoutsItem,
-    createNavigationGroup(
-      'Layout',
-      'Layout',
-      Symbol.Page,
-      ['layout'],
-    ),
+    layoutItem,
     createNavigationGroup('Media', 'Media', Symbol.Play, []),
     createNavigationGroup(
       'MenusToolbars',
@@ -456,6 +495,7 @@ export function Shell(context: AppContext) {
     dialogsFlyoutsItem,
   )
   routeItems.set('category-status-info', statusInfoItem)
+  routeItems.set('category-layout', layoutItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -519,6 +559,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-status-info')
               return
             }
+            if (currentPage?.category === 'Layout') {
+              context.model.navigate('category-layout')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -576,6 +620,7 @@ export function Shell(context: AppContext) {
               route === 'category-date-time' ||
               route === 'category-dialogs-flyouts' ||
               route === 'category-status-info' ||
+              route === 'category-layout' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)
