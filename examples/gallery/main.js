@@ -17,6 +17,7 @@ const {
   getRendererHeartbeatSharedState,
   rendererHeartbeatSharedStateIndex,
   formatDiagnosticRecord,
+  summarizeRendererHeartbeatTimeout,
 } = require('dynwinrt-jsx/host')
 const {
   createDefaultPersistedAppState,
@@ -179,6 +180,8 @@ const heartbeatMonitor = heartbeatEnabled
       },
       onTimeout(status) {
         const detectedAt = Date.now()
+        const summary =
+          summarizeRendererHeartbeatTimeout(status)
         Atomics.store(
           heartbeatState,
           rendererHeartbeatSharedStateIndex.timeoutAt,
@@ -195,10 +198,22 @@ const heartbeatMonitor = heartbeatEnabled
             type: 'heartbeat-timeout',
             detectedAt:
               new Date(detectedAt).toISOString(),
+            summary,
             monitor: status,
           })
+          const lastOperation = summary.lastOperation
+            ? `${summary.lastOperation.kind} ${
+                summary.lastOperation.target ?? 'unknown target'
+              } ${
+                summary.lastOperation.name ??
+                summary.lastOperation.property ??
+                ''
+              }`.trim()
+            : 'no recorded operation'
           console.error(
-            `WinUI heartbeat timed out; evidence saved to ${heartbeatEvidencePath}.`,
+            `WinUI heartbeat timed out on ${
+              summary.suspectedComponent ?? 'unknown page'
+            }; last operation: ${lastOperation}; evidence saved to ${heartbeatEvidencePath}.`,
           )
         }
         catch (error) {

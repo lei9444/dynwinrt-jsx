@@ -8,7 +8,9 @@ import {
   createListViewControl,
   createNavigationViewControl,
   createSelectorBarControl,
+  createVirtualizedItemsControl,
   native,
+  type MaybeSignal,
   type Renderer,
 } from 'dynwinrt-jsx'
 import {
@@ -23,15 +25,20 @@ import {
   DropDownButton,
   Expander,
   Flyout,
+  FlipView,
   FontIcon,
   Grid,
+  GridView,
+  GridViewItem,
   HyperlinkButton,
   IElementFactory,
   IObservableVector_Object,
   InfoBar,
   Image,
+  ItemContainer,
   IReference_Int32,
   ItemsRepeater,
+  ItemsView,
   ListView,
   ListViewItem,
   MenuFlyout,
@@ -46,6 +53,7 @@ import {
   RadioButton,
   RadioButtons,
   RatingControl,
+  RefreshContainer,
   RepeatButton,
   RowDefinition,
   ScrollViewer,
@@ -62,6 +70,8 @@ import {
   ToggleButton,
   ToggleSplitButton,
   ToggleSwitch,
+  TreeView,
+  TreeViewNode,
   Window,
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
@@ -74,8 +84,11 @@ export const UI = createControls({
   ColorPicker,
   Expander,
   Flyout,
-  Grid,
+  FlipView,
   FontIcon,
+  Grid,
+  GridView,
+  GridViewItem,
   HyperlinkButton,
   InfoBar,
   Image,
@@ -88,6 +101,7 @@ export const UI = createControls({
   ProgressRing,
   RadioButton,
   RatingControl,
+  RefreshContainer,
   RepeatButton,
   ScrollViewer,
   SelectorBarItem,
@@ -154,6 +168,49 @@ export const GalleryItemsRepeater = createItemsRepeaterControl({
   PropertyValue,
   IReference_Int32,
 })
+const itemsViewMountHosts =
+  new WeakMap<ItemContainer, ContentControl>()
+export const GalleryItemsView =
+  createVirtualizedItemsControl({
+    Control: ItemsView,
+    ItemHost: ItemContainer,
+    initializeItemHost: (host) => {
+      host.isEnabled = true
+      const mountHost = new ContentControl()
+      host.child = mountHost
+      itemsViewMountHosts.set(host, mountHost)
+    },
+    getItemMountHost: (host) => {
+      const mountHost = itemsViewMountHosts.get(host)
+      if (!mountHost) {
+        throw new Error('ItemsView item mount host is missing.')
+      }
+      return mountHost
+    },
+    clearItemsSource: (instance) => {
+      instance.itemsSource = null
+    },
+    IElementFactory,
+    IObservableVector_Object,
+    PropertyValue,
+    IReference_Int32,
+  }, {
+    displayName: 'ItemsView',
+  })
+export const GalleryTreeView = native<
+  TreeView,
+  {
+    rootNodes?: MaybeSignal<readonly TreeViewNode[]>
+  }
+>(TreeView, {
+  displayName: 'TreeView',
+  adapters: {
+    rootNodes: adapter.collection({
+      get: (instance) => instance.rootNodes,
+      label: 'TreeView rootNodes',
+    }),
+  },
+})
 
 export type NavigationInstance = InstanceType<typeof NavigationView>
 export type ButtonInstance = InstanceType<typeof Button>
@@ -167,6 +224,8 @@ export type TextBoxInstance = InstanceType<typeof TextBox>
 export type ToggleButtonInstance = InstanceType<typeof ToggleButton>
 export type FlyoutInstance = InstanceType<typeof Flyout>
 export type ToggleInstance = InstanceType<typeof ToggleSwitch>
+export type RefreshContainerInstance =
+  InstanceType<typeof RefreshContainer>
 
 export interface AppContext {
   readonly model: AppModel

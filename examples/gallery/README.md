@@ -13,9 +13,13 @@ The pages cover:
   CheckBox, ColorPicker, ComboBox, RadioButton, RatingControl, Slider, and
   ToggleSwitch;
 - a Basic input category landing page with links to all 14 controls;
+- the complete WinUI Gallery Collections category: FlipView, GridView,
+  ItemsRepeater, ItemsView, ListView, PullToRefresh, and TreeView;
+- a responsive Collections category landing page with links to all seven
+  controls;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
-- ListView selection and native ItemsRepeater virtualization;
+- ListView selection plus native ItemsRepeater and ItemsView virtualization;
 - TextBox, PasswordBox, AutoSuggestBox, and NumberBox;
 - ProgressBar, ProgressRing, and InfoBar;
 - typed Grid layout;
@@ -54,7 +58,9 @@ The Gallery enables the optional UI-thread heartbeat by default. Diagnostics
 shows heartbeat acknowledgement, inspector ownership counts, subscriptions,
 and recent operations. Timeout evidence is saved beside `state.json` as
 `heartbeat-timeout.json`; the Export button writes
-`inspector-snapshot.json`.
+`inspector-snapshot.json`. Timeout evidence starts with the suspected page,
+last renderer operation, and grouped hot operations before the complete
+snapshot.
 
 Set `DYNWINRT_JSX_HEARTBEAT=0` to disable heartbeat monitoring, or override
 `DYNWINRT_JSX_HEARTBEAT_TIMEOUT_MS`, `DYNWINRT_JSX_HEARTBEAT_PATH`, and

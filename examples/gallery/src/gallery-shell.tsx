@@ -64,11 +64,18 @@ import { ToggleButtonPage } from './pages/basic-input/toggle-button'
 import { ToggleSplitButtonPage } from './pages/basic-input/toggle-split-button'
 import { ToggleSwitchPage } from './pages/basic-input/toggle-switch'
 import { BasicInputCategoryPage } from './pages/basic-input'
+import { CollectionsCategoryPage } from './pages/collections/index'
+import { FlipViewPage } from './pages/collections/flip-view'
+import { GridViewPage } from './pages/collections/grid-view'
+import { ItemsRepeaterPage } from './pages/collections/items-repeater'
+import { ItemsViewPage } from './pages/collections/items-view'
+import { ListViewPage } from './pages/collections/list-view'
+import { PullToRefreshPage } from './pages/collections/pull-to-refresh'
+import { TreeViewPage } from './pages/collections/tree-view'
 import { SelectionPage } from './pages/selection'
 import { TextInputPage } from './pages/text-input'
 import { RangeProgressPage } from './pages/range-progress'
 import { ChoicesStatusPage } from './pages/choices-status'
-import { CollectionsPage } from './pages/collections'
 import { LayoutPage } from './pages/layout'
 import { OverlaysPage } from './pages/overlays'
 import { ResourcesPage } from './pages/resources'
@@ -119,8 +126,20 @@ function renderSamplePage(
       return <RangeProgressPage {...context} />
     case 'choices-status':
       return <ChoicesStatusPage {...context} />
-    case 'collections':
-      return <CollectionsPage {...context} />
+    case 'flip-view':
+      return <FlipViewPage {...context} />
+    case 'grid-view':
+      return <GridViewPage {...context} />
+    case 'items-repeater':
+      return <ItemsRepeaterPage {...context} />
+    case 'items-view':
+      return <ItemsViewPage {...context} />
+    case 'list-view':
+      return <ListViewPage {...context} />
+    case 'pull-to-refresh':
+      return <PullToRefreshPage {...context} />
+    case 'tree-view':
+      return <TreeViewPage {...context} />
     case 'layout':
       return <LayoutPage {...context} />
     case 'overlays':
@@ -143,6 +162,8 @@ function renderRoute(
       return <SearchPage {...context} />
     case 'category-basic-input':
       return <BasicInputCategoryPage {...context} />
+    case 'category-collections':
+      return <CollectionsCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -256,13 +277,28 @@ export function Shell(context: AppContext) {
     ],
     'category-basic-input',
   )
+  const collectionsItem = createNavigationGroup(
+    'Collections',
+    'Collections',
+    Symbol.Bullets,
+    [
+      'flip-view',
+      'grid-view',
+      'items-repeater',
+      'items-view',
+      'list-view',
+      'pull-to-refresh',
+      'tree-view',
+    ],
+    'category-collections',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
       'Fundamentals',
       'Fundamentals',
       Symbol.Library,
-      ['signals'],
+      ['signals', 'selection'],
     ),
     createNavigationGroup(
       'Design',
@@ -279,12 +315,7 @@ export function Shell(context: AppContext) {
     controlsHeader,
     allItem,
     basicInputItem,
-    createNavigationGroup(
-      'Collections',
-      'Collections',
-      Symbol.Bullets,
-      ['selection', 'collections'],
-    ),
+    collectionsItem,
     createNavigationGroup(
       'DateTime',
       'Date & time',
@@ -357,6 +388,7 @@ export function Shell(context: AppContext) {
   )
   routeItems.set('diagnostics', diagnosticsItem)
   routeItems.set('category-basic-input', basicInputItem)
+  routeItems.set('category-collections', collectionsItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -402,6 +434,10 @@ export function Shell(context: AppContext) {
             )
             if (currentPage?.category === 'Basic input') {
               context.model.navigate('category-basic-input')
+              return
+            }
+            if (currentPage?.category === 'Collections') {
+              context.model.navigate('category-collections')
               return
             }
             context.model.navigate('home')
@@ -457,6 +493,7 @@ export function Shell(context: AppContext) {
               route === 'home' ||
               route === 'diagnostics' ||
               route === 'category-basic-input' ||
+              route === 'category-collections' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

@@ -31,9 +31,11 @@ export {
   getRendererHeartbeatSharedState,
   rendererHeartbeatSharedStateIndex,
   rendererHeartbeatSharedStateLength,
+  summarizeRendererHeartbeatTimeout,
   type RendererHeartbeat,
   type RendererHeartbeatMonitor,
   type RendererHeartbeatMonitorOptions,
   type RendererHeartbeatMonitorStatus,
   type RendererHeartbeatState,
+  type RendererHeartbeatTimeoutSummary,
 } from './runtime/heartbeat'

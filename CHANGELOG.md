@@ -18,6 +18,13 @@
 - Added validated atomic JSON persistence with corrupt-file recovery for dashboard and generated app state.
 - Limited nullable `isChecked` boxing to ToggleButton-family controls so non-nullable controls such as ToggleSplitButton receive native Booleans and reject `null`.
 - Added primitive `onContent` and `offContent` conversion for ToggleSwitch.
+- Generalized keyed native virtualization for ItemsView-style controls with
+  persistent outer item containers and control-specific ItemsSource cleanup.
+- Added the complete WinUI Gallery Collections category with FlipView,
+  GridView, ItemsRepeater, ItemsView, ListView, PullToRefresh, and TreeView.
+- Added compact page and hot-operation summaries to heartbeat timeout evidence.
+- Prevented the Gallery GridView tile-width NumberBox from feeding native
+  ValueChanged echoes back into its own value property.
 
 ## 1.0.0
 

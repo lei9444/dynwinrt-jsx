@@ -23,6 +23,7 @@ interface ItemsRepeaterEntry {
   readonly controller: ItemsRepeaterChildController
   readonly index: Signal<number>
   readonly inspectionNodeId: number
+  readonly mountHostInspectionNodeId?: number
   keyToken: string
   item: unknown
   pooled: boolean
@@ -126,18 +127,29 @@ export class RendererItemsRepeaterService {
       descriptor: ItemDescriptor,
     ): ItemsRepeaterEntry => {
       const host = adapter.createElementHost()
+      const mountHost =
+        adapter.getElementMountHost?.(host) ?? host
       const inspectionNodeId =
         this.host.registerNative(host, scope)
+      const mountHostInspectionNodeId =
+        mountHost === host
+          ? undefined
+          : this.host.registerNative(mountHost, scope)
       const index = signal(descriptor.index)
       let controller: ItemsRepeaterChildController
       try {
         controller = this.host.createItemController(
-          host,
+          mountHost,
           scope,
           renderEntry(descriptor, index),
         )
       }
       catch (error) {
+        if (mountHostInspectionNodeId !== undefined) {
+          this.host.releaseNative(
+            mountHostInspectionNodeId,
+          )
+        }
         this.host.releaseNative(inspectionNodeId)
         throw error
       }
@@ -146,6 +158,7 @@ export class RendererItemsRepeaterService {
         controller,
         index,
         inspectionNodeId,
+        mountHostInspectionNodeId,
         keyToken: descriptor.token,
         item: descriptor.item,
         pooled: false,
@@ -564,6 +577,13 @@ export class RendererItemsRepeaterService {
           cleanupError ??= failure
         }
         finally {
+          if (
+            entry.mountHostInspectionNodeId !== undefined
+          ) {
+            this.host.releaseNative(
+              entry.mountHostInspectionNodeId,
+            )
+          }
           this.host.releaseNative(
             entry.inspectionNodeId,
           )
@@ -621,6 +641,13 @@ export class RendererItemsRepeaterService {
             firstError ??= error
           }
           finally {
+            if (
+              entry.mountHostInspectionNodeId !== undefined
+            ) {
+              this.host.releaseNative(
+                entry.mountHostInspectionNodeId,
+              )
+            }
             this.host.releaseNative(
               entry.inspectionNodeId,
             )

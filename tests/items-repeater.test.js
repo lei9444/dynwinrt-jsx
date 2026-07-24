@@ -7,6 +7,7 @@ const {
   computed,
   createControls,
   createItemsRepeaterControl,
+  createVirtualizedItemsControl,
   createRenderer,
   signal,
 } = require('../dist')
@@ -58,6 +59,10 @@ class FakeItemsSource {
 
 class FakeContentControl {
   content = null
+}
+
+class FakeItemContainer {
+  child = null
 }
 
 class FakeItemsRepeater {
@@ -131,6 +136,7 @@ function createRepeater(
             released = true
           },
         }
+
       },
     },
     IObservableVector_Object: {
@@ -148,6 +154,51 @@ function createRepeater(
         return value
       },
     },
+  })
+}
+
+function createItemsView() {
+  return createVirtualizedItemsControl({
+    Control: FakeItemsRepeater,
+    ItemHost: FakeItemContainer,
+    initializeItemHost(host) {
+      host.child = new FakeContentControl()
+    },
+    getItemMountHost(host) {
+      return host.child
+    },
+    IElementFactory: {
+      create(getElement, recycleElement) {
+        let released = false
+        return {
+          getElement,
+          recycleElement,
+          get released() {
+            return released
+          },
+          releaseCallbacks() {
+            released = true
+          },
+        }
+      },
+    },
+    IObservableVector_Object: {
+      create(items) {
+        return new FakeItemsSource(items)
+      },
+    },
+    PropertyValue: {
+      createInt32(value) {
+        return { value }
+      },
+    },
+    IReference_Int32: {
+      from(value) {
+        return value
+      },
+    },
+  }, {
+    displayName: 'ItemsView',
   })
 }
 
@@ -257,6 +308,30 @@ test('ItemsRepeater realizes a bounded native working set', () => {
   assert.equal(repeater.itemsSource, null)
   assert.equal(repeater.itemTemplate.released, true)
   assert.ok(hosts.every((host) => host.content === null))
+})
+
+test('virtualized items controls support persistent element hosts', () => {
+  const ItemsView = createItemsView()
+  const window = new FakeWindow()
+  const nativeRenderer = renderer()
+  const handle = nativeRenderer.render(
+    jsx(ItemsView, {
+      each: [{ id: 1, label: 'One' }],
+      key: (item) => item.id,
+      children: (item) =>
+        jsx(UI.TextBlock, { text: item.label }),
+    }),
+    window,
+  )
+  const itemsView = window.content
+  const host = itemsView.realize(0)
+
+  assert.equal(host.child.content.text, 'One')
+  handle.dispose()
+  assert.ok(host.child instanceof FakeContentControl)
+  assert.equal(host.child.content, null)
+  assert.equal(itemsView.itemsSource, null)
+  assert.equal(itemsView.itemTemplate.released, true)
 })
 
 test('ItemsRepeater preserves keyed hosts and item scope across reorder', () => {

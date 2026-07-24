@@ -161,7 +161,7 @@ export const galleryPages = [
   },
   {
     id: 'selection',
-    category: 'Controls',
+    category: 'Framework',
     title: 'Selection controls',
     subtitle: 'Controlled ComboBox and ListView selection.',
     description:
@@ -200,14 +200,74 @@ export const galleryPages = [
     image: 'ControlImages/InfoBar.png',
   },
   {
-    id: 'collections',
+    id: 'flip-view',
     category: 'Collections',
-    title: 'Collections and virtualization',
-    subtitle: 'Keyed lists and native ItemsRepeater virtualization.',
+    title: 'FlipView',
+    subtitle: 'Presents a collection one item at a time.',
     description:
-      'Keep stable item identity while WinUI realizes and recycles only the dynamic-height rows near the viewport.',
+      'Flip through images, galleries, or other sequential content with native paging controls.',
+    tags: ['flipview', 'carousel', 'slideshow', 'gallery'],
+    image: 'ControlImages/FlipView.png',
+  },
+  {
+    id: 'grid-view',
+    category: 'Collections',
+    title: 'GridView',
+    subtitle: 'Presents a collection in rows and columns.',
+    description:
+      'Arrange selectable, invokable items in a wrapping native grid with configurable item sizing.',
+    tags: ['gridview', 'tiles', 'collection grid', 'selection'],
+    image: 'ControlImages/GridView.png',
+  },
+  {
+    id: 'items-repeater',
+    category: 'Collections',
+    title: 'ItemsRepeater',
+    subtitle: 'A flexible primitive for data-driven layouts.',
+    description:
+      'Keep stable keyed item identity while WinUI realizes and recycles only the rows near the viewport.',
     tags: ['itemsrepeater', 'virtualization', 'list', 'collection', 'key'],
     image: 'ControlImages/ItemsRepeater.png',
+  },
+  {
+    id: 'items-view',
+    category: 'Collections',
+    title: 'ItemsView',
+    subtitle: 'Presents a collection using swappable layouts.',
+    description:
+      'Combine native virtualization, invocation, selection, and Stack, UniformGrid, or LinedFlow layouts.',
+    tags: ['itemsview', 'collection', 'items source', 'layout', 'selection'],
+    image: 'ControlImages/ItemsView.png',
+  },
+  {
+    id: 'list-view',
+    category: 'Collections',
+    title: 'ListView',
+    subtitle: 'Presents a collection in a vertical list.',
+    description:
+      'Display, filter, select, reorder, and update native list items with controlled application state.',
+    tags: ['listview', 'list', 'selection', 'collection list', 'filter'],
+    image: 'ControlImages/ListView.png',
+  },
+  {
+    id: 'pull-to-refresh',
+    category: 'Collections',
+    title: 'PullToRefresh',
+    subtitle: 'Refreshes collection content with a pull gesture.',
+    description:
+      'Use RefreshContainer and RefreshVisualizer to request and complete collection refresh work.',
+    tags: ['pull to refresh', 'refreshcontainer', 'refreshvisualizer', 'list'],
+    image: 'ControlImages/PullToRefresh.png',
+  },
+  {
+    id: 'tree-view',
+    category: 'Collections',
+    title: 'TreeView',
+    subtitle: 'Displays expandable hierarchical collections.',
+    description:
+      'Build nested TreeViewNode collections with expansion, invocation, drag, and multiple selection.',
+    tags: ['treeview', 'tree', 'hierarchy', 'nodes', 'expandable list'],
+    image: 'ControlImages/TreeView.png',
   },
   {
     id: 'layout',
@@ -258,12 +318,17 @@ export type GalleryRoute =
   | 'home'
   | 'search'
   | 'category-basic-input'
+  | 'category-collections'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
 
 export const basicInputPages = galleryPages.filter(
   (page) => page.category === 'Basic input',
+)
+
+export const collectionPages = galleryPages.filter(
+  (page) => page.category === 'Collections',
 )
 
 export const galleryCategories = [

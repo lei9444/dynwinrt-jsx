@@ -103,10 +103,16 @@ export {
 
 export {
   createItemsRepeaterControl,
+  createVirtualizedItemsControl,
   type ItemsRepeaterControlBindings,
   type ItemsRepeaterInstance,
   type ItemsRepeaterItemHost,
   type ItemsRepeaterProps,
+  type VirtualizedItemsControlBindings,
+  type VirtualizedItemsHost,
+  type VirtualizedItemsInstance,
+  type VirtualizedItemsMountHost,
+  type VirtualizedItemsProps,
 } from './winui/items-repeater'
 
 export {

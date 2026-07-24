@@ -19,6 +19,7 @@ import {
   createFontFamily,
   createGridControl,
   createItemsRepeaterControl,
+  createVirtualizedItemsControl,
   createJsonStateStore,
   createListViewControl,
   createListViewScrollTarget,
@@ -332,6 +333,10 @@ class TypeContentControl {
   content: unknown = null
 }
 
+class TypeItemContainer {
+  readonly mountHost = new TypeContentControl()
+}
+
 class TypeTextBox {
   text = ''
 
@@ -471,6 +476,54 @@ const VirtualizedTypeList = createItemsRepeaterControl({
     },
   },
 })
+const VirtualizedTypeItemsView =
+  createVirtualizedItemsControl({
+    Control: TypeItemsRepeater,
+    ItemHost: TypeItemContainer,
+    getItemMountHost(host) {
+      return host.mountHost
+    },
+    IElementFactory: {
+      create(getElement, recycleElement) {
+        return {
+          getElement,
+          recycleElement,
+          releaseCallbacks() {},
+        }
+      },
+    },
+    IObservableVector_Object: {
+      create(values) {
+        const items = [...values]
+        return {
+          insertAt(index: number, value: unknown) {
+            items.splice(index, 0, value)
+          },
+          removeAt(index: number) {
+            items.splice(index, 1)
+          },
+          append(value: unknown) {
+            items.push(value)
+          },
+          clear() {
+            items.length = 0
+          },
+        }
+      },
+    },
+    PropertyValue: {
+      createInt32(value) {
+        return value
+      },
+    },
+    IReference_Int32: {
+      from(value) {
+        return { value: Number(value) }
+      },
+    },
+  }, {
+    displayName: 'ItemsView',
+  })
 adapter.controlled<TypeListView>({
   changeProperty: 'onSelectedIndexChange',
   read: (instance) => instance.selectedIndex,
@@ -708,6 +761,13 @@ export const typeCheckedTree = (
         />
       )}
     </VirtualizedTypeList>
+    <VirtualizedTypeItemsView
+      each={items}
+      key={(item) => item.id}
+      layout={{}}
+    >
+      {(item) => <UI.TextBlock text={item.title} />}
+    </VirtualizedTypeItemsView>
 
     <UI.TextBlock
       text={computed(() => `Count: ${count.value}`)}

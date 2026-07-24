@@ -91,7 +91,7 @@ adoption map.
 | Grid and navigation helpers | `src/winui/grid.ts`, `src/winui/navigation.ts` |
 | ListView, ComboBox, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/selector.ts` |
 | SelectorBar ownership and ScrollViewer state | `src/winui/selector-bar.ts`, `src/winui/scroll-viewer.ts` |
-| Native ItemsRepeater virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
+| Native ItemsRepeater/ItemsView virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
 | Theme resources, tokens, and recipes | `src/winui/resource.ts`, `src/winui/theme.ts`, `src/winui/style.ts` |
 | Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
@@ -194,6 +194,9 @@ The built-in WinUI layer currently provides:
 - ComboBox items/header ownership with mounted controlled selection.
 - SelectorBar item ownership with controlled selected-index mapping.
 - ScrollViewer offset, viewport, boundary, and ChangeView controllers.
+- Generic `ItemsSource`/`IElementFactory` virtualization for ItemsView-style
+  controls, including persistent outer item containers and custom source
+  cleanup.
 - Scoped Flyout, MenuFlyout, and TeachingTip rendering.
 - Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
 - Typed theme resources with effective-element lookup, High Contrast refresh,
@@ -340,6 +343,8 @@ Account for these limits when designing a feature:
   virtualization uses `createItemsRepeaterControl()`.
 - ItemsRepeater keeps one projected observable vector and applies keyed
   insert/remove mutations while reusing realized hosts.
+- `createVirtualizedItemsControl()` supports controls that use the same native
+  item factory protocol but need a different item host or cleanup sequence.
 - State bridges clone complete state and do not validate schemas.
 - `createJsonStateStore()` validates persisted state, writes atomically, and preserves corrupt inputs.
 - Object-valued WinRT properties require projected objects unless a converter

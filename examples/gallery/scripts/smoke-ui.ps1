@@ -79,6 +79,7 @@ $stderrPath = Join-Path $evidenceRoot "gallery.stderr.log"
 $screenshotPath = Join-Path $evidenceRoot "gallery.png"
 $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
 $categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
+$collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -88,7 +89,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons"],"favoritePageIds":["buttons"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections"],"favoritePageIds":["buttons","collections"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -118,10 +119,14 @@ try {
     if (
         $migratedState.recentPageIds -notcontains "button" -or
         $migratedState.favoritePageIds -notcontains "button" -or
+        $migratedState.recentPageIds -notcontains "items-repeater" -or
+        $migratedState.favoritePageIds -notcontains "items-repeater" -or
         $migratedState.recentPageIds -contains "buttons" -or
-        $migratedState.favoritePageIds -contains "buttons"
+        $migratedState.favoritePageIds -contains "buttons" -or
+        $migratedState.recentPageIds -contains "collections" -or
+        $migratedState.favoritePageIds -contains "collections"
     ) {
-        throw "The legacy 'buttons' page ID was not migrated to 'button'."
+        throw "Legacy Gallery page IDs were not migrated."
     }
 
     Invoke-WinApp @(
@@ -157,6 +162,30 @@ try {
         "--timeout", "$TimeoutMilliseconds"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryCollectionsCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "CollectionsCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open FlipView",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $collectionsCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open TreeView",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -177,7 +206,13 @@ try {
         [pscustomobject]@{ Name = "Open Text and numeric input"; Heading = "TextInputPageHeading"; Probe = "GalleryTextInputSample"; Query = "passwordbox" },
         [pscustomobject]@{ Name = "Open Range and progress"; Heading = "RangeProgressPageHeading"; Probe = "GalleryRangeProgressSample"; Query = "progressring" },
         [pscustomobject]@{ Name = "Open Choices and status"; Heading = "ChoicesStatusPageHeading"; Probe = "GalleryChoicesStatusSample"; Query = "infobar" },
-        [pscustomobject]@{ Name = "Open Collections and virtualization"; Heading = "CollectionsPageHeading"; Probe = $null; Query = "itemsrepeater" },
+        [pscustomobject]@{ Name = "Open FlipView"; Heading = "FlipViewPageHeading"; Probe = "GalleryCollectionsFlipViewSample"; Query = "flipview carousel" },
+        [pscustomobject]@{ Name = "Open GridView"; Heading = "GridViewPageHeading"; Probe = "GalleryCollectionsGridViewSample"; Query = "gridview tiles" },
+        [pscustomobject]@{ Name = "Open ItemsRepeater"; Heading = "ItemsRepeaterPageHeading"; Probe = "GalleryCollectionsItemsRepeaterSample"; Query = "itemsrepeater virtualization" },
+        [pscustomobject]@{ Name = "Open ItemsView"; Heading = "ItemsViewPageHeading"; Probe = "GalleryCollectionsItemsViewSample"; Query = "itemsview layout" },
+        [pscustomobject]@{ Name = "Open ListView"; Heading = "ListViewPageHeading"; Probe = "GalleryCollectionsListViewSelectionSample"; Query = "listview filter" },
+        [pscustomobject]@{ Name = "Open PullToRefresh"; Heading = "PullToRefreshPageHeading"; Probe = "GalleryCollectionsPullToRefreshSample"; Query = "refreshcontainer" },
+        [pscustomobject]@{ Name = "Open TreeView"; Heading = "TreeViewPageHeading"; Probe = "GalleryCollectionsTreeViewSample"; Query = "treeview hierarchy" },
         [pscustomobject]@{ Name = "Open Grid and layout"; Heading = "LayoutPageHeading"; Probe = $null; Query = "grid layout" },
         [pscustomobject]@{ Name = "Open Dialogs and flyouts"; Heading = "OverlaysPageHeading"; Probe = $null; Query = "contentdialog" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
@@ -573,6 +608,162 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
+        if ($route.Heading -eq "FlipViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryCollectionsFlipViewNext",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "click", "GalleryCollectionsFlipViewNext",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Current item: Grapes",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "GridViewPageHeading") {
+            $gridItemSearchJson = Invoke-WinApp @(
+                "ui", "search", "Cliff",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $gridItem = @(
+                ($gridItemSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "ListItem" -and
+                $_.name -eq "Cliff"
+            } | Select-Object -First 1
+            if (-not $gridItem) {
+                throw "The GridView item target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", $gridItem.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Invoked: Cliff",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            foreach ($width in @(100, 240, 120, 220, 140, 200, 160, 180)) {
+                Invoke-WinApp @(
+                    "ui", "set-value",
+                    "GalleryCollectionsGridViewTileWidth", "$width",
+                    "-w", "$windowHandle"
+                )
+            }
+            Invoke-WinApp @(
+                "ui", "wait-for", "GridViewPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Assert-Responsive $appProcess.Id "GridView tile width stress"
+        }
+        if ($route.Heading -eq "ItemsRepeaterPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCollectionsRepeaterAdd",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Item 7",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ItemsViewPageHeading") {
+            $itemsViewItemSearchJson = Invoke-WinApp @(
+                "ui", "search", "Cliff",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $itemsViewItem = @(
+                ($itemsViewItemSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "Group" -and
+                $_.name -eq "Cliff" -and
+                -not $_.isOffscreen
+            } | Select-Object -First 1
+            if (-not $itemsViewItem) {
+                throw "The ItemsView item target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "click", $itemsViewItem.selector,
+                "-w", "$windowHandle",
+                "--double"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Invoked: Cliff",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ListViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryCollectionsListViewFilter",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryCollectionsListViewFilter", "Contoso",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "2 contacts",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PullToRefreshPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCollectionsRequestRefresh",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Basic refresh completed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "TreeViewPageHeading") {
+            $treeItemSearchJson = Invoke-WinApp @(
+                "ui", "search", "Documents",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $treeItem = @(
+                ($treeItemSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "TreeItem" -and
+                $_.name -eq "Documents" -and
+                -not $_.isOffscreen
+            } | Select-Object -First 1
+            if (-not $treeItem) {
+                throw "The TreeView invocation target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "click", $treeItem.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Invoked: Documents",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryCollectionsTreeViewAddRoot",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCollectionsTreeViewAddRoot",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "New folder 1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
         if ($route.Heading -eq "SelectionPageHeading") {
             Invoke-WinApp @(
                 "ui", "scroll-into-view", "GalleryControlledListViewSample",
@@ -801,6 +992,9 @@ try {
         "--timeout", "$TimeoutMilliseconds"
     )
     Assert-Responsive $appProcess.Id "Settings"
+    if (Test-Path $heartbeatEvidencePath) {
+        throw "The Gallery heartbeat timed out during UI smoke."
+    }
 
     Invoke-WinApp @(
         "ui", "screenshot",

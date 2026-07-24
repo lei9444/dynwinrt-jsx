@@ -11,15 +11,19 @@ import {
 import type { MaybeSignal } from '../core/reactive'
 import type { Child, Key } from '../core/vnode'
 
-export interface ItemsRepeaterInstance {
+export interface VirtualizedItemsInstance {
   itemsSource: unknown
   itemTemplate: unknown
   clearValue?(property: unknown): void
 }
 
-export interface ItemsRepeaterItemHost {
-  content: unknown
-}
+export type VirtualizedItemsMountHost =
+  | { content: unknown }
+  | { child: unknown }
+  | { readonly children: object }
+  | { readonly items: object }
+
+export type VirtualizedItemsHost = VirtualizedItemsMountHost
 
 interface ElementFactoryType {
   create(
@@ -51,16 +55,18 @@ interface ReferenceInt32Type {
   from(value: unknown): { readonly value: number }
 }
 
-export interface ItemsRepeaterControlBindings<
-  Instance extends ItemsRepeaterInstance,
-  Host extends ItemsRepeaterItemHost,
+interface VirtualizedItemsControlBindingsBase<
+  Instance extends VirtualizedItemsInstance,
+  Host extends object,
 > {
-  readonly ItemsRepeater: NativeConstructor<Instance>
+  readonly Control: NativeConstructor<Instance>
     & {
       readonly itemsSourceProperty?: unknown
       readonly itemTemplateProperty?: unknown
     }
-  readonly ContentControl: NativeConstructor<Host>
+  readonly ItemHost: NativeConstructor<Host>
+  readonly initializeItemHost?: (host: Host) => void
+  readonly clearItemsSource?: (instance: Instance) => void
   readonly IElementFactory: ElementFactoryType
   readonly IObservableVector_Object:
     ObservableObjectVectorType
@@ -68,8 +74,30 @@ export interface ItemsRepeaterControlBindings<
   readonly IReference_Int32: ReferenceInt32Type
 }
 
-export type ItemsRepeaterProps<
-  Instance extends ItemsRepeaterInstance,
+export type VirtualizedItemsControlBindings<
+  Instance extends VirtualizedItemsInstance,
+  Host extends object,
+  MountHost extends VirtualizedItemsMountHost =
+    Extract<Host, VirtualizedItemsMountHost>,
+> =
+  & VirtualizedItemsControlBindingsBase<Instance, Host>
+  & (
+    | {
+        readonly getItemMountHost: (
+          host: Host,
+        ) => MountHost
+      }
+    | (
+        Host extends VirtualizedItemsMountHost
+          ? {
+              readonly getItemMountHost?: undefined
+            }
+          : never
+      )
+  )
+
+export type VirtualizedItemsProps<
+  Instance extends VirtualizedItemsInstance,
   Item,
 > =
   & Omit<
@@ -85,26 +113,47 @@ export type ItemsRepeaterProps<
       readonly key?: (item: Item, index: number) => Key
     }
 
-interface ItemsRepeaterAdapterProps<Item> {
+interface VirtualizedItemsAdapterProps<Item> {
   readonly virtualizedItems: NativeItemsRepeaterData<Item>
 }
 
-export function createItemsRepeaterControl<
-  Instance extends ItemsRepeaterInstance,
-  Host extends ItemsRepeaterItemHost,
+export function createVirtualizedItemsControl<
+  Instance extends VirtualizedItemsInstance,
+  Host extends object,
+  MountHost extends VirtualizedItemsMountHost =
+    Extract<Host, VirtualizedItemsMountHost>,
 >(
-  bindings: ItemsRepeaterControlBindings<Instance, Host>,
-): <Item>(
-  props: ItemsRepeaterProps<Instance, Item>,
-) => Child {
-  const RawItemsRepeater = native<
+  bindings: VirtualizedItemsControlBindings<
     Instance,
-    ItemsRepeaterAdapterProps<unknown>
-  >(bindings.ItemsRepeater, {
-    displayName: 'ItemsRepeater',
+    Host,
+    MountHost
+  >,
+  options: {
+    readonly displayName?: string
+  } = {},
+): <Item>(
+  props: VirtualizedItemsProps<Instance, Item>,
+) => Child {
+  const displayName =
+    options.displayName ?? 'VirtualizedItemsControl'
+  const RawControl = native<
+    Instance,
+    VirtualizedItemsAdapterProps<unknown>
+  >(bindings.Control, {
+    displayName,
     adapters: {
       virtualizedItems: adapter.itemsRepeater<Instance>({
-        createElementHost: () => new bindings.ContentControl(),
+        createElementHost: () => {
+          const host = new bindings.ItemHost()
+          bindings.initializeItemHost?.(host)
+          return host
+        },
+        ...(bindings.getItemMountHost
+          ? {
+              getElementMountHost: (host: object) =>
+                bindings.getItemMountHost!(host as Host),
+            }
+          : {}),
         createElementFactory: (factory) =>
           bindings.IElementFactory.create(
             (args) => factory.getElement(args),
@@ -129,12 +178,16 @@ export function createItemsRepeaterControl<
           instance.itemTemplate = factory
         },
         clearItemsSource: (instance) => {
+          if (bindings.clearItemsSource) {
+            bindings.clearItemsSource(instance)
+            return
+          }
           if (
             instance.clearValue &&
-            bindings.ItemsRepeater.itemsSourceProperty
+            bindings.Control.itemsSourceProperty
           ) {
             instance.clearValue(
-              bindings.ItemsRepeater.itemsSourceProperty,
+              bindings.Control.itemsSourceProperty,
             )
           }
           else {
@@ -152,8 +205,8 @@ export function createItemsRepeaterControl<
     },
   })
 
-  return function ItemsRepeater<Item>(
-    props: ItemsRepeaterProps<Instance, Item>,
+  return function VirtualizedItemsControl<Item>(
+    props: VirtualizedItemsProps<Instance, Item>,
   ): Child {
     const {
       each,
@@ -162,7 +215,7 @@ export function createItemsRepeaterControl<
       ...nativeProps
     } = props
     const list = For({ each, children, key })
-    return RawItemsRepeater({
+    return RawControl({
       ...nativeProps,
       virtualizedItems: {
         readItems: list.readItems,
@@ -171,7 +224,60 @@ export function createItemsRepeaterControl<
       },
     } as NativeComponentProps<
       Instance,
-      ItemsRepeaterAdapterProps<unknown>
+      VirtualizedItemsAdapterProps<unknown>
     >)
   }
+}
+
+export interface ItemsRepeaterInstance
+  extends VirtualizedItemsInstance {}
+
+export type ItemsRepeaterItemHost = {
+  content: unknown
+}
+
+export interface ItemsRepeaterControlBindings<
+  Instance extends ItemsRepeaterInstance,
+  Host extends ItemsRepeaterItemHost,
+> {
+  readonly ItemsRepeater: NativeConstructor<Instance>
+    & {
+      readonly itemsSourceProperty?: unknown
+      readonly itemTemplateProperty?: unknown
+    }
+  readonly ContentControl: NativeConstructor<Host>
+  readonly IElementFactory: ElementFactoryType
+  readonly IObservableVector_Object:
+    ObservableObjectVectorType
+  readonly PropertyValue: PropertyValueType
+  readonly IReference_Int32: ReferenceInt32Type
+}
+
+export type ItemsRepeaterProps<
+  Instance extends ItemsRepeaterInstance,
+  Item,
+> = VirtualizedItemsProps<Instance, Item>
+
+export function createItemsRepeaterControl<
+  Instance extends ItemsRepeaterInstance,
+  Host extends ItemsRepeaterItemHost,
+>(
+  bindings: ItemsRepeaterControlBindings<Instance, Host>,
+): <Item>(
+  props: ItemsRepeaterProps<Instance, Item>,
+) => Child {
+  const virtualizedBindings:
+    VirtualizedItemsControlBindings<Instance, Host, Host> = {
+    Control: bindings.ItemsRepeater,
+    ItemHost: bindings.ContentControl,
+    getItemMountHost: (host) => host,
+    IElementFactory: bindings.IElementFactory,
+    IObservableVector_Object:
+      bindings.IObservableVector_Object,
+    PropertyValue: bindings.PropertyValue,
+    IReference_Int32: bindings.IReference_Int32,
+  }
+  return createVirtualizedItemsControl(virtualizedBindings, {
+    displayName: 'ItemsRepeater',
+  })
 }

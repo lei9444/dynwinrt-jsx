@@ -129,6 +129,9 @@ export interface NativeItemsRepeaterFactory {
 export interface NativeItemsRepeaterAdapter<Instance> {
   readonly kind: 'itemsRepeater'
   readonly createElementHost: () => object
+  readonly getElementMountHost?: (
+    elementHost: object,
+  ) => object
   readonly createElementFactory: (
     factory: NativeItemsRepeaterFactory,
   ) => unknown

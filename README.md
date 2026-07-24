@@ -86,6 +86,10 @@ location with `DYNWINRT_JSX_STATE_PATH`. Invalid JSON or schema data is renamed
 to a timestamped `.corrupt-*` file, the default state is restored, and the
 recovery error remains visible in Diagnostics.
 
+Renderer heartbeat timeout evidence includes a compact suspected component,
+last operation, hot-operation counts, and the recent operation tail before the
+full inspector snapshot.
+
 Main-process hosts can import bridge, persistence, and diagnostics APIs from
 `dynwinrt-jsx/host` without loading renderer or WinUI authoring modules:
 
@@ -134,7 +138,7 @@ an independently consumable framework.
 - Function components, refs, `onMount()`, and `onCleanup()`
 - Context providers scoped to native subtrees
 - `Show`, stable keyed `For`, fixed-height `VirtualFor`, and native
-  `ItemsRepeater` virtualization
+  `ItemsRepeater`/`ItemsView` virtualization
 - `ErrorBoundary` for mount and reactive update failures
 - `Portal` for rendering into another native host
 - Signal-backed event handlers and one/two-way binding props
@@ -796,6 +800,44 @@ moves, resets the scope when the keyed item identity changes, and releases
 pooled entries with the owning renderer. Source updates mutate the projected
 observable vector in place with keyed insert/remove operations, so the native
 ItemsSource identity remains stable.
+
+Use `createVirtualizedItemsControl()` for controls such as `ItemsView` that
+share the `ItemsSource` plus `IElementFactory` protocol but require a different
+native item container:
+
+```tsx
+const mountHosts = new WeakMap<ItemContainer, ContentControl>()
+const Items = createVirtualizedItemsControl({
+  Control: ItemsView,
+  ItemHost: ItemContainer,
+  initializeItemHost(host) {
+    const mountHost = new ContentControl()
+    host.child = mountHost
+    mountHosts.set(host, mountHost)
+  },
+  getItemMountHost(host) {
+    const mountHost = mountHosts.get(host)
+    if (!mountHost) {
+      throw new Error('ItemsView mount host is missing.')
+    }
+    return mountHost
+  },
+  clearItemsSource(instance) {
+    instance.itemsSource = null
+  },
+  IElementFactory,
+  IObservableVector_Object,
+  PropertyValue,
+  IReference_Int32,
+}, {
+  displayName: 'ItemsView',
+})
+```
+
+The optional persistent mount host keeps renderer-owned JSX content separate
+from a native outer item container that must remain intact while the control
+recycles or releases it. `clearItemsSource` can preserve control-specific
+cleanup semantics without changing `ItemsRepeater` behavior.
 
 ### Error boundaries and portals
 

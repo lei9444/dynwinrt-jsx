@@ -56,6 +56,22 @@ export interface RendererHeartbeatMonitorStatus {
   readonly lastHeartbeat: RendererHeartbeat | null
 }
 
+export interface RendererHeartbeatTimeoutSummary {
+  readonly suspectedComponent: string | null
+  readonly lastHeartbeatSequence: number | null
+  readonly lastHeartbeatSentAt: number | null
+  readonly lastOperation:
+    RendererInspectionSnapshot['operations'][number] | null
+  readonly hotOperations: readonly {
+    readonly kind: string
+    readonly target: string | null
+    readonly name: string | null
+    readonly count: number
+  }[]
+  readonly recentOperations:
+    RendererInspectionSnapshot['operations']
+}
+
 export interface RendererHeartbeatMonitorOptions {
   readonly timeoutMs?: number
   readonly checkIntervalMs?: number
@@ -78,6 +94,81 @@ export interface RendererHeartbeatMonitor {
   check(): RendererHeartbeatMonitorStatus
   snapshot(): RendererHeartbeatMonitorStatus
   dispose(): void
+}
+
+export function summarizeRendererHeartbeatTimeout(
+  status: RendererHeartbeatMonitorStatus,
+): RendererHeartbeatTimeoutSummary {
+  const heartbeat = status.lastHeartbeat
+  if (!heartbeat) {
+    return {
+      suspectedComponent: null,
+      lastHeartbeatSequence: null,
+      lastHeartbeatSentAt: null,
+      lastOperation: null,
+      hotOperations: [],
+      recentOperations: [],
+    }
+  }
+
+  const snapshot = heartbeat.snapshot
+  const suspectedComponent =
+    [...snapshot.nodes]
+      .reverse()
+      .find(
+        (node) =>
+          node.kind === 'component' &&
+          node.label !== 'Page' &&
+          node.label.endsWith('Page'),
+      )?.label ?? null
+  const recentOperations =
+    snapshot.operations.slice(-25)
+  const lastOperation =
+    snapshot.operations.at(-1) ?? null
+  const hotWindowStart =
+    (lastOperation?.timestamp ?? snapshot.timestamp) - 2_000
+  const groups = new Map<
+    string,
+    {
+      kind: string
+      target: string | null
+      name: string | null
+      count: number
+    }
+  >()
+  for (const operation of snapshot.operations) {
+    if (operation.timestamp < hotWindowStart) {
+      continue
+    }
+    const name =
+      operation.name ?? operation.property ?? null
+    const target = operation.target ?? null
+    const key =
+      `${operation.kind}\u0000${target ?? ''}\u0000${name ?? ''}`
+    const existing = groups.get(key)
+    if (existing) {
+      existing.count += 1
+    }
+    else {
+      groups.set(key, {
+        kind: operation.kind,
+        target,
+        name,
+        count: 1,
+      })
+    }
+  }
+
+  return {
+    suspectedComponent,
+    lastHeartbeatSequence: heartbeat.sequence,
+    lastHeartbeatSentAt: heartbeat.sentAt,
+    lastOperation,
+    hotOperations: [...groups.values()]
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 10),
+    recentOperations,
+  }
 }
 
 function requirePositiveInteger(

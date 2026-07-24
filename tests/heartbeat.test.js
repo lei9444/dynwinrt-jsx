@@ -8,6 +8,7 @@ const {
   createRendererHeartbeatMonitor,
   getRendererHeartbeatSharedState,
   rendererHeartbeatSharedStateIndex,
+  summarizeRendererHeartbeatTimeout,
 } = require('dynwinrt-jsx/host')
 
 function heartbeat(sequence, sentAt = sequence * 10) {
@@ -106,6 +107,58 @@ test('heartbeat monitor validates timing options', () => {
     }),
     /checkIntervalMs must be a positive integer/,
   )
+})
+
+test('heartbeat timeout summaries identify the active page and hot operations', () => {
+  const current = heartbeat(7, 1_000)
+  current.snapshot.nodes.push({
+    id: 1,
+    kind: 'component',
+    label: 'GridViewPage',
+    scopeId: 1,
+  })
+  current.snapshot.operations.push(
+    {
+      sequence: 1,
+      timestamp: 900,
+      kind: 'event.invoke',
+      target: 'NumberBox',
+      name: 'onValueChanged',
+    },
+    {
+      sequence: 2,
+      timestamp: 950,
+      kind: 'property.apply',
+      target: 'Border',
+      property: 'width',
+    },
+    {
+      sequence: 3,
+      timestamp: 975,
+      kind: 'property.apply',
+      target: 'Border',
+      property: 'width',
+    },
+  )
+  const summary = summarizeRendererHeartbeatTimeout({
+    state: 'timedOut',
+    timeoutMs: 5_000,
+    lastSequence: 7,
+    lastReceivedAt: 1_000,
+    timeoutCount: 1,
+    lastHeartbeat: current,
+  })
+
+  assert.equal(summary.suspectedComponent, 'GridViewPage')
+  assert.equal(summary.lastHeartbeatSequence, 7)
+  assert.equal(summary.lastOperation.kind, 'property.apply')
+  assert.deepEqual(summary.hotOperations[0], {
+    kind: 'property.apply',
+    target: 'Border',
+    name: 'width',
+    count: 2,
+  })
+  assert.equal(summary.recentOperations.length, 3)
 })
 
 test('heartbeat shared state supports atomic host acknowledgements', () => {
