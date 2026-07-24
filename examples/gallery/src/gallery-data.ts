@@ -270,6 +270,46 @@ export const galleryPages = [
     image: 'ControlImages/TreeView.png',
   },
   {
+    id: 'calendar-date-picker',
+    category: 'Date & time',
+    title: 'CalendarDatePicker',
+    subtitle: 'Lets users pick a date from a compact calendar flyout.',
+    description:
+      'Add a header and placeholder while receiving nullable date changes from the native calendar flyout.',
+    tags: ['calendardatepicker', 'calendar', 'date', 'picker'],
+    image: 'ControlImages/CalendarDatePicker.png',
+  },
+  {
+    id: 'calendar-view',
+    category: 'Date & time',
+    title: 'CalendarView',
+    subtitle: 'Shows a large calendar for selecting one or more dates.',
+    description:
+      'Configure selection, calendar systems, language, group labels, and out-of-scope dates.',
+    tags: ['calendarview', 'calendar', 'date', 'selection', 'language'],
+    image: 'ControlImages/CalendarView.png',
+  },
+  {
+    id: 'date-picker',
+    category: 'Date & time',
+    title: 'DatePicker',
+    subtitle: 'Lets users select a month, day, and year.',
+    description:
+      'Present a compact date selector with headers, date ranges, custom formats, and hidden fields.',
+    tags: ['datepicker', 'date', 'month', 'day', 'year'],
+    image: 'ControlImages/DatePicker.png',
+  },
+  {
+    id: 'time-picker',
+    category: 'Date & time',
+    title: 'TimePicker',
+    subtitle: 'Lets users select hours and minutes.',
+    description:
+      'Configure headers, minute increments, nullable selected times, and 12- or 24-hour clocks.',
+    tags: ['timepicker', 'time', 'clock', 'hours', 'minutes'],
+    image: 'ControlImages/TimePicker.png',
+  },
+  {
     id: 'layout',
     category: 'Layout',
     title: 'Grid and layout',
@@ -319,6 +359,7 @@ export type GalleryRoute =
   | 'search'
   | 'category-basic-input'
   | 'category-collections'
+  | 'category-date-time'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -329,6 +370,10 @@ export const basicInputPages = galleryPages.filter(
 
 export const collectionPages = galleryPages.filter(
   (page) => page.category === 'Collections',
+)
+
+export const dateTimePages = galleryPages.filter(
+  (page) => page.category === 'Date & time',
 )
 
 export const galleryCategories = [

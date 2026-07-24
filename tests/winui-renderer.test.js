@@ -35,6 +35,24 @@ class TestTextBlock {
   text = ''
 }
 
+class TestCalendarDatePicker {
+  isCalendarOpen = false
+  placeholderText = ''
+  date = null
+}
+
+class TestDatePicker {
+  dayVisible = true
+  yearVisible = true
+  selectedDate = null
+}
+
+class TestTimePicker {
+  clockIdentifier = '12HourClock'
+  minuteIncrement = 1
+  selectedTime = null
+}
+
 test('WinUI renderer preset detects and applies generated binding capabilities', () => {
   const bindings = {
     TextBlock: TestTextBlock,
@@ -42,13 +60,29 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
       createBoolean(value) {
         return { value }
       },
+      createDateTime(value) {
+        return { value }
+      },
       createString(value) {
         return value
+      },
+      createTimeSpan(value) {
+        return { value }
       },
     },
     IReference_Boolean: {
       from(value) {
         return { reference: value }
+      },
+    },
+    IReference_DateTime: {
+      from(value) {
+        return { dateReference: value }
+      },
+    },
+    IReference_TimeSpan: {
+      from(value) {
+        return { timeReference: value }
       },
     },
     IVector_UIElement: {},
@@ -83,6 +117,8 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
   assert.deepEqual(preset.capabilities, {
     text: true,
     nullableBoolean: true,
+    nullableDateTime: true,
+    nullableTimeSpan: true,
     uiElementCollections: true,
     resources: true,
     resourceOverrides: true,
@@ -93,7 +129,10 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
 
   const UI = createControls({
     CheckBox: TestCheckBox,
+    CalendarDatePicker: TestCalendarDatePicker,
     ContentControl: TestContentControl,
+    DatePicker: TestDatePicker,
+    TimePicker: TestTimePicker,
     ToggleSplitButton: TestToggleSplitButton,
     ToggleSwitch: TestToggleSwitch,
   })
@@ -141,12 +180,47 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
   )
   assert.equal(contentWindow.content.content.text, 'Hello')
   contentHandle.dispose()
+
+  const date = { universalTime: 133_986_528_000_000_000n }
+  const calendarWindow = new TestWindow()
+  const calendarHandle = preset.createRenderer().render(
+    UI.CalendarDatePicker({ date }),
+    calendarWindow,
+  )
+  assert.deepEqual(calendarWindow.content.date, {
+    dateReference: { value: date },
+  })
+  calendarHandle.dispose()
+
+  const datePickerWindow = new TestWindow()
+  const datePickerHandle = preset.createRenderer().render(
+    UI.DatePicker({ selectedDate: date }),
+    datePickerWindow,
+  )
+  assert.deepEqual(datePickerWindow.content.selectedDate, {
+    dateReference: { value: date },
+  })
+  datePickerHandle.dispose()
+
+  const time = { duration: 342_000_000_000n }
+  const timePickerWindow = new TestWindow()
+  const timePickerHandle = preset.createRenderer().render(
+    UI.TimePicker({ selectedTime: time }),
+    timePickerWindow,
+  )
+  assert.deepEqual(timePickerWindow.content.selectedTime, {
+    timeReference: { value: time },
+  })
+  timePickerHandle.dispose()
 })
 
 test('WinUI renderer reports missing generated conversion bindings', () => {
   const UI = createControls({
     CheckBox: TestCheckBox,
+    CalendarDatePicker: TestCalendarDatePicker,
     ContentControl: TestContentControl,
+    DatePicker: TestDatePicker,
+    TimePicker: TestTimePicker,
     ToggleSplitButton: TestToggleSplitButton,
     ToggleSwitch: TestToggleSwitch,
   })
@@ -178,5 +252,34 @@ test('WinUI renderer reports missing generated conversion bindings', () => {
       new TestWindow(),
     ),
     /Primitive content conversion requires generated WinUI bindings for TextBlock/,
+  )
+  assert.throws(
+    () => createWinUIRenderer({}).render(
+      UI.CalendarDatePicker({
+        date: { universalTime: 133_986_528_000_000_000n },
+      }),
+      new TestWindow(),
+    ),
+    /CalendarDatePicker date conversion requires generated WinUI bindings for PropertyValue and IReference_DateTime/,
+  )
+  assert.throws(
+    () => createWinUIRenderer({}).render(
+      UI.DatePicker({
+        selectedDate: {
+          universalTime: 133_986_528_000_000_000n,
+        },
+      }),
+      new TestWindow(),
+    ),
+    /DatePicker selectedDate conversion requires generated WinUI bindings for PropertyValue and IReference_DateTime/,
+  )
+  assert.throws(
+    () => createWinUIRenderer({}).render(
+      UI.TimePicker({
+        selectedTime: { duration: 342_000_000_000n },
+      }),
+      new TestWindow(),
+    ),
+    /TimePicker selectedTime conversion requires generated WinUI bindings for PropertyValue and IReference_TimeSpan/,
   )
 })

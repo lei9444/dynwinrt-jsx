@@ -80,6 +80,7 @@ $screenshotPath = Join-Path $evidenceRoot "gallery.png"
 $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
 $categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
 $collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-category.png"
+$dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -186,6 +187,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryDateTimeCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "DateTimeCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open CalendarDatePicker",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $dateTimeCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open TimePicker",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -213,6 +238,10 @@ try {
         [pscustomobject]@{ Name = "Open ListView"; Heading = "ListViewPageHeading"; Probe = "GalleryCollectionsListViewSelectionSample"; Query = "listview filter" },
         [pscustomobject]@{ Name = "Open PullToRefresh"; Heading = "PullToRefreshPageHeading"; Probe = "GalleryCollectionsPullToRefreshSample"; Query = "refreshcontainer" },
         [pscustomobject]@{ Name = "Open TreeView"; Heading = "TreeViewPageHeading"; Probe = "GalleryCollectionsTreeViewSample"; Query = "treeview hierarchy" },
+        [pscustomobject]@{ Name = "Open CalendarDatePicker"; Heading = "CalendarDatePickerPageHeading"; Probe = "GalleryCalendarDatePickerControl"; Query = "calendardatepicker" },
+        [pscustomobject]@{ Name = "Open CalendarView"; Heading = "CalendarViewPageHeading"; Probe = "GalleryCalendarViewControl"; Query = "calendarview language" },
+        [pscustomobject]@{ Name = "Open DatePicker"; Heading = "DatePickerPageHeading"; Probe = "GalleryDatePickerFormattedControl"; Query = "datepicker year" },
+        [pscustomobject]@{ Name = "Open TimePicker"; Heading = "TimePickerPageHeading"; Probe = "GalleryTimePicker24HourControl"; Query = "timepicker clock" },
         [pscustomobject]@{ Name = "Open Grid and layout"; Heading = "LayoutPageHeading"; Probe = $null; Query = "grid layout" },
         [pscustomobject]@{ Name = "Open Dialogs and flyouts"; Heading = "OverlaysPageHeading"; Probe = $null; Query = "contentdialog" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
@@ -760,6 +789,24 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "New folder 1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CalendarViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Group labels: on; out-of-scope dates: on.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCalendarViewGroupLabels",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Group labels: off; out-of-scope dates: on.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

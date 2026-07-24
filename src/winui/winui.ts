@@ -26,10 +26,12 @@ interface TextBlockConstructor {
 
 interface PropertyValueType {
   createBoolean?(value: boolean): unknown
+  createDateTime?(value: { readonly universalTime: bigint }): unknown
   createString(value: string): unknown
+  createTimeSpan?(value: { readonly duration: bigint }): unknown
 }
 
-interface ReferenceBooleanType {
+interface ReferenceType {
   from(value: unknown): unknown
 }
 
@@ -40,7 +42,9 @@ export interface WinUIBindings extends WinUIResourceBindings {
   readonly Canvas?: object
   readonly AutomationProperties?: object
   readonly PropertyValue?: PropertyValueType
-  readonly IReference_Boolean?: ReferenceBooleanType
+  readonly IReference_Boolean?: ReferenceType
+  readonly IReference_DateTime?: ReferenceType
+  readonly IReference_TimeSpan?: ReferenceType
 }
 
 export interface AttachedPropertyRegistration {
@@ -57,6 +61,8 @@ export type AttachedPropertyRegistrations = Record<
 export type WinUIRendererCapability =
   | 'text'
   | 'nullableBoolean'
+  | 'nullableDateTime'
+  | 'nullableTimeSpan'
   | 'uiElementCollections'
   | 'resources'
   | 'resourceOverrides'
@@ -100,6 +106,14 @@ function createCapabilities(
     nullableBoolean: Boolean(
       bindings.PropertyValue?.createBoolean &&
       bindings.IReference_Boolean?.from,
+    ),
+    nullableDateTime: Boolean(
+      bindings.PropertyValue?.createDateTime &&
+      bindings.IReference_DateTime?.from,
+    ),
+    nullableTimeSpan: Boolean(
+      bindings.PropertyValue?.createTimeSpan &&
+      bindings.IReference_TimeSpan?.from,
     ),
     uiElementCollections:
       bindings.IVector_UIElement !== undefined,
@@ -302,6 +316,44 @@ export function createWinUIPropertyConverters(
     textBlock.text = String(value)
     return textBlock
   }
+  const boxDateTime = (
+    feature: string,
+    value: unknown,
+  ): unknown => {
+    if (
+      !bindings.PropertyValue?.createDateTime ||
+      !bindings.IReference_DateTime?.from
+    ) {
+      throw missingCapability(
+        feature,
+        ['PropertyValue', 'IReference_DateTime'],
+      )
+    }
+    return bindings.IReference_DateTime.from(
+      bindings.PropertyValue.createDateTime(
+        value as { readonly universalTime: bigint },
+      ),
+    )
+  }
+  const boxTimeSpan = (
+    feature: string,
+    value: unknown,
+  ): unknown => {
+    if (
+      !bindings.PropertyValue?.createTimeSpan ||
+      !bindings.IReference_TimeSpan?.from
+    ) {
+      throw missingCapability(
+        feature,
+        ['PropertyValue', 'IReference_TimeSpan'],
+      )
+    }
+    return bindings.IReference_TimeSpan.from(
+      bindings.PropertyValue.createTimeSpan(
+        value as { readonly duration: bigint },
+      ),
+    )
+  }
   const converters: Record<string, NativePropertyConverter> = {
     isChecked: (target, value) => {
       const nullable = 'isThreeState' in target
@@ -327,6 +379,57 @@ export function createWinUIPropertyConverters(
       }
       return bindings.IReference_Boolean.from(
         bindings.PropertyValue.createBoolean(value),
+      )
+    },
+    date: (target, value) => {
+      const nullableCalendarDate =
+        'isCalendarOpen' in target &&
+        'placeholderText' in target
+      if (
+        !nullableCalendarDate ||
+        value === null ||
+        typeof value !== 'object' ||
+        !('universalTime' in value)
+      ) {
+        return value
+      }
+      return boxDateTime(
+        'CalendarDatePicker date conversion',
+        value,
+      )
+    },
+    selectedDate: (target, value) => {
+      const nullableDatePicker =
+        'dayVisible' in target &&
+        'yearVisible' in target
+      if (
+        !nullableDatePicker ||
+        value === null ||
+        typeof value !== 'object' ||
+        !('universalTime' in value)
+      ) {
+        return value
+      }
+      return boxDateTime(
+        'DatePicker selectedDate conversion',
+        value,
+      )
+    },
+    selectedTime: (target, value) => {
+      const nullableTimePicker =
+        'clockIdentifier' in target &&
+        'minuteIncrement' in target
+      if (
+        !nullableTimePicker ||
+        value === null ||
+        typeof value !== 'object' ||
+        !('duration' in value)
+      ) {
+        return value
+      }
+      return boxTimeSpan(
+        'TimePicker selectedTime conversion',
+        value,
       )
     },
     content: primitiveText('content'),

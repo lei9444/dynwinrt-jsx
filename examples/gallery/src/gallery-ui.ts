@@ -17,11 +17,14 @@ import {
   AutoSuggestBox,
   Border,
   Button,
+  CalendarDatePicker,
+  CalendarView,
   CheckBox,
   ColumnDefinition,
   ColorPicker,
   ComboBox,
   ContentControl,
+  DatePicker,
   DropDownButton,
   Expander,
   Flyout,
@@ -66,6 +69,7 @@ import {
   SymbolIcon,
   TextBlock,
   TextBox,
+  TimePicker,
   TitleBar,
   ToggleButton,
   ToggleSplitButton,
@@ -80,8 +84,11 @@ export const UI = createControls({
   AutoSuggestBox,
   Border,
   Button,
+  CalendarDatePicker,
+  CalendarView,
   CheckBox,
   ColorPicker,
+  DatePicker,
   Expander,
   Flyout,
   FlipView,
@@ -110,6 +117,7 @@ export const UI = createControls({
   SymbolIcon,
   TextBlock,
   TextBox,
+  TimePicker,
   TitleBar,
   ToggleButton,
   ToggleSwitch,
@@ -215,6 +223,7 @@ export const GalleryTreeView = native<
 export type NavigationInstance = InstanceType<typeof NavigationView>
 export type ButtonInstance = InstanceType<typeof Button>
 export type BorderInstance = InstanceType<typeof Border>
+export type CalendarViewInstance = InstanceType<typeof CalendarView>
 export type TitleBarInstance = InstanceType<typeof TitleBar>
 export type NumberBoxInstance = InstanceType<typeof NumberBox>
 export type PasswordBoxInstance = InstanceType<typeof PasswordBox>

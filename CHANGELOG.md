@@ -25,6 +25,10 @@
 - Added compact page and hot-operation summaries to heartbeat timeout evidence.
 - Prevented the Gallery GridView tile-width NumberBox from feeding native
   ValueChanged echoes back into its own value property.
+- Added nullable DateTime and TimeSpan reference conversion for
+  CalendarDatePicker, DatePicker, and TimePicker properties.
+- Added the complete WinUI Gallery Date & time category with
+  CalendarDatePicker, CalendarView, DatePicker, and TimePicker.
 
 ## 1.0.0
 

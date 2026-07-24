@@ -72,6 +72,11 @@ import { ItemsViewPage } from './pages/collections/items-view'
 import { ListViewPage } from './pages/collections/list-view'
 import { PullToRefreshPage } from './pages/collections/pull-to-refresh'
 import { TreeViewPage } from './pages/collections/tree-view'
+import { DateTimeCategoryPage } from './pages/date-time'
+import { CalendarDatePickerPage } from './pages/date-time/calendar-date-picker'
+import { CalendarViewPage } from './pages/date-time/calendar-view'
+import { DatePickerPage } from './pages/date-time/date-picker'
+import { TimePickerPage } from './pages/date-time/time-picker'
 import { SelectionPage } from './pages/selection'
 import { TextInputPage } from './pages/text-input'
 import { RangeProgressPage } from './pages/range-progress'
@@ -140,6 +145,14 @@ function renderSamplePage(
       return <PullToRefreshPage {...context} />
     case 'tree-view':
       return <TreeViewPage {...context} />
+    case 'calendar-date-picker':
+      return <CalendarDatePickerPage {...context} />
+    case 'calendar-view':
+      return <CalendarViewPage {...context} />
+    case 'date-picker':
+      return <DatePickerPage {...context} />
+    case 'time-picker':
+      return <TimePickerPage {...context} />
     case 'layout':
       return <LayoutPage {...context} />
     case 'overlays':
@@ -164,6 +177,8 @@ function renderRoute(
       return <BasicInputCategoryPage {...context} />
     case 'category-collections':
       return <CollectionsCategoryPage {...context} />
+    case 'category-date-time':
+      return <DateTimeCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -292,6 +307,18 @@ export function Shell(context: AppContext) {
     ],
     'category-collections',
   )
+  const dateTimeItem = createNavigationGroup(
+    'DateTime',
+    'Date & time',
+    Symbol.Clock,
+    [
+      'calendar-date-picker',
+      'calendar-view',
+      'date-picker',
+      'time-picker',
+    ],
+    'category-date-time',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -316,12 +343,7 @@ export function Shell(context: AppContext) {
     allItem,
     basicInputItem,
     collectionsItem,
-    createNavigationGroup(
-      'DateTime',
-      'Date & time',
-      Symbol.Clock,
-      [],
-    ),
+    dateTimeItem,
     createNavigationGroup(
       'DialogsFlyouts',
       'Dialogs & flyouts',
@@ -389,6 +411,7 @@ export function Shell(context: AppContext) {
   routeItems.set('diagnostics', diagnosticsItem)
   routeItems.set('category-basic-input', basicInputItem)
   routeItems.set('category-collections', collectionsItem)
+  routeItems.set('category-date-time', dateTimeItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -438,6 +461,10 @@ export function Shell(context: AppContext) {
             }
             if (currentPage?.category === 'Collections') {
               context.model.navigate('category-collections')
+              return
+            }
+            if (currentPage?.category === 'Date & time') {
+              context.model.navigate('category-date-time')
               return
             }
             context.model.navigate('home')
@@ -494,6 +521,7 @@ export function Shell(context: AppContext) {
               route === 'diagnostics' ||
               route === 'category-basic-input' ||
               route === 'category-collections' ||
+              route === 'category-date-time' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)
