@@ -81,6 +81,7 @@ $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
 $categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
 $collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-category.png"
 $dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.png"
+$dialogsFlyoutsCategoryScreenshotPath = Join-Path $evidenceRoot "dialogs-flyouts-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -90,7 +91,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections"],"favoritePageIds":["buttons","collections"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays"],"favoritePageIds":["buttons","collections","overlays"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -122,10 +123,14 @@ try {
         $migratedState.favoritePageIds -notcontains "button" -or
         $migratedState.recentPageIds -notcontains "items-repeater" -or
         $migratedState.favoritePageIds -notcontains "items-repeater" -or
+        $migratedState.recentPageIds -notcontains "content-dialog" -or
+        $migratedState.favoritePageIds -notcontains "content-dialog" -or
         $migratedState.recentPageIds -contains "buttons" -or
         $migratedState.favoritePageIds -contains "buttons" -or
         $migratedState.recentPageIds -contains "collections" -or
-        $migratedState.favoritePageIds -contains "collections"
+        $migratedState.favoritePageIds -contains "collections" -or
+        $migratedState.recentPageIds -contains "overlays" -or
+        $migratedState.favoritePageIds -contains "overlays"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
     }
@@ -211,6 +216,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryDialogsFlyoutsCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "DialogsFlyoutsCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open ContentDialog",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $dialogsFlyoutsCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open TeachingTip",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -242,8 +271,11 @@ try {
         [pscustomobject]@{ Name = "Open CalendarView"; Heading = "CalendarViewPageHeading"; Probe = "GalleryCalendarViewControl"; Query = "calendarview language" },
         [pscustomobject]@{ Name = "Open DatePicker"; Heading = "DatePickerPageHeading"; Probe = "GalleryDatePickerFormattedControl"; Query = "datepicker year" },
         [pscustomobject]@{ Name = "Open TimePicker"; Heading = "TimePickerPageHeading"; Probe = "GalleryTimePicker24HourControl"; Query = "timepicker clock" },
+        [pscustomobject]@{ Name = "Open ContentDialog"; Heading = "ContentDialogPageHeading"; Probe = "GalleryContentDialogDefaultShow"; Query = "contentdialog modal" },
+        [pscustomobject]@{ Name = "Open Flyout"; Heading = "FlyoutPageHeading"; Probe = "GalleryFlyoutShow"; Query = "flyout confirmation" },
+        [pscustomobject]@{ Name = "Open Popup"; Heading = "PopupPageHeading"; Probe = "GalleryPopupShow"; Query = "popup offset" },
+        [pscustomobject]@{ Name = "Open TeachingTip"; Heading = "TeachingTipPageHeading"; Probe = "GalleryTeachingTipTargetedShow"; Query = "teachingtip guidance" },
         [pscustomobject]@{ Name = "Open Grid and layout"; Heading = "LayoutPageHeading"; Probe = $null; Query = "grid layout" },
-        [pscustomobject]@{ Name = "Open Dialogs and flyouts"; Heading = "OverlaysPageHeading"; Probe = $null; Query = "contentdialog" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -807,6 +839,86 @@ try {
             Invoke-WinApp @(
                 "ui", "wait-for",
                 "Group labels: off; out-of-scope dates: on.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ContentDialogPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryContentDialogDefaultShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "PrimaryButton",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "PrimaryButton",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "User saved their work",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "FlyoutPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryFlyoutShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryFlyoutConfirm",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryFlyoutConfirm",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Cart emptied.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PopupPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPopupShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Simple Popup",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPopupClose",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Popup closed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "TeachingTipPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryTeachingTipNonTargetedShow",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Close button",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "Close button",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Non-targeted tip is closed.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

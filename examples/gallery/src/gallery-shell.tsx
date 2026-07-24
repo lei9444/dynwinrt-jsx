@@ -77,12 +77,16 @@ import { CalendarDatePickerPage } from './pages/date-time/calendar-date-picker'
 import { CalendarViewPage } from './pages/date-time/calendar-view'
 import { DatePickerPage } from './pages/date-time/date-picker'
 import { TimePickerPage } from './pages/date-time/time-picker'
+import { DialogsFlyoutsCategoryPage } from './pages/dialogs-flyouts'
+import { ContentDialogPage } from './pages/dialogs-flyouts/content-dialog'
+import { FlyoutPage } from './pages/dialogs-flyouts/flyout'
+import { PopupPage } from './pages/dialogs-flyouts/popup'
+import { TeachingTipPage } from './pages/dialogs-flyouts/teaching-tip'
 import { SelectionPage } from './pages/selection'
 import { TextInputPage } from './pages/text-input'
 import { RangeProgressPage } from './pages/range-progress'
 import { ChoicesStatusPage } from './pages/choices-status'
 import { LayoutPage } from './pages/layout'
-import { OverlaysPage } from './pages/overlays'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -153,10 +157,16 @@ function renderSamplePage(
       return <DatePickerPage {...context} />
     case 'time-picker':
       return <TimePickerPage {...context} />
+    case 'content-dialog':
+      return <ContentDialogPage {...context} />
+    case 'flyout':
+      return <FlyoutPage {...context} />
+    case 'popup':
+      return <PopupPage {...context} />
+    case 'teaching-tip':
+      return <TeachingTipPage {...context} />
     case 'layout':
       return <LayoutPage {...context} />
-    case 'overlays':
-      return <OverlaysPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -179,6 +189,8 @@ function renderRoute(
       return <CollectionsCategoryPage {...context} />
     case 'category-date-time':
       return <DateTimeCategoryPage {...context} />
+    case 'category-dialogs-flyouts':
+      return <DialogsFlyoutsCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -319,6 +331,18 @@ export function Shell(context: AppContext) {
     ],
     'category-date-time',
   )
+  const dialogsFlyoutsItem = createNavigationGroup(
+    'DialogsFlyouts',
+    'Dialogs & flyouts',
+    Symbol.OpenWith,
+    [
+      'content-dialog',
+      'flyout',
+      'popup',
+      'teaching-tip',
+    ],
+    'category-dialogs-flyouts',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -344,12 +368,7 @@ export function Shell(context: AppContext) {
     basicInputItem,
     collectionsItem,
     dateTimeItem,
-    createNavigationGroup(
-      'DialogsFlyouts',
-      'Dialogs & flyouts',
-      Symbol.OpenWith,
-      ['overlays'],
-    ),
+    dialogsFlyoutsItem,
     createNavigationGroup(
       'Layout',
       'Layout',
@@ -412,6 +431,10 @@ export function Shell(context: AppContext) {
   routeItems.set('category-basic-input', basicInputItem)
   routeItems.set('category-collections', collectionsItem)
   routeItems.set('category-date-time', dateTimeItem)
+  routeItems.set(
+    'category-dialogs-flyouts',
+    dialogsFlyoutsItem,
+  )
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -465,6 +488,10 @@ export function Shell(context: AppContext) {
             }
             if (currentPage?.category === 'Date & time') {
               context.model.navigate('category-date-time')
+              return
+            }
+            if (currentPage?.category === 'Dialogs & flyouts') {
+              context.model.navigate('category-dialogs-flyouts')
               return
             }
             context.model.navigate('home')
@@ -522,6 +549,7 @@ export function Shell(context: AppContext) {
               route === 'category-basic-input' ||
               route === 'category-collections' ||
               route === 'category-date-time' ||
+              route === 'category-dialogs-flyouts' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

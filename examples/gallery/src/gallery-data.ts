@@ -320,14 +320,44 @@ export const galleryPages = [
     image: 'ControlImages/Grid.png',
   },
   {
-    id: 'overlays',
-    category: 'Controls',
-    title: 'Dialogs and flyouts',
-    subtitle: 'Scoped overlay content and deterministic cleanup.',
+    id: 'content-dialog',
+    category: 'Dialogs & flyouts',
+    title: 'ContentDialog',
+    subtitle: 'Shows modal information or choices over the current window.',
     description:
-      'Render ContentDialog and Flyout content in owned scopes that are released when the native overlay closes.',
-    tags: ['dialog', 'flyout', 'overlay', 'portal', 'lifecycle'],
+      'Display owned XAML content with primary, secondary, close, and default button behavior.',
+    tags: ['contentdialog', 'dialog', 'modal', 'buttons', 'overlay'],
     image: 'ControlImages/ContentDialog.png',
+  },
+  {
+    id: 'flyout',
+    category: 'Dialogs & flyouts',
+    title: 'Flyout',
+    subtitle: 'Displays lightweight contextual UI next to a target.',
+    description:
+      'Collect input, show details, or confirm an action in a light-dismiss overlay.',
+    tags: ['flyout', 'overlay', 'light dismiss', 'popup', 'confirmation'],
+    image: 'ControlImages/Flyout.png',
+  },
+  {
+    id: 'popup',
+    category: 'Dialogs & flyouts',
+    title: 'Popup',
+    subtitle: 'Displays temporary content above the application UI.',
+    description:
+      'Position a custom floating panel with offsets and optional light-dismiss behavior.',
+    tags: ['popup', 'overlay', 'offset', 'light dismiss', 'floating panel'],
+    image: 'ControlImages/Popup.png',
+  },
+  {
+    id: 'teaching-tip',
+    category: 'Dialogs & flyouts',
+    title: 'TeachingTip',
+    subtitle: 'Guides users with contextual, content-rich notifications.',
+    description:
+      'Show targeted, non-targeted, actionable, and hero-content guidance with owned lifetimes.',
+    tags: ['teachingtip', 'guidance', 'tip', 'hero', 'overlay'],
+    image: 'ControlImages/TeachingTip.png',
   },
   {
     id: 'resources',
@@ -360,6 +390,7 @@ export type GalleryRoute =
   | 'category-basic-input'
   | 'category-collections'
   | 'category-date-time'
+  | 'category-dialogs-flyouts'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -374,6 +405,10 @@ export const collectionPages = galleryPages.filter(
 
 export const dateTimePages = galleryPages.filter(
   (page) => page.category === 'Date & time',
+)
+
+export const dialogsFlyoutsPages = galleryPages.filter(
+  (page) => page.category === 'Dialogs & flyouts',
 )
 
 export const galleryCategories = [

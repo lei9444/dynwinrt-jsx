@@ -67,6 +67,7 @@ import {
   StackPanel,
   SplitButton,
   SymbolIcon,
+  TeachingTip,
   TextBlock,
   TextBox,
   TimePicker,
@@ -115,6 +116,7 @@ export const UI = createControls({
   Slider,
   StackPanel,
   SymbolIcon,
+  TeachingTip,
   TextBlock,
   TextBox,
   TimePicker,
@@ -231,6 +233,7 @@ export type SliderInstance = InstanceType<typeof Slider>
 export type ScrollViewerInstance = InstanceType<typeof ScrollViewer>
 export type TextBoxInstance = InstanceType<typeof TextBox>
 export type ToggleButtonInstance = InstanceType<typeof ToggleButton>
+export type TeachingTipInstance = InstanceType<typeof TeachingTip>
 export type FlyoutInstance = InstanceType<typeof Flyout>
 export type ToggleInstance = InstanceType<typeof ToggleSwitch>
 export type RefreshContainerInstance =

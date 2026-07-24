@@ -42,6 +42,7 @@ import {
   signal,
   showFlyout,
   showMenuFlyout,
+  showPopup,
   styles,
   theme,
   themeResource,
@@ -288,6 +289,18 @@ class TypeTeachingTip {
   content: unknown = null
   xamlRoot: unknown = null
   target?: TypePanel
+  isOpen = false
+
+  onClosed(
+    _callback: (sender: unknown, args: unknown) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypePopup {
+  child: unknown = null
+  xamlRoot: unknown = null
   isOpen = false
 
   onClosed(
@@ -665,6 +678,11 @@ showMenuFlyout(
   new TypeMenuFlyout(),
   overlayTarget,
   <UI.TextBlock text="Menu" />,
+)
+showPopup(
+  typeRenderer,
+  new TypePopup(),
+  <UI.TextBlock text="Popup" />,
 )
 createTeachingTip(
   typeRenderer,

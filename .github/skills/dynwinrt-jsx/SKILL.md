@@ -92,7 +92,7 @@ adoption map.
 | ListView, ComboBox, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/selector.ts` |
 | SelectorBar ownership and ScrollViewer state | `src/winui/selector-bar.ts`, `src/winui/scroll-viewer.ts` |
 | Native ItemsRepeater/ItemsView virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
-| Flyout, MenuFlyout, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
+| Flyout, MenuFlyout, Popup, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
 | Theme resources, tokens, and recipes | `src/winui/resource.ts`, `src/winui/theme.ts`, `src/winui/style.ts` |
 | Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
 | Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/heartbeat.ts` |
@@ -197,7 +197,7 @@ The built-in WinUI layer currently provides:
 - Generic `ItemsSource`/`IElementFactory` virtualization for ItemsView-style
   controls, including persistent outer item containers and custom source
   cleanup.
-- Scoped Flyout, MenuFlyout, and TeachingTip rendering.
+- Scoped Flyout, MenuFlyout, Popup, and TeachingTip rendering.
 - Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
 - Typed theme resources with effective-element lookup, High Contrast refresh,
   and transactional `resourceOverrides`.

@@ -672,8 +672,9 @@ controllers from the owning component or window cleanup. Pass an instance
 already mounted in the owner's native tree, and use the generated
 `isOpenProperty` when the projected generic `Closed` event is unavailable.
 
-`showFlyout()` and `showMenuFlyout()` own their rendered content and release it
-when the native overlay closes or the returned controller is disposed.
+`showFlyout()`, `showMenuFlyout()`, and `showPopup()` own their rendered content
+and release it when the native overlay closes or the returned controller is
+disposed.
 
 Pass a refresh signal as the third `resource()` argument when a runtime theme change should resolve the resource again:
 

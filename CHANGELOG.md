@@ -29,6 +29,9 @@
   CalendarDatePicker, DatePicker, and TimePicker properties.
 - Added the complete WinUI Gallery Date & time category with
   CalendarDatePicker, CalendarView, DatePicker, and TimePicker.
+- Added scoped Popup rendering with close-time content disposal.
+- Added the complete WinUI Gallery Dialogs & flyouts category with
+  ContentDialog, Flyout, Popup, and TeachingTip.
 
 ## 1.0.0
 

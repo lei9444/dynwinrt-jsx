@@ -133,6 +133,7 @@
             "StackLayout",
             "SplitButton",
             "SymbolIcon",
+            "SymbolIconSource",
             "TeachingTip",
             "TextBlock",
             "TextBox",
@@ -149,6 +150,7 @@
         {
           "namespace": "Microsoft.UI.Xaml.Controls.Primitives",
           "classes": [
+            "Popup",
             "Selector",
             "RepeatButton",
             "ToggleButton"

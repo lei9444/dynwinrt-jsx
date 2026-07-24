@@ -239,6 +239,101 @@ export function showMenuFlyout<
   )
 }
 
+export interface PopupLike<ClosedArgs = unknown>
+  extends ClosedObservable<ClosedArgs> {
+  xamlRoot?: unknown
+  isOpen: boolean
+}
+
+export interface PopupOptions<ClosedArgs = unknown> {
+  readonly xamlRoot?: unknown
+  readonly observeClose?: boolean
+  readonly isOpenProperty?: unknown
+  readonly onClosed?: (args: ClosedArgs | undefined) => void
+}
+
+export interface PopupController<Native> {
+  readonly popup: Native
+  readonly isOpen: boolean
+  readonly disposed: boolean
+  close(): void
+  dispose(): void
+}
+
+export function showPopup<
+  Native extends PopupLike<ClosedArgs>,
+  ClosedArgs = unknown,
+>(
+  renderer: Renderer,
+  popup: Native,
+  content: Child,
+  options: PopupOptions<ClosedArgs> = {},
+): PopupController<Native> {
+  if (options.xamlRoot !== undefined) {
+    popup.xamlRoot = options.xamlRoot
+  }
+
+  const handle = renderer.render(content, popup)
+  const observeClose = options.observeClose ?? true
+  let disposed = false
+  let unsubscribeClosed: Unsubscribe | undefined
+
+  const disposeOwnedContent = () => {
+    if (disposed) {
+      return
+    }
+    disposed = true
+    unsubscribeClosed?.()
+    unsubscribeClosed = undefined
+    handle.dispose()
+  }
+
+  try {
+    if (observeClose) {
+      unsubscribeClosed = subscribeClosed(
+        popup,
+        options.isOpenProperty,
+        (args) => {
+          disposeOwnedContent()
+          options.onClosed?.(args)
+        },
+      )
+    }
+    popup.isOpen = true
+  } catch (error) {
+    disposeOwnedContent()
+    throw error
+  }
+
+  return {
+    popup,
+    get isOpen() {
+      return popup.isOpen
+    },
+    get disposed() {
+      return disposed
+    },
+    close() {
+      if (disposed) {
+        return
+      }
+      popup.isOpen = false
+      if (!observeClose) {
+        disposeOwnedContent()
+      }
+    },
+    dispose() {
+      if (disposed) {
+        return
+      }
+      if (popup.isOpen) {
+        popup.isOpen = false
+      }
+      disposeOwnedContent()
+    },
+  }
+}
+
 export interface TeachingTipLike<ClosedArgs = unknown>
   extends ClosedObservable<ClosedArgs> {
   xamlRoot?: unknown

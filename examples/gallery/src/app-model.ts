@@ -327,7 +327,9 @@ function normalizePageIds(
         ? 'button'
         : value === 'collections'
           ? 'items-repeater'
-          : value
+          : value === 'overlays'
+            ? 'content-dialog'
+            : value
     const page = findGalleryPage(
       normalizedValue,
     )

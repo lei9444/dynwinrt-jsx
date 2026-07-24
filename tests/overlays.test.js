@@ -9,6 +9,7 @@ const {
   createTeachingTip,
   showFlyout,
   showMenuFlyout,
+  showPopup,
 } = require('../dist/index.js')
 
 class TestVector {
@@ -157,6 +158,38 @@ class TestTeachingTip {
     if (!value) {
       for (const handler of this.closedHandlers) {
         handler(this, { reason: 2 })
+      }
+    }
+  }
+
+  onClosed(callback) {
+    this.closedHandlers.add(callback)
+    return () => this.closedHandlers.delete(callback)
+  }
+}
+
+class TestPopup {
+  child = null
+  xamlRoot = null
+  #isOpen = false
+  failOpen = false
+  closedHandlers = new Set()
+
+  get isOpen() {
+    return this.#isOpen
+  }
+
+  set isOpen(value) {
+    if (value && this.failOpen) {
+      throw new Error('open failed')
+    }
+    if (this.#isOpen === value) {
+      return
+    }
+    this.#isOpen = value
+    if (!value) {
+      for (const handler of this.closedHandlers) {
+        handler(this, {})
       }
     }
   }
@@ -346,6 +379,72 @@ test('showMenuFlyout defaults the offset point to the origin', () => {
   )
 
   assert.deepEqual(menuFlyout.point, { x: 0, y: 0 })
+})
+
+test('showPopup opens and disposes owned content on native Closed', () => {
+  const renderer = createTestRenderer()
+  const UI = createControls({ Panel: TestPanel })
+  const popup = new TestPopup()
+  const root = { id: 'xaml-root' }
+  let closedCount = 0
+
+  const controller = showPopup(
+    renderer,
+    popup,
+    UI.Panel({}),
+    {
+      xamlRoot: root,
+      onClosed: () => {
+        closedCount += 1
+      },
+    },
+  )
+
+  assert.equal(popup.xamlRoot, root)
+  assert.equal(popup.isOpen, true)
+  assert.notEqual(popup.child, null)
+  assert.equal(controller.isOpen, true)
+  assert.equal(controller.disposed, false)
+
+  popup.isOpen = false
+
+  assert.equal(popup.child, null)
+  assert.equal(closedCount, 1)
+  assert.equal(controller.disposed, true)
+  assert.equal(popup.closedHandlers.size, 0)
+})
+
+test('showPopup supports explicit-close ownership without native events', () => {
+  const renderer = createTestRenderer()
+  const UI = createControls({ Panel: TestPanel })
+  const popup = new TestPopup()
+  popup.onClosed = undefined
+
+  const controller = showPopup(
+    renderer,
+    popup,
+    UI.Panel({}),
+    { observeClose: false },
+  )
+  controller.close()
+
+  assert.equal(popup.isOpen, false)
+  assert.equal(popup.child, null)
+  assert.equal(controller.disposed, true)
+})
+
+test('showPopup cleans up content when opening fails', () => {
+  const renderer = createTestRenderer()
+  const UI = createControls({ Panel: TestPanel })
+  const popup = new TestPopup()
+  popup.failOpen = true
+
+  assert.throws(
+    () => showPopup(renderer, popup, UI.Panel({})),
+    /open failed/,
+  )
+  assert.equal(popup.child, null)
+  assert.equal(popup.closedHandlers.size, 0)
 })
 
 test('createTeachingTip supports open/close cycles and disposes content per cycle', () => {
