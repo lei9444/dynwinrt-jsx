@@ -26,6 +26,15 @@ export interface ChildAdapterOptions {
   ) => NativeCollection | null | undefined
 }
 
+export class ChildSyncHookError extends Error {
+  constructor(
+    readonly synchronized: unknown[],
+    readonly originalError: unknown,
+  ) {
+    super('Child synchronization hook failed.')
+  }
+}
+
 class CollectionAdapter implements ChildAdapter {
   constructor(readonly collection: NativeCollection) {}
 
@@ -126,6 +135,53 @@ class SinglePropertyAdapter implements ChildAdapter {
   }
 }
 
+class SyncHookAdapter implements ChildAdapter {
+  constructor(
+    readonly inner: ChildAdapter,
+    readonly beforeSync: (() => void) | undefined,
+    readonly afterSync: (() => void) | undefined,
+    readonly finallySync: (() => void) | undefined,
+  ) {}
+
+  snapshot(): unknown[] {
+    return this.inner.snapshot()
+  }
+
+  sync(
+    current: unknown[],
+    desired: readonly unknown[],
+  ): unknown[] {
+    let next: unknown[] | undefined
+    let failure: unknown
+    try {
+      this.beforeSync?.()
+      next = this.inner.sync(current, desired)
+      this.afterSync?.()
+    }
+    catch (error) {
+      failure = error
+    }
+    try {
+      this.finallySync?.()
+    }
+    catch (error) {
+      failure = failure === undefined
+        ? error
+        : new AggregateError(
+            [failure, error],
+            'Child synchronization and finalization failed.',
+          )
+    }
+    if (failure !== undefined) {
+      if (next) {
+        throw new ChildSyncHookError(next, failure)
+      }
+      throw failure
+    }
+    return next!
+  }
+}
+
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
@@ -206,15 +262,36 @@ export function resolveSlotAdapter(
   descriptor: NativeSlotAdapter<object>,
 ): ChildAdapter | null {
   const record = owner as Record<string, unknown>
-  if (descriptor.strategy === 'single') {
-    return new SinglePropertyAdapter(
+  const resolved = descriptor.strategy === 'single'
+    ? new SinglePropertyAdapter(
       record,
       descriptor.property,
     )
+    : collectionAdapter(
+        options,
+        record[descriptor.property],
+        owner,
+      )
+  if (
+    !resolved ||
+    (
+      !descriptor.beforeSync &&
+      !descriptor.afterSync &&
+      !descriptor.finallySync
+    )
+  ) {
+    return resolved
   }
-  return collectionAdapter(
-    options,
-    record[descriptor.property],
-    owner,
+  return new SyncHookAdapter(
+    resolved,
+    descriptor.beforeSync
+      ? () => descriptor.beforeSync?.(owner)
+      : undefined,
+    descriptor.afterSync
+      ? () => descriptor.afterSync?.(owner)
+      : undefined,
+    descriptor.finallySync
+      ? () => descriptor.finallySync?.(owner)
+      : undefined,
   )
 }

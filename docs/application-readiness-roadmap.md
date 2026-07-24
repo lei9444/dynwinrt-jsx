@@ -515,6 +515,9 @@ identity, and manifest dependencies in a provenance document.
 - [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
       `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
   - [x] Add ComboBox items/header ownership and controlled `selectedIndex`.
+  - [x] Add SelectorBar item ownership and controlled `selectedIndex`.
+- [x] Add a reactive ScrollViewer controller for offset, viewport, boundary,
+      and ChangeView behavior.
 - [x] Add native `ItemsRepeater` virtualization with dynamic item size,
       element recycling, stable keys, and bounded native control counts.
   - [x] Add a synchronous dynwinrt `IElementFactory` callback bridge with

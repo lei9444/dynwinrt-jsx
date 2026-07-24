@@ -34,6 +34,7 @@ import {
 } from './adapters'
 import { RendererPropertyService } from './renderer-properties'
 import {
+  ChildSyncHookError,
   resolveChildAdapter,
   resolveSlotAdapter,
   type ChildAdapter,
@@ -461,6 +462,14 @@ class ChildrenController {
         desired,
       )
     } catch (error) {
+      const failure =
+        error instanceof ChildSyncHookError
+          ? error
+          : undefined
+      if (failure) {
+        this.current = failure.synchronized
+        error = failure.originalError
+      }
       if (!handleErrors) {
         this.recordFailure(error)
         throw error

@@ -529,6 +529,51 @@ raw native ComboBox or its ref when `selectedItem` is required. Raw
 `onSelectionChanged`, `onDropDownOpened`, and `onDropDownClosed` remain
 available.
 
+Use `createSelectorBarControl()` for owned native `SelectorBarItem` children
+and index-based controlled selection:
+
+```tsx
+const FilterBar = createSelectorBarControl({
+  SelectorBar,
+})
+const selectedSection = signal(0)
+
+<FilterBar
+  selectedIndex={selectedSection}
+  onSelectedIndexChange={(index) => {
+    selectedSection.value = index
+  }}
+>
+  <UI.SelectorBarItem text="Recent" />
+  <UI.SelectorBarItem text="Favorites" />
+</FilterBar>
+```
+
+The adapter maps `selectedIndex` to the identity of the corresponding native
+item after children mount. Raw `onSelectionChanged` remains available;
+`selectedItem` stays an escape hatch on the raw projected control.
+
+Use `createScrollViewerController()` as a native ref when navigation controls
+need reactive offsets and boundary state:
+
+```tsx
+const scroller = createScrollViewerController<ScrollViewer>()
+
+<UI.ScrollViewer ref={scroller}>
+  {content}
+</UI.ScrollViewer>
+<UI.Button
+  isEnabled={scroller.canScrollForward}
+  onClick={() =>
+    scroller.scrollHorizontalByViewport(1)
+  }
+/>
+```
+
+The controller tracks ViewChanged, SizeChanged, Loaded, and LayoutUpdated,
+clamps offset writes, uses `ChangeView`, and releases subscriptions when its
+ref is cleared.
+
 Common automation metadata is available directly on native JSX controls:
 
 ```tsx

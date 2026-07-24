@@ -89,6 +89,19 @@ export {
 } from './combo-box'
 
 export {
+  createScrollViewerController,
+  type ScrollViewerController,
+  type ScrollViewerInstance,
+} from './scroll-viewer'
+
+export {
+  createSelectorBarControl,
+  type SelectorBarControlBindings,
+  type SelectorBarInstance,
+  type SelectorBarProps,
+} from './selector-bar'
+
+export {
   createItemsRepeaterControl,
   type ItemsRepeaterControlBindings,
   type ItemsRepeaterInstance,

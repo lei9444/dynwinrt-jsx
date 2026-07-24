@@ -91,6 +91,7 @@ adoption map.
 | NavigationView and navigation items | `src/navigation.ts` |
 | ListView selection, focus, and scrolling | `src/list-view.ts` |
 | Selector and ComboBox controlled selection | `src/selector.ts`, `src/combo-box.ts` |
+| SelectorBar ownership and ScrollViewer state | `src/selector-bar.ts`, `src/scroll-viewer.ts` |
 | Native ItemsRepeater virtualization | `src/items-repeater.ts`, `src/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, and TeachingTip scopes | `src/overlays.ts` |
 | Dialog, icon, focus, and diagnostics helpers | `src/dialog.ts`, `src/icons.ts`, `src/focus.ts`, `src/diagnostics.ts` |
@@ -196,6 +197,8 @@ The built-in WinUI layer currently provides:
 - Scoped ContentDialog rendering, native icon factories, and focus targets.
 - ListView item/slot adapters with controlled selection helpers.
 - ComboBox items/header ownership with mounted controlled selection.
+- SelectorBar item ownership with controlled selected-index mapping.
+- ScrollViewer offset, viewport, boundary, and ChangeView controllers.
 - Scoped Flyout, MenuFlyout, and TeachingTip rendering.
 - Generated-constructor helpers for URI, image, brush, font, icon, and nullable values.
 - Typed theme resources with effective-element lookup, High Contrast refresh,

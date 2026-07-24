@@ -6,6 +6,7 @@ import {
   createItemsRepeaterControl,
   createListViewControl,
   createNavigationViewControl,
+  createSelectorBarControl,
   type Renderer,
 } from 'dynwinrt-jsx'
 import {
@@ -37,6 +38,8 @@ import {
   RowDefinition,
   ScrollViewer,
   Selector,
+  SelectorBar,
+  SelectorBarItem,
   Slider,
   StackPanel,
   SymbolIcon,
@@ -64,6 +67,7 @@ export const UI = createControls({
   ProgressRing,
   RadioButton,
   ScrollViewer,
+  SelectorBarItem,
   Slider,
   StackPanel,
   SymbolIcon,
@@ -89,6 +93,10 @@ export const GalleryListView = createListViewControl({
   ListView,
   selectedIndexProperty: Selector.selectedIndexProperty,
 })
+export const GallerySelectorBar = createSelectorBarControl<
+  SelectorBar,
+  SelectorBarItem
+>({ SelectorBar })
 export const GalleryItemsRepeater = createItemsRepeaterControl({
   ItemsRepeater,
   ContentControl,

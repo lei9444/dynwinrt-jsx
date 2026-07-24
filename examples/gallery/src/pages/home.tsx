@@ -3,8 +3,9 @@ import {
   Show,
   color,
   computed,
-  cornerRadius,
+  createScrollViewerController,
   createSolidColorBrush,
+  createSymbolIcon,
   gridLength,
   signal,
   styles,
@@ -12,7 +13,6 @@ import {
   thickness,
   tokens,
   type MaybeSignal,
-  type RefObject,
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
@@ -22,12 +22,14 @@ import {
   SolidColorBrush,
   Stretch,
   Symbol,
+  SymbolIcon,
   TextWrapping,
   VerticalAlignment,
   Visibility,
 } from '#winapp/bindings'
 import {
   type AppContext,
+  GallerySelectorBar,
   LayoutGrid,
   type ScrollViewerInstance,
   UI,
@@ -47,38 +49,9 @@ import {
 } from '../components/gallery-components'
 
 export function HomePage(context: AppContext) {
-  const featureScroller: RefObject<ScrollViewerInstance> = {
-    current: null,
-  }
-  const showFeatureBack = signal(false)
-  const showFeatureForward = signal(true)
-  const refreshFeatureButtons = () => {
-    const scroller = featureScroller.current
-    if (!scroller) {
-      return
-    }
-    showFeatureBack.value = scroller.horizontalOffset > 1
-    showFeatureForward.value =
-      scroller.horizontalOffset < scroller.scrollableWidth - 1
-  }
-  const scrollFeatures = (direction: -1 | 1) => {
-    const scroller = featureScroller.current
-    if (!scroller) {
-      return
-    }
-    const target = Math.max(
-      0,
-      Math.min(
-        scroller.scrollableWidth,
-        scroller.horizontalOffset +
-          direction * scroller.viewportWidth,
-      ),
-    )
-    scroller.changeView(target, null, null, true)
-  }
-  const selectedSection = signal<'recent' | 'favorites'>(
-    'recent',
-  )
+  const featureScroller =
+    createScrollViewerController<ScrollViewerInstance>()
+  const selectedSection = signal(0)
   const recentPages = computed(() =>
     context.model.recentPageIds.value
       .map((id) => findGalleryPage(id))
@@ -270,9 +243,6 @@ export function HomePage(context: AppContext) {
                   ScrollBarVisibility.Hidden
                 }
                 verticalScrollMode={ScrollMode.Disabled}
-                onLoaded={refreshFeatureButtons}
-                onSizeChanged={refreshFeatureButtons}
-                onViewChanged={refreshFeatureButtons}
               >
                 <UI.StackPanel
                   orientation={Orientation.Horizontal}
@@ -293,7 +263,7 @@ export function HomePage(context: AppContext) {
                 automationId="GalleryFeaturePrevious"
                 automationName="Scroll left"
                 visibility={computed(() =>
-                  showFeatureBack.value
+                  featureScroller.canScrollBackward.value
                     ? Visibility.Visible
                     : Visibility.Collapsed,
                 )}
@@ -311,7 +281,11 @@ export function HomePage(context: AppContext) {
                 cornerRadius={tokens.radius.control}
                 horizontalAlignment={HorizontalAlignment.Left}
                 verticalAlignment={VerticalAlignment.Center}
-                onClick={() => scrollFeatures(-1)}
+                onClick={() =>
+                  featureScroller.scrollHorizontalByViewport(
+                    -1,
+                    true,
+                  )}
               >
                 <UI.FontIcon glyph={'\uEDD9'} fontSize={8} />
               </UI.Button>
@@ -319,7 +293,7 @@ export function HomePage(context: AppContext) {
                 automationId="GalleryFeatureNext"
                 automationName="Scroll right"
                 visibility={computed(() =>
-                  showFeatureForward.value
+                  featureScroller.canScrollForward.value
                     ? Visibility.Visible
                     : Visibility.Collapsed,
                 )}
@@ -337,7 +311,11 @@ export function HomePage(context: AppContext) {
                 cornerRadius={tokens.radius.control}
                 horizontalAlignment={HorizontalAlignment.Right}
                 verticalAlignment={VerticalAlignment.Center}
-                onClick={() => scrollFeatures(1)}
+                onClick={() =>
+                  featureScroller.scrollHorizontalByViewport(
+                    1,
+                    true,
+                  )}
               >
                 <UI.FontIcon glyph={'\uEDDA'} fontSize={8} />
               </UI.Button>
@@ -350,54 +328,34 @@ export function HomePage(context: AppContext) {
           maxWidth={1112}
           horizontalAlignment={HorizontalAlignment.Stretch}
         >
-          <UI.StackPanel
-            orientation={Orientation.Horizontal}
-            spacing={8}
+          <GallerySelectorBar
+            selectedIndex={selectedSection}
+            onSelectedIndexChange={(index) => {
+              if (index >= 0) {
+                selectedSection.value = index
+              }
+            }}
             horizontalAlignment={HorizontalAlignment.Center}
           >
-            <UI.ToggleButton
+            <UI.SelectorBarItem
               automationId="GalleryRecentSelector"
-              height={36}
-              padding={thickness(16, 8)}
-              cornerRadius={cornerRadius(18)}
-              isChecked={computed(
-                () => selectedSection.value === 'recent',
+              text="Recent"
+              icon={createSymbolIcon(
+                SymbolIcon,
+                Symbol.Clock,
               )}
-              onClick={() => {
-                selectedSection.value = 'recent'
-              }}
-            >
-              <UI.StackPanel
-                orientation={Orientation.Horizontal}
-                spacing={6}
-              >
-                <UI.SymbolIcon symbol={Symbol.Clock} />
-                <UI.TextBlock text="Recent" />
-              </UI.StackPanel>
-            </UI.ToggleButton>
-            <UI.ToggleButton
+            />
+            <UI.SelectorBarItem
               automationId="GalleryFavoritesSelector"
-              height={36}
-              padding={thickness(16, 8)}
-              cornerRadius={cornerRadius(18)}
-              isChecked={computed(
-                () => selectedSection.value === 'favorites',
+              text="Favorites"
+              icon={createSymbolIcon(
+                SymbolIcon,
+                Symbol.Favorite,
               )}
-              onClick={() => {
-                selectedSection.value = 'favorites'
-              }}
-            >
-              <UI.StackPanel
-                orientation={Orientation.Horizontal}
-                spacing={6}
-              >
-                <UI.SymbolIcon symbol={Symbol.OutlineStar} />
-                <UI.TextBlock text="Favorites" />
-              </UI.StackPanel>
-            </UI.ToggleButton>
-          </UI.StackPanel>
+            />
+          </GallerySelectorBar>
           <Show when={computed(
-            () => selectedSection.value === 'recent',
+            () => selectedSection.value === 0,
           )}>
             <UI.StackPanel spacing={tokens.spacing.xl}>
               <Show when={computed(
@@ -466,7 +424,7 @@ export function HomePage(context: AppContext) {
             </UI.StackPanel>
           </Show>
           <Show when={computed(
-            () => selectedSection.value === 'favorites',
+            () => selectedSection.value === 1,
           )}>
             <Show
               when={computed(

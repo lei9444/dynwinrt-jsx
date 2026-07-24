@@ -15,6 +15,7 @@ The initial pages cover:
 - typed Grid layout;
 - ContentDialog and Flyout lifetimes;
 - theme resources, tokens, style recipes, icons, settings, and diagnostics.
+- native SelectorBar selection and reusable ScrollViewer boundary controllers.
 
 Each sample includes a live native preview and selectable TypeScript JSX source.
 The Home header reuses MIT-licensed WinUI Gallery tile artwork; its license is

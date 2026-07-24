@@ -445,3 +445,42 @@ test('named and default slot adapters own child lifetimes', () => {
   assert.equal(mountedControl.header, null)
   assert.equal(mountedControl.actions.size, 0)
 })
+
+test('slot afterSync failures leave native ownership consistent', () => {
+  const UI = createControls({ Text: TestText })
+  class SingleSlotControl {
+    content = null
+  }
+  let fail = false
+  const Control = native(SingleSlotControl, {
+    children: adapter.slot('content', {
+      afterSync() {
+        if (fail) {
+          throw new Error('after sync failed')
+        }
+      },
+    }),
+  })
+  const root = new TestHost()
+  const content = signal(
+    UI.Text({ text: 'Original' }),
+  )
+  const handle = renderer().render(
+    Control({
+      children: content,
+    }),
+    root,
+  )
+  const control = root.children.getAt(0)
+  fail = true
+  assert.throws(
+    () => {
+      content.value =
+        UI.Text({ text: 'Replacement' })
+    },
+    /after sync failed/,
+  )
+  assert.equal(control.content, null)
+  fail = false
+  handle.dispose()
+})

@@ -90,6 +90,9 @@ export interface NativeSlotAdapter<Instance> {
   readonly kind: 'slot'
   readonly strategy: 'single' | 'collection'
   readonly property: Extract<keyof Instance, string>
+  readonly beforeSync?: (instance: Instance) => void
+  readonly afterSync?: (instance: Instance) => void
+  readonly finallySync?: (instance: Instance) => void
 }
 
 export interface NativeItemsRepeaterData<Item = unknown> {
@@ -243,13 +246,33 @@ export const adapter = {
   },
   slot<Instance>(
     property: Extract<keyof Instance, string>,
+    options: {
+      readonly beforeSync?: (instance: Instance) => void
+      readonly afterSync?: (instance: Instance) => void
+      readonly finallySync?: (instance: Instance) => void
+    } = {},
   ): NativeSlotAdapter<Instance> {
-    return { kind: 'slot', strategy: 'single', property }
+    return {
+      kind: 'slot',
+      strategy: 'single',
+      property,
+      ...options,
+    }
   },
   collectionSlot<Instance>(
     property: Extract<keyof Instance, string>,
+    options: {
+      readonly beforeSync?: (instance: Instance) => void
+      readonly afterSync?: (instance: Instance) => void
+      readonly finallySync?: (instance: Instance) => void
+    } = {},
   ): NativeSlotAdapter<Instance> {
-    return { kind: 'slot', strategy: 'collection', property }
+    return {
+      kind: 'slot',
+      strategy: 'collection',
+      property,
+      ...options,
+    }
   },
   itemsRepeater<Instance>(
     options: Omit<

@@ -212,6 +212,18 @@ the model selection. The specialized control intentionally omits
 `selectedItem`; use a raw native ComboBox or its ref when projected-object
 selection is required.
 
+## SelectorBar and ScrollViewer
+
+Use `createSelectorBarControl()` to own `SelectorBarItem` children and expose
+controlled `selectedIndex` instead of storing projected `selectedItem`
+identities in application state. Items mount before selection is applied, and
+rejected native changes reassert the model index after the reactive flush.
+
+`createScrollViewerController()` replaces application-specific offset refs and
+ViewChanged/SizeChanged subscriptions. It exposes reactive offsets, viewport
+and scrollable sizes, boundary signals, clamped ChangeView helpers, and
+automatic ref cleanup.
+
 ## Root replacement
 
 Use `RenderHandle.update(nextTree)` to replace a mounted root, or `createHotRoot()` when a development integration needs to rerun a render factory.

@@ -26,6 +26,8 @@ import {
   createNavigationViewControl,
   createReferenceBoxing,
   createRelativeUri,
+  createScrollViewerController,
+  createSelectorBarControl,
   createSolidColorBrush,
   createStyleRecipe,
   createSymbolIcon,
@@ -50,6 +52,7 @@ import {
   type Renderer,
   type RendererInspectionSnapshot,
   type RendererInspectorOptions,
+  type ScrollViewerController,
   type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
@@ -57,6 +60,12 @@ import {
 class TypeVector {
   readonly values: unknown[] = []
 
+  get size(): number {
+    return this.values.length
+  }
+  getAt(index: number): unknown {
+    return this.values[index]
+  }
   insertAt(_index: number, _value: unknown): void {}
   removeAt(_index: number): void {}
   append(_value: unknown): void {}
@@ -140,6 +149,7 @@ class TypeComboBox {
   ): () => void {
     return () => {}
   }
+
   registerPropertyChangedCallback(
     _property: unknown,
     _callback: (sender: unknown, property: unknown) => void,
@@ -150,6 +160,59 @@ class TypeComboBox {
     _property: unknown,
     _token: bigint,
   ): void {}
+}
+
+class TypeScrollViewer {
+  horizontalOffset = 0
+  verticalOffset = 0
+  scrollableWidth = 0
+  scrollableHeight = 0
+  viewportWidth = 0
+  viewportHeight = 0
+
+  changeView(
+    _horizontalOffset: number | null,
+    _verticalOffset: number | null,
+    _zoomFactor: number | null,
+    _disableAnimation: boolean,
+  ): boolean {
+    return true
+  }
+  onViewChanged(
+    _callback: (...args: unknown[]) => void,
+  ): () => void {
+    return () => {}
+  }
+  onSizeChanged(
+    _callback: (...args: unknown[]) => void,
+  ): () => void {
+    return () => {}
+  }
+  onLoaded(
+    _callback: (...args: unknown[]) => void,
+  ): () => void {
+    return () => {}
+  }
+  onLayoutUpdated(
+    _callback: (...args: unknown[]) => void,
+  ): () => void {
+    return () => {}
+  }
+}
+
+class TypeSelectorBarItem {
+  text = ''
+}
+
+class TypeSelectorBar {
+  readonly items = new TypeVector()
+  selectedItem: TypeSelectorBarItem | null = null
+
+  onSelectionChanged(
+    _callback: (...args: unknown[]) => void,
+  ): () => void {
+    return () => {}
+  }
 }
 
 class TypeSymbolIcon {
@@ -304,6 +367,7 @@ const UI = createControls({
   Button: TypeButton,
   CheckBox: TypeCheckBox,
   Panel: TypePanel,
+  SelectorBarItem: TypeSelectorBarItem,
   TextBlock: TypeTextBlock,
   TextBox: TypeTextBox,
 })
@@ -435,6 +499,16 @@ const Combo = createComboBoxControl({
   ComboBox: TypeComboBox,
   selectedIndexProperty: {},
 })
+const SelectorBar = createSelectorBarControl<
+  TypeSelectorBar,
+  TypeSelectorBarItem
+>({
+  SelectorBar: TypeSelectorBar,
+})
+const scrollViewerController:
+  ScrollViewerController<TypeScrollViewer> =
+    createScrollViewerController<TypeScrollViewer>()
+scrollViewerController.scrollHorizontalByViewport(1)
 const listScroll = createListViewScrollTarget<TypeListView>()
 const navItem = createNavigationItem(
   {
@@ -597,6 +671,19 @@ export const typeCheckedTree = (
     </Combo>
     {/* @ts-expect-error Specialized ComboBox selection is controlled by index. */}
     <Combo selectedItem={{}} />
+    <SelectorBar
+      selectedIndex={signal(0)}
+      onSelectedIndexChange={(index, sender) => {
+        sender.selectedItem =
+          sender.items.getAt?.(index) as
+            | TypeSelectorBarItem
+            | null
+      }}
+    >
+      <UI.SelectorBarItem text="Recent" />
+    </SelectorBar>
+    {/* @ts-expect-error Specialized SelectorBar selection is controlled by index. */}
+    <SelectorBar selectedItem={new TypeSelectorBarItem()} />
     <ControlledTypeList
       selectedIndex={signal(0)}
       onSelectedIndexChange={(index, instance) => {
