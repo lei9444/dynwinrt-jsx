@@ -78,6 +78,8 @@ import {
   RefreshContainer,
   RelativePanel,
   RepeatButton,
+  RichEditBox,
+  RichTextBlock,
   RowDefinition,
   ScrollView,
   ScrollViewer,
@@ -107,6 +109,8 @@ import {
   ToggleSwitch,
   TreeView,
   TreeViewNode,
+  Paragraph,
+  Run,
   VariableSizedWrapGrid,
   Viewbox,
   Window,
@@ -158,6 +162,7 @@ export const UI = createControls({
   RefreshContainer,
   RelativePanel,
   RepeatButton,
+  RichEditBox,
   ScrollView,
   ScrollViewer,
   SelectorBarItem,
@@ -175,6 +180,7 @@ export const UI = createControls({
   ToggleButton,
   ToggleMenuFlyoutItem,
   ToggleSwitch,
+  Run,
   VariableSizedWrapGrid,
   Viewbox,
 })
@@ -325,6 +331,14 @@ export const GallerySemanticZoom = native<
     zoomedInContent: adapter.slot('zoomedInView'),
     zoomedOutContent: adapter.slot('zoomedOutView'),
   },
+})
+export const GalleryRichTextBlock = native(RichTextBlock, {
+  displayName: 'RichTextBlock',
+  children: adapter.collectionSlot('blocks'),
+})
+export const GalleryParagraph = native(Paragraph, {
+  displayName: 'Paragraph',
+  children: adapter.collectionSlot('inlines'),
 })
 export const LayoutGrid = createGridControl({
   Grid,

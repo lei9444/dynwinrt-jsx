@@ -51,6 +51,8 @@
   NavigationView, Pivot, SelectorBar, and TabView.
 - Added the complete WinUI Gallery Scrolling category with AnnotatedScrollBar,
   PipsPager, ScrollView, ScrollViewer, and SemanticZoom.
+- Added the complete WinUI Gallery Text category with AutoSuggestBox,
+  NumberBox, PasswordBox, RichEditBox, RichTextBlock, TextBlock, and TextBox.
 
 ## 1.0.0
 

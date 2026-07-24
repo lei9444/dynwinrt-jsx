@@ -170,16 +170,6 @@ export const galleryPages = [
     image: 'ControlImages/ComboBox.png',
   },
   {
-    id: 'text-input',
-    category: 'Controls',
-    title: 'Text and numeric input',
-    subtitle: 'TextBox, PasswordBox, AutoSuggestBox, and NumberBox.',
-    description:
-      'Capture text, secret, search, and numeric input through generated native properties and events.',
-    tags: ['textbox', 'passwordbox', 'autosuggestbox', 'numberbox', 'input'],
-    image: 'ControlImages/TextBox.png',
-  },
-  {
     id: 'info-badge',
     category: 'Status & info',
     title: 'InfoBadge',
@@ -630,6 +620,76 @@ export const galleryPages = [
     image: 'ControlImages/SemanticZoom.png',
   },
   {
+    id: 'auto-suggest-box',
+    category: 'Text',
+    title: 'AutoSuggestBox',
+    subtitle: 'Combines editable text, suggestions, and query submission.',
+    description:
+      'Supply native suggestions and respond to draft text, chosen suggestions, and submitted queries.',
+    tags: ['autosuggestbox', 'search', 'suggestions', 'query', 'text'],
+    image: 'ControlImages/AutoSuggestBox.png',
+  },
+  {
+    id: 'number-box',
+    category: 'Text',
+    title: 'NumberBox',
+    subtitle: 'Accepts numeric values and arithmetic expressions.',
+    description:
+      'Configure bounds, expression evaluation, step sizes, and spin-button placement.',
+    tags: ['numberbox', 'number', 'expression', 'spin button', 'input'],
+    image: 'ControlImages/NumberBox.png',
+  },
+  {
+    id: 'password-box',
+    category: 'Text',
+    title: 'PasswordBox',
+    subtitle: 'Captures secret text with reveal behavior.',
+    description:
+      'Limit secret input, choose reveal behavior, and respond without exposing password content.',
+    tags: ['passwordbox', 'password', 'secret', 'reveal', 'input'],
+    image: 'ControlImages/PasswordBox.png',
+  },
+  {
+    id: 'rich-edit-box',
+    category: 'Text',
+    title: 'RichEditBox',
+    subtitle: 'Provides an editable rich text document surface.',
+    description:
+      'Set document text, edit multiple lines, and observe projected RichEditTextDocument changes.',
+    tags: ['richeditbox', 'rich text', 'editor', 'document', 'formatting'],
+    image: 'ControlImages/RichEditBox.png',
+  },
+  {
+    id: 'rich-text-block',
+    category: 'Text',
+    title: 'RichTextBlock',
+    subtitle: 'Displays paragraphs with independently formatted runs.',
+    description:
+      'Own BlockCollection and InlineCollection contents through Paragraph and Run adapters.',
+    tags: ['richtextblock', 'paragraph', 'run', 'formatted text', 'display'],
+    image: 'ControlImages/RichTextBlock.png',
+  },
+  {
+    id: 'text-block',
+    category: 'Text',
+    title: 'TextBlock',
+    subtitle: 'Displays lightweight text.',
+    description:
+      'Configure wrapping, trimming, sizing, selection, and theme-aware typography.',
+    tags: ['textblock', 'text', 'wrapping', 'trimming', 'typography'],
+    image: 'ControlImages/TextBlock.png',
+  },
+  {
+    id: 'text-box',
+    category: 'Text',
+    title: 'TextBox',
+    subtitle: 'Captures single-line or multiline plain text.',
+    description:
+      'Use headers, placeholders, multiline input, wrapping, and native TextChanged events.',
+    tags: ['textbox', 'text', 'input', 'multiline', 'notes'],
+    image: 'ControlImages/TextBox.png',
+  },
+  {
     id: 'content-dialog',
     category: 'Dialogs & flyouts',
     title: 'ContentDialog',
@@ -706,6 +766,7 @@ export type GalleryRoute =
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
+  | 'category-text'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -744,6 +805,10 @@ export const navigationPages = galleryPages.filter(
 
 export const scrollingPages = galleryPages.filter(
   (page) => page.category === 'Scrolling',
+)
+
+export const textPages = galleryPages.filter(
+  (page) => page.category === 'Text',
 )
 
 export const galleryCategories = [

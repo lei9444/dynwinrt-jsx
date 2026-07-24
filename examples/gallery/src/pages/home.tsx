@@ -328,7 +328,7 @@ export function HomePage(context: AppContext) {
       title: 'Code samples',
       description: 'Find samples that demonstrate specific tasks, features, and APIs.',
       symbol: Symbol.Permissions,
-      route: 'text-input',
+      route: 'text-box',
       tone: 'success',
       glyph: '\uE943',
     },

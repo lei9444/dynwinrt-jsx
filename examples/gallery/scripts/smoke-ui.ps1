@@ -87,6 +87,7 @@ $layoutCategoryScreenshotPath = Join-Path $evidenceRoot "layout-category.png"
 $menusToolbarsCategoryScreenshotPath = Join-Path $evidenceRoot "menus-toolbars-category.png"
 $navigationCategoryScreenshotPath = Join-Path $evidenceRoot "navigation-category.png"
 $scrollingCategoryScreenshotPath = Join-Path $evidenceRoot "scrolling-category.png"
+$textCategoryScreenshotPath = Join-Path $evidenceRoot "text-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -96,7 +97,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -136,6 +137,8 @@ try {
         $migratedState.favoritePageIds -notcontains "info-bar" -or
         $migratedState.recentPageIds -notcontains "grid" -or
         $migratedState.favoritePageIds -notcontains "grid" -or
+        $migratedState.recentPageIds -notcontains "text-box" -or
+        $migratedState.favoritePageIds -notcontains "text-box" -or
         $migratedState.recentPageIds -contains "buttons" -or
         $migratedState.favoritePageIds -contains "buttons" -or
         $migratedState.recentPageIds -contains "collections" -or
@@ -147,7 +150,9 @@ try {
         $migratedState.recentPageIds -contains "choices-status" -or
         $migratedState.favoritePageIds -contains "choices-status" -or
         $migratedState.recentPageIds -contains "layout" -or
-        $migratedState.favoritePageIds -contains "layout"
+        $migratedState.favoritePageIds -contains "layout" -or
+        $migratedState.recentPageIds -contains "text-input" -or
+        $migratedState.favoritePageIds -contains "text-input"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
     }
@@ -377,6 +382,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryTextCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "TextCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open AutoSuggestBox",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $textCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open TextBox",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -394,7 +423,6 @@ try {
         [pscustomobject]@{ Name = "Open Slider"; Heading = "SliderPageHeading"; Probe = $null; Query = "slider ticks" },
         [pscustomobject]@{ Name = "Open ToggleSwitch"; Heading = "ToggleSwitchPageHeading"; Probe = $null; Query = "toggleswitch" },
         [pscustomobject]@{ Name = "Open Selection controls"; Heading = "SelectionPageHeading"; Probe = "GalleryControlledListViewSample"; Query = "listview" },
-        [pscustomobject]@{ Name = "Open Text and numeric input"; Heading = "TextInputPageHeading"; Probe = "GalleryTextInputSample"; Query = "passwordbox" },
         [pscustomobject]@{ Name = "Open InfoBadge"; Heading = "InfoBadgePageHeading"; Probe = "GalleryInfoBadgeDynamic"; Query = "infobadge count" },
         [pscustomobject]@{ Name = "Open InfoBar"; Heading = "InfoBarPageHeading"; Probe = "GalleryInfoBarSeverityControl"; Query = "infobar severity" },
         [pscustomobject]@{ Name = "Open ProgressBar"; Heading = "ProgressBarPageHeading"; Probe = "GalleryProgressBarDeterminate"; Query = "progressbar paused" },
@@ -444,6 +472,13 @@ try {
         [pscustomobject]@{ Name = "GalleryOpenPage-scroll-view"; Heading = "ScrollViewPageHeading"; Probe = "GalleryScrollViewSample"; Query = "scrollview pan zoom" },
         [pscustomobject]@{ Name = "GalleryOpenPage-scroll-viewer"; Heading = "ScrollViewerPageHeading"; Probe = "GalleryScrollViewerSample"; Query = "scrollviewer viewport" },
         [pscustomobject]@{ Name = "Open SemanticZoom"; Heading = "SemanticZoomPageHeading"; Probe = "GallerySemanticZoomSample"; Query = "semanticzoom grouped" },
+        [pscustomobject]@{ Name = "Open AutoSuggestBox"; Heading = "AutoSuggestBoxPageHeading"; Probe = "GalleryAutoSuggestBoxInput"; Query = "autosuggestbox query" },
+        [pscustomobject]@{ Name = "Open NumberBox"; Heading = "NumberBoxPageHeading"; Probe = "GalleryNumberBoxInput"; Query = "numberbox expression" },
+        [pscustomobject]@{ Name = "Open PasswordBox"; Heading = "PasswordBoxPageHeading"; Probe = "GalleryPasswordBoxInput"; Query = "passwordbox reveal" },
+        [pscustomobject]@{ Name = "Open RichEditBox"; Heading = "RichEditBoxPageHeading"; Probe = "GalleryRichEditBoxSample"; Query = "richeditbox document" },
+        [pscustomobject]@{ Name = "Open RichTextBlock"; Heading = "RichTextBlockPageHeading"; Probe = "GalleryRichTextBlockSample"; Query = "richtextblock paragraph" },
+        [pscustomobject]@{ Name = "Open TextBlock"; Heading = "TextBlockPageHeading"; Probe = "GalleryTextBlockControl"; Query = "textblock wrapping" },
+        [pscustomobject]@{ Name = "Open TextBox"; Heading = "TextBoxPageHeading"; Probe = "GalleryTextBoxInput"; Query = "textbox multiline" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -1448,6 +1483,105 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "Zoomed-in view active.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "AutoSuggestBoxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAutoSuggestBoxDraft",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Draft query: grid",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "NumberBoxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryNumberBoxInput", "12",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Value: 12",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PasswordBoxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryPasswordBoxInput", "secret",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "6 password characters",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RichEditBoxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Document text: RichEditBox supports multiline editing, selection, and formatting.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryRichEditBoxClear",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Document cleared.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Document text: (empty)",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RichTextBlockPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "formatted text",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Each Paragraph owns an InlineCollection, while each Run remains a projected WinUI text element.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryRichTextBlockLines",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Maximum lines: 2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "TextBlockPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryTextBlockFontSize", "24",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Font size: 24",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "TextBoxPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryTextBoxInput", "Hello",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Current text: Hello",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

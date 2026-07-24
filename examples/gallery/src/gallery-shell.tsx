@@ -83,7 +83,6 @@ import { FlyoutPage } from './pages/dialogs-flyouts/flyout'
 import { PopupPage } from './pages/dialogs-flyouts/popup'
 import { TeachingTipPage } from './pages/dialogs-flyouts/teaching-tip'
 import { SelectionPage } from './pages/selection'
-import { TextInputPage } from './pages/text-input'
 import { StatusInfoCategoryPage } from './pages/status-info'
 import { InfoBadgePage } from './pages/status-info/info-badge'
 import { InfoBarPage } from './pages/status-info/info-bar'
@@ -123,6 +122,14 @@ import { PipsPagerPage } from './pages/scrolling/pips-pager'
 import { ScrollViewPage } from './pages/scrolling/scroll-view'
 import { ScrollViewerPage } from './pages/scrolling/scroll-viewer'
 import { SemanticZoomPage } from './pages/scrolling/semantic-zoom'
+import { TextCategoryPage } from './pages/text'
+import { AutoSuggestBoxPage } from './pages/text/auto-suggest-box'
+import { NumberBoxPage } from './pages/text/number-box'
+import { PasswordBoxPage } from './pages/text/password-box'
+import { RichEditBoxPage } from './pages/text/rich-edit-box'
+import { RichTextBlockPage } from './pages/text/rich-text-block'
+import { TextBlockPage } from './pages/text/text-block'
+import { TextBoxPage } from './pages/text/text-box'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -165,8 +172,6 @@ function renderSamplePage(
       return <ToggleSwitchPage {...context} />
     case 'selection':
       return <SelectionPage {...context} />
-    case 'text-input':
-      return <TextInputPage {...context} />
     case 'info-badge':
       return <InfoBadgePage {...context} />
     case 'info-bar':
@@ -265,6 +270,20 @@ function renderSamplePage(
       return <ScrollViewerPage {...context} />
     case 'semantic-zoom':
       return <SemanticZoomPage {...context} />
+    case 'auto-suggest-box':
+      return <AutoSuggestBoxPage {...context} />
+    case 'number-box':
+      return <NumberBoxPage {...context} />
+    case 'password-box':
+      return <PasswordBoxPage {...context} />
+    case 'rich-edit-box':
+      return <RichEditBoxPage {...context} />
+    case 'rich-text-block':
+      return <RichTextBlockPage {...context} />
+    case 'text-block':
+      return <TextBlockPage {...context} />
+    case 'text-box':
+      return <TextBoxPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -299,6 +318,8 @@ function renderRoute(
       return <NavigationCategoryPage {...context} />
     case 'category-scrolling':
       return <ScrollingCategoryPage {...context} />
+    case 'category-text':
+      return <TextCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -525,6 +546,21 @@ export function Shell(context: AppContext) {
     ],
     'category-scrolling',
   )
+  const textItem = createNavigationGroup(
+    'Text',
+    'Text',
+    Symbol.Font,
+    [
+      'auto-suggest-box',
+      'number-box',
+      'password-box',
+      'rich-edit-box',
+      'rich-text-block',
+      'text-block',
+      'text-box',
+    ],
+    'category-text',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -558,12 +594,7 @@ export function Shell(context: AppContext) {
     navigationItem,
     scrollingItem,
     createNavigationGroup('Shell', 'Shell', Symbol.Repair, []),
-    createNavigationGroup(
-      'Text',
-      'Text',
-      Symbol.Font,
-      ['text-input'],
-    ),
+    textItem,
     statusInfoItem,
   ]
   const diagnosticsItem = createNavigationItem(
@@ -600,6 +631,7 @@ export function Shell(context: AppContext) {
   )
   routeItems.set('category-navigation', navigationItem)
   routeItems.set('category-scrolling', scrollingItem)
+  routeItems.set('category-text', textItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -679,6 +711,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-scrolling')
               return
             }
+            if (currentPage?.category === 'Text') {
+              context.model.navigate('category-text')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -740,6 +776,7 @@ export function Shell(context: AppContext) {
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
               route === 'category-scrolling' ||
+              route === 'category-text' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

@@ -142,6 +142,8 @@
             "RefreshContainer",
             "RefreshVisualizer",
             "RelativePanel",
+            "RichEditBox",
+            "RichTextBlock",
             "RowDefinition",
             "ScrollView",
             "ScrollViewer",
@@ -177,6 +179,13 @@
             "UniformGridLayout",
             "VariableSizedWrapGrid",
             "Viewbox"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Documents",
+          "classes": [
+            "Paragraph",
+            "Run"
           ]
         },
         {
