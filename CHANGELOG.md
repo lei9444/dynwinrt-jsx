@@ -60,6 +60,10 @@
   Iconography, Spacing, and Typography.
 - Added the complete WinUI Gallery Accessibility category with Color Contrast,
   Keyboard Navigation, and Screen Reader guidance.
+- Added the complete WinUI Gallery Styles category with AcrylicBrush,
+  AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
+  RadialGradientBrush, System Backdrops, SystemBackdropElement, and
+  ThemeShadow.
 
 ## 1.0.0
 

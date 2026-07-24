@@ -91,6 +91,7 @@ $textCategoryScreenshotPath = Join-Path $evidenceRoot "text-category.png"
 $fundamentalsCategoryScreenshotPath = Join-Path $evidenceRoot "fundamentals-category.png"
 $designCategoryScreenshotPath = Join-Path $evidenceRoot "design-category.png"
 $accessibilityCategoryScreenshotPath = Join-Path $evidenceRoot "accessibility-category.png"
+$stylesCategoryScreenshotPath = Join-Path $evidenceRoot "styles-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -485,6 +486,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryStylesCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "StylesCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open AcrylicBrush",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $stylesCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open ThemeShadow",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -572,7 +597,17 @@ try {
         [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" },
         [pscustomobject]@{ Name = "Open Color Contrast"; Heading = "ColorContrastPageHeading"; Probe = "GalleryAccessibilityContrastSample"; Query = "color contrast wcag" },
         [pscustomobject]@{ Name = "Open Keyboard Navigation"; Heading = "KeyboardNavigationPageHeading"; Probe = "GalleryAccessibilityKeyboardTarget"; Query = "keyboard navigation focus" },
-        [pscustomobject]@{ Name = "Open Screen Reader"; Heading = "ScreenReaderPageHeading"; Probe = "GalleryAccessibilityScreenReaderAction"; Query = "screen reader automation" }
+        [pscustomobject]@{ Name = "Open Screen Reader"; Heading = "ScreenReaderPageHeading"; Probe = "GalleryAccessibilityScreenReaderAction"; Query = "screen reader automation" },
+        [pscustomobject]@{ Name = "Open AcrylicBrush"; Heading = "AcrylicBrushPageHeading"; Probe = "GalleryStylesAcrylicSample"; Query = "acrylicbrush material" },
+        [pscustomobject]@{ Name = "Open AnimatedIcon"; Heading = "AnimatedIconPageHeading"; Probe = "GalleryStylesAnimatedIconSample"; Query = "animatedicon state" },
+        [pscustomobject]@{ Name = "Open Compact Sizing"; Heading = "CompactSizingPageHeading"; Probe = "GalleryStylesCompactSizingSample"; Query = "compact sizing density" },
+        [pscustomobject]@{ Name = "Open IconElement"; Heading = "IconElementPageHeading"; Probe = "GalleryStylesIconElementSample"; Query = "iconelement fonticon" },
+        [pscustomobject]@{ Name = "Open Line"; Heading = "LinePageHeading"; Probe = "GalleryStylesLineSample"; Query = "line stroke" },
+        [pscustomobject]@{ Name = "Open Shape"; Heading = "ShapePageHeading"; Probe = "GalleryStylesShapeSample"; Query = "shape ellipse rectangle" },
+        [pscustomobject]@{ Name = "Open RadialGradientBrush"; Heading = "RadialGradientBrushPageHeading"; Probe = "GalleryStylesRadialGradientSample"; Query = "radialgradientbrush" },
+        [pscustomobject]@{ Name = "Open System Backdrops"; Heading = "SystemBackdropsPageHeading"; Probe = "GalleryStylesSystemBackdropsSample"; Query = "system backdrops mica" },
+        [pscustomobject]@{ Name = "Open SystemBackdropElement"; Heading = "SystemBackdropElementPageHeading"; Probe = "GalleryStylesSystemBackdropElementSample"; Query = "systembackdropelement" },
+        [pscustomobject]@{ Name = "Open ThemeShadow"; Heading = "ThemeShadowPageHeading"; Probe = "GalleryStylesThemeShadowSample"; Query = "themeshadow elevation" }
     )
 
     foreach ($route in $routes) {
@@ -1967,6 +2002,136 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "LiveRegionChanged raised.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "AcrylicBrushPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesAcrylicToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Solid fallback enabled.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native fallback: on",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "AnimatedIconPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesAnimatedIconToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "AnimatedIcon state: PointerOver",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CompactSizingPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesCompactSizingToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Compact sizing enabled.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native minimum height: 28",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "IconElementPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native icon elements loaded: 2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "LinePageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryStylesLineThickness", "8",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Stroke thickness: 8",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native stroke thickness: 8",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RadialGradientBrushPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryStylesRadialGradientRadius", "0.8",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Gradient radius: 0.80",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native gradient radius: 0.80",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SystemBackdropsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesSystemBackdropsAcrylic",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Window backdrop: Desktop Acrylic",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SystemBackdropElementPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "Window backdrop restored: yes",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesSystemBackdropElementToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Element backdrop: Mica",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native element backdrop assigned.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ThemeShadowPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryStylesThemeShadowToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Elevation: 8",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native elevation: 8; receivers: 1",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

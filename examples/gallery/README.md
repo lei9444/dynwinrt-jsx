@@ -31,6 +31,9 @@ The pages cover:
 - Color, Geometry, Iconography, Spacing, and Typography design guidance;
 - Color Contrast, Keyboard Navigation, and Screen Reader accessibility
   guidance;
+- AcrylicBrush, AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
+  RadialGradientBrush, System Backdrops, SystemBackdropElement, and
+  ThemeShadow style samples;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

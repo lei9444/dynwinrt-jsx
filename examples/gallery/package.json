@@ -88,6 +88,7 @@
             "AppBarToggleButton",
             "AnnotatedScrollBar",
             "AnnotatedScrollBarLabel",
+            "AnimatedIcon",
             "AutoSuggestBox",
             "Border",
             "BreadcrumbBar",
@@ -154,6 +155,7 @@
             "ScrollView",
             "ScrollViewer",
             "SemanticZoom",
+            "SystemBackdropElement",
             "SelectorBar",
             "SelectorBarItem",
             "Slider",
@@ -195,6 +197,12 @@
           ]
         },
         {
+          "namespace": "Microsoft.UI.Xaml.Controls.AnimatedVisuals",
+          "classes": [
+            "AnimatedFindVisualSource"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml.Input",
           "classes": [
             "StandardUICommand",
@@ -213,9 +221,23 @@
         {
           "namespace": "Microsoft.UI.Xaml.Media",
           "classes": [
+            "AcrylicBrush",
+            "DesktopAcrylicBackdrop",
             "FontFamily",
+            "GradientStop",
+            "GradientStopCollection",
             "MicaBackdrop",
-            "SolidColorBrush"
+            "RadialGradientBrush",
+            "SolidColorBrush",
+            "ThemeShadow"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Shapes",
+          "classes": [
+            "Ellipse",
+            "Line",
+            "Rectangle"
           ]
         },
         {

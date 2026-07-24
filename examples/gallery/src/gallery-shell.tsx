@@ -147,6 +147,17 @@ import { AccessibilityCategoryPage } from './pages/accessibility'
 import { ColorContrastPage } from './pages/accessibility/color-contrast'
 import { KeyboardNavigationPage } from './pages/accessibility/keyboard-navigation'
 import { ScreenReaderPage } from './pages/accessibility/screen-reader'
+import { StylesCategoryPage } from './pages/styles'
+import { AcrylicBrushPage } from './pages/styles/acrylic-brush'
+import { AnimatedIconPage } from './pages/styles/animated-icon'
+import { CompactSizingPage } from './pages/styles/compact-sizing'
+import { IconElementPage } from './pages/styles/icon-element'
+import { LinePage } from './pages/styles/line'
+import { ShapePage } from './pages/styles/shape'
+import { RadialGradientBrushPage } from './pages/styles/radial-gradient-brush'
+import { SystemBackdropsPage } from './pages/styles/system-backdrops'
+import { SystemBackdropElementPage } from './pages/styles/system-backdrop-element'
+import { ThemeShadowPage } from './pages/styles/theme-shadow'
 import { ResourcesPage } from './pages/resources'
 import { DiagnosticsPage } from './pages/diagnostics'
 import { SettingsPage } from './pages/settings'
@@ -330,6 +341,26 @@ function renderSamplePage(
       return <KeyboardNavigationPage {...context} />
     case 'screen-reader':
       return <ScreenReaderPage {...context} />
+    case 'acrylic-brush':
+      return <AcrylicBrushPage {...context} />
+    case 'animated-icon':
+      return <AnimatedIconPage {...context} />
+    case 'compact-sizing':
+      return <CompactSizingPage {...context} />
+    case 'icon-element':
+      return <IconElementPage {...context} />
+    case 'line':
+      return <LinePage {...context} />
+    case 'shape':
+      return <ShapePage {...context} />
+    case 'radial-gradient-brush':
+      return <RadialGradientBrushPage {...context} />
+    case 'system-backdrops':
+      return <SystemBackdropsPage {...context} />
+    case 'system-backdrop-element':
+      return <SystemBackdropElementPage {...context} />
+    case 'theme-shadow':
+      return <ThemeShadowPage {...context} />
   }
 }
 
@@ -368,6 +399,8 @@ function renderRoute(
       return <DesignCategoryPage {...context} />
     case 'category-accessibility':
       return <AccessibilityCategoryPage {...context} />
+    case 'category-styles':
+      return <StylesCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -654,12 +687,31 @@ export function Shell(context: AppContext) {
     ],
     'category-accessibility',
   )
+  const stylesItem = createNavigationGroup(
+    'Styles',
+    'Styles',
+    Symbol.Highlight,
+    [
+      'acrylic-brush',
+      'animated-icon',
+      'compact-sizing',
+      'icon-element',
+      'line',
+      'shape',
+      'radial-gradient-brush',
+      'system-backdrops',
+      'system-backdrop-element',
+      'theme-shadow',
+    ],
+    'category-styles',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
     fundamentalsItem,
     designItem,
     accessibilityItem,
+    stylesItem,
     controlsHeader,
     allItem,
     basicInputItem,
@@ -714,6 +766,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-fundamentals', fundamentalsItem)
   routeItems.set('category-design', designItem)
   routeItems.set('category-accessibility', accessibilityItem)
+  routeItems.set('category-styles', stylesItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -809,6 +862,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-accessibility')
               return
             }
+            if (currentPage?.category === 'Styles') {
+              context.model.navigate('category-styles')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -874,6 +931,7 @@ export function Shell(context: AppContext) {
               route === 'category-fundamentals' ||
               route === 'category-design' ||
               route === 'category-accessibility' ||
+              route === 'category-styles' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)
@@ -895,6 +953,7 @@ export function Shell(context: AppContext) {
                   text="Sample render failed"
                 />
                 <UI.TextBlock
+                  automationId="GalleryRenderError"
                   text={`${errorContext.phase}: ${String(error)}`}
                   textWrapping={TextWrapping.Wrap}
                 />

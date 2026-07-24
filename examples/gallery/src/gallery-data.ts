@@ -879,6 +879,106 @@ export const galleryPages = [
     tags: ['screen reader', 'narrator', 'automation', 'live region'],
     image: 'ControlImages/Accessibility.png',
   },
+  {
+    id: 'acrylic-brush',
+    category: 'Styles',
+    title: 'AcrylicBrush',
+    subtitle: 'A translucent material for panel backgrounds.',
+    description:
+      'Configure native acrylic tint, opacity, fallback color, and forced fallback behavior.',
+    tags: ['acrylicbrush', 'acrylic', 'material', 'blur', 'translucent'],
+    image: 'ControlImages/Acrylic.png',
+  },
+  {
+    id: 'animated-icon',
+    category: 'Styles',
+    title: 'AnimatedIcon',
+    subtitle: 'Displays an icon that transitions between named states.',
+    description:
+      'Combine a built-in animated visual source with a static fallback icon.',
+    tags: ['animatedicon', 'animated icon', 'lottie', 'state', 'icon'],
+    image: 'ControlImages/AnimatedIcon.png',
+  },
+  {
+    id: 'compact-sizing',
+    category: 'Styles',
+    title: 'Compact Sizing',
+    subtitle: 'Reduces control density for compact interfaces.',
+    description:
+      'Adjust native heights, padding, and spacing as a scoped compact sizing treatment.',
+    tags: ['compact sizing', 'density', 'padding', 'control height'],
+    image: 'ControlImages/CompactSizing.png',
+  },
+  {
+    id: 'icon-element',
+    category: 'Styles',
+    title: 'IconElement',
+    subtitle: 'Represents native symbol and font icon controls.',
+    description:
+      'Use IconElement-derived SymbolIcon and FontIcon controls in visual trees.',
+    tags: ['iconelement', 'symbolicon', 'fonticon', 'glyph'],
+    image: 'ControlImages/IconElement.png',
+  },
+  {
+    id: 'line',
+    category: 'Styles',
+    title: 'Line',
+    subtitle: 'Draws a straight line between two points.',
+    description:
+      'Configure native coordinates, brush, and stroke thickness.',
+    tags: ['line', 'stroke', 'shape', 'draw'],
+    image: 'ControlImages/Line.png',
+  },
+  {
+    id: 'shape',
+    category: 'Styles',
+    title: 'Shape',
+    subtitle: 'Draws decorative rectangles and ellipses.',
+    description:
+      'Use native Shape-derived elements with fill, stroke, and sizing.',
+    tags: ['shape', 'rectangle', 'ellipse', 'fill', 'circle'],
+    image: 'ControlImages/Shape.png',
+  },
+  {
+    id: 'radial-gradient-brush',
+    category: 'Styles',
+    title: 'RadialGradientBrush',
+    subtitle: 'Paints an area with radial color transitions.',
+    description:
+      'Configure center, origin, radii, and a projected GradientStop collection.',
+    tags: ['radialgradientbrush', 'gradient', 'brush', 'gradient stop'],
+    image: 'ControlImages/RadialGradientBrush.png',
+  },
+  {
+    id: 'system-backdrops',
+    category: 'Styles',
+    title: 'System Backdrops',
+    subtitle: 'Applies Mica or Desktop Acrylic to a Window.',
+    description:
+      'Switch system backdrop materials and restore the original backdrop on cleanup.',
+    tags: ['system backdrops', 'mica', 'desktop acrylic', 'window material'],
+    image: 'ControlImages/Acrylic.png',
+  },
+  {
+    id: 'system-backdrop-element',
+    category: 'Styles',
+    title: 'SystemBackdropElement',
+    subtitle: 'Hosts a system backdrop inside the UI tree.',
+    description:
+      'Apply Acrylic or Mica to a rounded content region.',
+    tags: ['systembackdropelement', 'mica', 'acrylic', 'material'],
+    image: 'ControlImages/Acrylic.png',
+  },
+  {
+    id: 'theme-shadow',
+    category: 'Styles',
+    title: 'ThemeShadow',
+    subtitle: 'Adds depth-aware system shadow to native elements.',
+    description:
+      'Connect shadow receivers and drive elevation through Z translation.',
+    tags: ['themeshadow', 'shadow', 'depth', 'elevation'],
+    image: 'ControlImages/ThemeShadow.png',
+  },
 ] as const satisfies readonly GalleryPageInfo[]
 
 export type GalleryPageId =
@@ -900,6 +1000,7 @@ export type GalleryRoute =
   | 'category-fundamentals'
   | 'category-design'
   | 'category-accessibility'
+  | 'category-styles'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -954,6 +1055,10 @@ export const designPages = galleryPages.filter(
 
 export const accessibilityPages = galleryPages.filter(
   (page) => page.category === 'Accessibility',
+)
+
+export const stylesPages = galleryPages.filter(
+  (page) => page.category === 'Styles',
 )
 
 export const galleryCategories = [
