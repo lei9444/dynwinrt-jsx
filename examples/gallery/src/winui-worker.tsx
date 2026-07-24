@@ -25,6 +25,7 @@ import {
   StackPanel,
   TextBlock,
   TextWrapping,
+  TitleBarHeightOption,
   TitleBarTheme,
   Window,
   createProjectedLifetimeScope,
@@ -144,6 +145,8 @@ const exitCode = runWinUIWorkerApp({
       workerData.initialState.darkTheme
         ? TitleBarTheme.Dark
         : TitleBarTheme.Light
+    window.appWindow.titleBar.preferredHeightOption =
+      TitleBarHeightOption.Tall
   },
   createProjectionScope() {
     return createProjectedLifetimeScope()

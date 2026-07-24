@@ -83,6 +83,7 @@
             "FontIcon",
             "Grid",
             "Image",
+            "ImageIconSource",
             "InfoBar",
             "ItemsRepeater",
             "ListView",
@@ -110,6 +111,7 @@
             "TeachingTip",
             "TextBlock",
             "TextBox",
+            "TitleBar",
             "ToggleSwitch"
           ]
         },

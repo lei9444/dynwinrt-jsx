@@ -18,10 +18,11 @@ import {
   AutomationProperties,
   ElementTheme,
   HorizontalAlignment,
+  ImageIconSource,
   NavigationViewBackButtonVisible,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
-  Stretch,
+  PropertyValue,
   Symbol,
   SymbolIcon,
   TextBlock,
@@ -31,11 +32,11 @@ import {
 } from '#winapp/bindings'
 import {
   type AppContext,
-  type BorderInstance,
   LayoutGrid,
   Navigation,
   type NavigationInstance,
   ThemeControllerContext,
+  type TitleBarInstance,
   UI,
 } from './gallery-ui'
 import { loadGalleryBitmap } from './gallery-assets'
@@ -113,10 +114,11 @@ export function Shell(context: AppContext) {
   const navigation: RefObject<NavigationInstance> = {
     current: null,
   }
-  const titleBarDragRegion: RefObject<BorderInstance> = {
+  const titleBar: RefObject<TitleBarInstance> = {
     current: null,
   }
-  const appIcon = loadGalleryBitmap('GalleryAppIcon.png', 20)
+  const appIcon = new ImageIconSource()
+  appIcon.imageSource = loadGalleryBitmap('GalleryAppIcon.png', 20)
   const themeController = createWinUIThemeController({
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
@@ -303,78 +305,53 @@ export function Shell(context: AppContext) {
           gridLength.star(),
         ]}
       >
-        <UI.Border
-          background={theme.layerFill}
-          borderBrush={theme.dividerStroke}
-          borderThickness={thickness(0, 0, 0, 1)}
-          height={48}
-          padding={thickness(8, 4)}
+        <UI.TitleBar
+          ref={titleBar}
+          title="dynwinrt-jsx Gallery"
+          iconSource={appIcon}
+          isBackButtonVisible={computed(
+            () => context.model.route.value !== 'home',
+          )}
+          isPaneToggleButtonVisible
+          resourceOverrides={{
+            TitleBarContentHorizontalAlignment:
+              PropertyValue.createInt32(
+                HorizontalAlignment.Stretch,
+              ),
+          }}
+          onLoaded={() => {
+            const current = titleBar.current
+            if (current) {
+              context.window.setTitleBar(current)
+            }
+          }}
+          onBackRequested={() => {
+            if (context.model.route.value === 'search') {
+              context.model.setSearchQuery('')
+              return
+            }
+            context.model.navigate('home')
+          }}
+          onPaneToggleRequested={() => {
+            const current = navigation.current
+            if (current) {
+              current.isPaneOpen = !current.isPaneOpen
+            }
+          }}
         >
-          <LayoutGrid
-            columnDefinitions={[
-              gridLength.pixel(40),
-              gridLength.pixel(24),
-              gridLength.pixel(220),
-              gridLength.star(),
-              gridLength.pixel(144),
-            ]}
-            columnSpacing={6}
-          >
-            <UI.Border
-              ref={titleBarDragRegion}
-              gridColumnSpan={5}
-              onLoaded={() => {
-                const region = titleBarDragRegion.current
-                if (region) {
-                  context.window.setTitleBar(region)
-                }
-              }}
-            />
-            <UI.Button
-              {...styles.button({ variant: 'subtle' })}
-              automationName="Toggle navigation pane"
-              width={40}
-              height={40}
-              onClick={() => {
-                const current = navigation.current
-                if (current) {
-                  current.isPaneOpen = !current.isPaneOpen
-                }
-              }}
-            >
-              <UI.SymbolIcon
-                symbol={Symbol.GlobalNavigationButton}
-              />
-            </UI.Button>
-            <UI.Image
-              gridColumn={1}
-              source={appIcon}
-              stretch={Stretch.Uniform}
-              width={20}
-              height={20}
-              verticalAlignment={VerticalAlignment.Center}
-            />
-            <UI.TextBlock
-              gridColumn={2}
-              foreground={theme.secondaryText}
-              fontSize={12}
-              verticalAlignment={VerticalAlignment.Center}
-              text="dynwinrt-jsx Gallery"
-            />
-            <UI.AutoSuggestBox
-              gridColumnSpan={5}
-              automationId="GallerySearchBox"
-              placeholderText="Search controls and samples..."
-              queryIcon={createSymbolIcon(SymbolIcon, Symbol.Find)}
-              text={context.model.searchQuery}
-              onTextChanged={(sender) => {
-                context.model.setSearchQuery(sender.text)
-              }}
-              maxWidth={320}
-              horizontalAlignment={HorizontalAlignment.Center}
-            />
-          </LayoutGrid>
-        </UI.Border>
+          <UI.AutoSuggestBox
+            automationId="GallerySearchBox"
+            placeholderText="Search controls and samples..."
+            queryIcon={createSymbolIcon(SymbolIcon, Symbol.Find)}
+            text={context.model.searchQuery}
+            onTextChanged={(sender) => {
+              context.model.setSearchQuery(sender.text)
+            }}
+            maxWidth={580}
+            horizontalAlignment={HorizontalAlignment.Stretch}
+            verticalAlignment={VerticalAlignment.Center}
+          />
+        </UI.TitleBar>
         <Navigation
           ref={navigation}
           gridRow={1}

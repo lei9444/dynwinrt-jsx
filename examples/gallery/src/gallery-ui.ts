@@ -45,6 +45,7 @@ import {
   SymbolIcon,
   TextBlock,
   TextBox,
+  TitleBar,
   ToggleButton,
   ToggleSwitch,
   Window,
@@ -73,6 +74,7 @@ export const UI = createControls({
   SymbolIcon,
   TextBlock,
   TextBox,
+  TitleBar,
   ToggleButton,
   ToggleSwitch,
 })
@@ -109,6 +111,7 @@ export const GalleryItemsRepeater = createItemsRepeaterControl({
 export type NavigationInstance = InstanceType<typeof NavigationView>
 export type ButtonInstance = InstanceType<typeof Button>
 export type BorderInstance = InstanceType<typeof Border>
+export type TitleBarInstance = InstanceType<typeof TitleBar>
 export type NumberBoxInstance = InstanceType<typeof NumberBox>
 export type PasswordBoxInstance = InstanceType<typeof PasswordBox>
 export type SliderInstance = InstanceType<typeof Slider>
