@@ -530,6 +530,56 @@ export const galleryPages = [
     image: 'ControlImages/XamlUICommand.png',
   },
   {
+    id: 'breadcrumb-bar',
+    category: 'Navigation',
+    title: 'BreadcrumbBar',
+    subtitle: 'Shows the trail of navigation taken to the current location.',
+    description:
+      'Display a mutable path whose later nodes are removed when the user selects an earlier location.',
+    tags: ['breadcrumbbar', 'breadcrumb', 'navigation trail', 'path'],
+    image: 'ControlImages/BreadcrumbBar.png',
+  },
+  {
+    id: 'navigation-view',
+    category: 'Navigation',
+    title: 'NavigationView',
+    subtitle: 'Provides a collapsible pane for top-level app areas.',
+    description:
+      'Switch between left, compact, automatic, and top navigation layouts while preserving selected content.',
+    tags: ['navigationview', 'hamburger menu', 'side nav', 'pane'],
+    image: 'ControlImages/NavigationView.png',
+  },
+  {
+    id: 'pivot',
+    category: 'Navigation',
+    title: 'Pivot',
+    subtitle: 'Presents information from different sources in a tabbed view.',
+    description:
+      'Navigate a fixed collection of PivotItem views and optionally lock the control to the selected item.',
+    tags: ['pivot', 'tabs', 'tabbed view', 'navigation'],
+    image: 'ControlImages/Pivot.png',
+  },
+  {
+    id: 'selector-bar',
+    category: 'Navigation',
+    title: 'SelectorBar',
+    subtitle: 'Switches between a small, finite set of related views.',
+    description:
+      'Use icon and text items with controlled native selection to update the visible content.',
+    tags: ['selectorbar', 'segmented', 'tabs', 'selection'],
+    image: 'ControlImages/Pivot.png',
+  },
+  {
+    id: 'tab-view',
+    category: 'Navigation',
+    title: 'TabView',
+    subtitle: 'Displays a collection of document tabs.',
+    description:
+      'Add, select, and close TabViewItem objects through an observable native items source.',
+    tags: ['tabview', 'tabs', 'documents', 'close', 'navigation'],
+    image: 'ControlImages/TabView.png',
+  },
+  {
     id: 'content-dialog',
     category: 'Dialogs & flyouts',
     title: 'ContentDialog',
@@ -604,6 +654,7 @@ export type GalleryRoute =
   | 'category-status-info'
   | 'category-layout'
   | 'category-menus-toolbars'
+  | 'category-navigation'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -634,6 +685,10 @@ export const layoutPages = galleryPages.filter(
 
 export const menusToolbarsPages = galleryPages.filter(
   (page) => page.category === 'Menus & toolbars',
+)
+
+export const navigationPages = galleryPages.filter(
+  (page) => page.category === 'Navigation',
 )
 
 export const galleryCategories = [

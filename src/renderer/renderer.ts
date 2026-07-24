@@ -385,6 +385,7 @@ class ChildrenController {
       this.synchronizeTo(
         this.retainedBaseline ?? [],
         false,
+        true,
       )
     }
     catch (error) {
@@ -446,6 +447,7 @@ class ChildrenController {
   private synchronizeTo(
     desired: readonly unknown[],
     handleErrors = true,
+    allowCachedCollectionFallback = false,
   ): void {
     if (this.suspended || this.disposed) {
       return
@@ -460,6 +462,7 @@ class ChildrenController {
       this.current = this.adapter.sync(
         this.current,
         desired,
+        allowCachedCollectionFallback,
       )
     } catch (error) {
       const failure =

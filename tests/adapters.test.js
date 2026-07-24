@@ -5,6 +5,7 @@ const test = require('node:test')
 
 const {
   ErrorBoundary,
+  For,
   Show,
   adapter,
   createControls,
@@ -446,6 +447,47 @@ test('named and default slot adapters own child lifetimes', () => {
   assert.equal(mountedControl.actions.size, 0)
 })
 
+test('collection slots synchronize dynamic keyed children', () => {
+  const UI = createControls({ Text: TestText })
+  const items = signal([
+    { id: 1, label: 'One' },
+    { id: 2, label: 'Two' },
+  ])
+  let control
+  const Control = native(TestControl, {
+    children: adapter.collectionSlot('actions'),
+  })
+  const handle = renderer().render(
+    Control({
+      ref(value) {
+        control = value
+      },
+      children: For({
+        each: items,
+        key: (item) => item.id,
+        children: (item) => UI.Text({ text: item.label }),
+      }),
+    }),
+    new TestHost(),
+  )
+
+  assert.deepEqual(
+    control.actions.values.map((item) => item.text),
+    ['One', 'Two'],
+  )
+  items.value = [
+    ...items.value,
+    { id: 3, label: 'Three' },
+  ]
+  assert.deepEqual(
+    control.actions.values.map((item) => item.text),
+    ['One', 'Two', 'Three'],
+  )
+  const mountedControl = control
+  handle.dispose()
+  assert.equal(mountedControl.actions.size, 0)
+})
+
 test('self collection slots own children on collection objects', () => {
   class SelfCollection extends TestVector {}
   const UI = createControls({ Text: TestText })
@@ -503,6 +545,144 @@ test('collection slot getters resolve mutable collection views', () => {
   const mountedControl = control
   handle.dispose()
   assert.equal(mountedControl.mutableItems.size, 0)
+})
+
+test('collection slot getters re-resolve replaced native views', () => {
+  let nextNativeId = 0
+  class NativeText {
+    _obj = `native-${nextNativeId++}`
+    text = ''
+  }
+  class NativeVector extends TestVector {
+    constructor(values = []) {
+      super()
+      this.values = [...values]
+    }
+    insertAt(index, value) {
+      this.values.splice(index, 0, value._obj ?? value)
+    }
+    append(value) {
+      this.values.push(value._obj ?? value)
+    }
+  }
+  class ReplacingCollectionControl {
+    mutableItems = new NativeVector()
+  }
+  const UI = createControls({ Text: NativeText })
+  const items = signal([
+    { id: 1, label: 'One' },
+    { id: 2, label: 'Two' },
+  ])
+  let control
+  const Control = native(ReplacingCollectionControl, {
+    children: adapter.collectionSlotFrom(
+      (instance) => instance.mutableItems,
+    ),
+  })
+  const handle = renderer().render(
+    Control({
+      ref(value) {
+        control = value
+      },
+      children: For({
+        each: items,
+        key: (item) => item.id,
+        children: (item) => UI.Text({ text: item.label }),
+      }),
+    }),
+    new TestHost(),
+  )
+  const original = control.mutableItems
+  const replacement = new NativeVector([
+    'foreign-a',
+    'foreign-b',
+  ])
+  control.mutableItems = replacement
+
+  const nextItems = [
+    items.value[1],
+    items.value[0],
+    { id: 3, label: 'Three' },
+  ]
+  items.value = nextItems
+  assert.equal(replacement.size, 3)
+  assert.deepEqual(
+    replacement.values,
+    ['native-1', 'native-0', 'native-2'],
+  )
+  assert.equal(original.size, 0)
+  control.mutableItems = null
+  assert.throws(
+    () => {
+      items.value = [
+        ...items.value,
+        { id: 4, label: 'Four' },
+      ]
+    },
+    /no longer resolves a mutable collection/,
+  )
+  handle.dispose()
+  assert.equal(original.size, 0)
+  assert.equal(replacement.size, 0)
+})
+
+test('failed previous collection cleanup remains retryable', () => {
+  class ClearFailVector extends TestVector {
+    failClear = false
+    clear() {
+      if (this.failClear) {
+        this.failClear = false
+        throw new Error('clear failed')
+      }
+      super.clear()
+    }
+  }
+  class ReplacingCollectionControl {
+    mutableItems = new ClearFailVector()
+  }
+  const UI = createControls({ Text: TestText })
+  const items = signal([
+    { id: 1, label: 'One' },
+    { id: 2, label: 'Two' },
+  ])
+  let control
+  const Control = native(ReplacingCollectionControl, {
+    children: adapter.collectionSlotFrom(
+      (instance) => instance.mutableItems,
+    ),
+  })
+  const handle = renderer().render(
+    Control({
+      ref(value) {
+        control = value
+      },
+      children: For({
+        each: items,
+        key: (item) => item.id,
+        children: (item) => UI.Text({ text: item.label }),
+      }),
+    }),
+    new TestHost(),
+  )
+  const original = control.mutableItems
+  const replacement = new ClearFailVector()
+  original.failClear = true
+  control.mutableItems = replacement
+
+  assert.throws(
+    () => {
+      items.value = [
+        ...items.value,
+        { id: 3, label: 'Three' },
+      ]
+    },
+    /clear failed/,
+  )
+  assert.equal(original.size, 2)
+  assert.equal(replacement.size, 2)
+  handle.dispose()
+  assert.equal(original.size, 0)
+  assert.equal(replacement.size, 0)
 })
 
 test('slot afterSync failures leave native ownership consistent', () => {

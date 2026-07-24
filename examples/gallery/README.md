@@ -17,6 +17,10 @@ The pages cover:
   ItemsRepeater, ItemsView, ListView, PullToRefresh, and TreeView;
 - a responsive Collections category landing page with links to all seven
   controls;
+- the complete Date & time, Dialogs & flyouts, Status & info, Layout,
+  Menus & toolbars, and Navigation categories;
+- BreadcrumbBar, NavigationView, Pivot, SelectorBar, and TabView navigation
+  samples with native collection ownership and interaction;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;
@@ -25,7 +29,7 @@ The pages cover:
 - typed Grid layout;
 - ContentDialog and Flyout lifetimes;
 - theme resources, tokens, style recipes, icons, settings, and diagnostics.
-- native SelectorBar selection and reusable ScrollViewer boundary controllers.
+- reusable ScrollViewer boundary controllers.
 
 Each sample includes a live native preview and selectable TypeScript JSX source.
 The Home header reuses MIT-licensed WinUI Gallery tile artwork; its license is

@@ -16,6 +16,7 @@ export interface ChildAdapter {
   sync(
     current: unknown[],
     desired: readonly unknown[],
+    allowCachedCollectionFallback?: boolean,
   ): unknown[]
 }
 
@@ -102,6 +103,151 @@ class CollectionAdapter implements ChildAdapter {
   }
 }
 
+class GetterCollectionAdapter implements ChildAdapter {
+  private ownedCollections = new Set<NativeCollection>()
+
+  constructor(
+    readonly options: ChildAdapterOptions,
+    readonly get: (owner: object) => unknown,
+    readonly owner: object,
+  ) {}
+
+  snapshot(): unknown[] {
+    const adapter = this.resolve()
+    this.ownedCollections.add(adapter.collection)
+    return adapter.snapshot()
+  }
+
+  sync(
+    current: unknown[],
+    desired: readonly unknown[],
+    allowCachedCollectionFallback = false,
+  ): unknown[] {
+    let collection: NativeCollection
+    let resolveError: unknown
+    try {
+      collection = this.resolve().collection
+    }
+    catch (error) {
+      resolveError = error
+      if (
+        !allowCachedCollectionFallback ||
+        this.ownedCollections.size === 0
+      ) {
+        throw error
+      }
+      collection = [...this.ownedCollections].at(-1)!
+    }
+
+    try {
+      return this.rebuild(collection, current, desired)
+    }
+    catch (syncError) {
+      if (resolveError !== undefined) {
+        throw new AggregateError(
+          [resolveError, syncError],
+          'Collection slot getter resolution and cached synchronization failed.',
+        )
+      }
+      throw syncError
+    }
+  }
+
+  private rebuild(
+    collection: NativeCollection,
+    current: readonly unknown[],
+    desired: readonly unknown[],
+  ): unknown[] {
+    const candidates = new Set(this.ownedCollections)
+    candidates.add(collection)
+    const failedCollections = new Set<NativeCollection>()
+    const clearErrors: unknown[] = []
+    for (const candidate of candidates) {
+      try {
+        candidate.clear()
+      }
+      catch (error) {
+        failedCollections.add(candidate)
+        clearErrors.push(error)
+      }
+    }
+
+    if (clearErrors.length > 0) {
+      let rollbackError: unknown
+      try {
+        this.restore(collection, current)
+      }
+      catch (error) {
+        rollbackError = error
+      }
+      this.ownedCollections = new Set([
+        ...failedCollections,
+        collection,
+      ])
+      const clearError = clearErrors.length === 1
+        ? clearErrors[0]
+        : new AggregateError(
+            clearErrors,
+            'Clearing previous collection slots failed.',
+          )
+      if (rollbackError !== undefined) {
+        throw new AggregateError(
+          [clearError, rollbackError],
+          'Collection slot synchronization and rollback failed.',
+        )
+      }
+      throw clearError
+    }
+
+    try {
+      for (const node of desired) {
+        collection.append(node)
+      }
+    }
+    catch (error) {
+      try {
+        this.restore(collection, current)
+        this.ownedCollections = new Set([collection])
+      }
+      catch (rollbackError) {
+        this.ownedCollections.add(collection)
+        throw new AggregateError(
+          [error, rollbackError],
+          'Collection slot synchronization and rollback failed.',
+        )
+      }
+      throw error
+    }
+
+    this.ownedCollections = new Set([collection])
+    return [...desired]
+  }
+
+  private restore(
+    collection: NativeCollection,
+    nodes: readonly unknown[],
+  ): void {
+    collection.clear()
+    for (const node of nodes) {
+      collection.append(node)
+    }
+  }
+
+  private resolve(): CollectionAdapter {
+    const collection = nativeCollection(
+      this.options,
+      this.get(this.owner),
+      this.owner,
+    )
+    if (!collection) {
+      throw new Error(
+        `${this.owner.constructor.name} collection slot getter no longer resolves a mutable collection.`,
+      )
+    }
+    return new CollectionAdapter(collection)
+  }
+}
+
 class SinglePropertyAdapter implements ChildAdapter {
   constructor(
     readonly owner: Record<string, unknown>,
@@ -150,12 +296,17 @@ class SyncHookAdapter implements ChildAdapter {
   sync(
     current: unknown[],
     desired: readonly unknown[],
+    allowCachedCollectionFallback = false,
   ): unknown[] {
     let next: unknown[] | undefined
     let failure: unknown
     try {
       this.beforeSync?.()
-      next = this.inner.sync(current, desired)
+      next = this.inner.sync(
+        current,
+        desired,
+        allowCachedCollectionFallback,
+      )
       this.afterSync?.()
     }
     catch (error) {
@@ -203,15 +354,23 @@ export function isNativeCollection(
   )
 }
 
+function nativeCollection(
+  options: ChildAdapterOptions,
+  value: unknown,
+  owner: object,
+): NativeCollection | null {
+  return (
+    options.asCollection?.(value, owner) ??
+    (isNativeCollection(value) ? value : null)
+  )
+}
+
 function collectionAdapter(
   options: ChildAdapterOptions,
   value: unknown,
   owner: object,
 ): ChildAdapter | null {
-  const projected =
-    options.asCollection?.(value, owner) ??
-    (isNativeCollection(value) ? value : null)
-
+  const projected = nativeCollection(options, value, owner)
   return projected
     ? new CollectionAdapter(projected)
     : null
@@ -262,19 +421,28 @@ export function resolveSlotAdapter(
   descriptor: NativeSlotAdapter<object>,
 ): ChildAdapter | null {
   const record = owner as Record<string, unknown>
-  const slot = descriptor.get
-    ? descriptor.get(owner)
-    : record[descriptor.property]
   const resolved = descriptor.strategy === 'single'
     ? new SinglePropertyAdapter(
       record,
       descriptor.property,
     )
-    : collectionAdapter(
-        options,
-        slot,
-        owner,
-      )
+    : descriptor.get
+      ? nativeCollection(
+          options,
+          descriptor.get(owner),
+          owner,
+        )
+        ? new GetterCollectionAdapter(
+            options,
+            descriptor.get,
+            owner,
+          )
+        : null
+      : collectionAdapter(
+          options,
+          record[descriptor.property],
+          owner,
+        )
   if (
     !resolved ||
     (

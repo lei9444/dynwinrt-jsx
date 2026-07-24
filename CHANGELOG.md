@@ -45,6 +45,10 @@
   observable command collections and collection-valued WinRT objects.
 - Added the complete WinUI Gallery Menus & toolbars category with app bar,
   command bar, menu, swipe, and reusable command samples.
+- Re-resolved collection-slot getters during synchronization so controls can
+  replace projected mutable collection views after loading.
+- Added the complete WinUI Gallery Navigation category with BreadcrumbBar,
+  NavigationView, Pivot, SelectorBar, and TabView.
 
 ## 1.0.0
 

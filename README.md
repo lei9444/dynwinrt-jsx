@@ -193,6 +193,8 @@ const UI = createControls({
 
 Use `adapter.collectionSlotFrom()` when the generated property exposes an
 observable or read-only interface but a mutable collection view is available.
+The getter is resolved again for every synchronization so controls can replace
+their projected collection view after loading.
 Use `adapter.selfCollection()` when the projected object is itself the native
 collection, such as `SwipeItems`.
 

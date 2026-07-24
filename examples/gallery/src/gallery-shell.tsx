@@ -111,6 +111,12 @@ import { MenuFlyoutPage } from './pages/menus-toolbars/menu-flyout'
 import { SwipeControlPage } from './pages/menus-toolbars/swipe-control'
 import { StandardUICommandPage } from './pages/menus-toolbars/standard-ui-command'
 import { XamlUICommandPage } from './pages/menus-toolbars/xaml-ui-command'
+import { NavigationCategoryPage } from './pages/navigation'
+import { BreadcrumbBarPage } from './pages/navigation/breadcrumb-bar'
+import { NavigationViewPage } from './pages/navigation/navigation-view'
+import { PivotPage } from './pages/navigation/pivot'
+import { SelectorBarPage } from './pages/navigation/selector-bar'
+import { TabViewPage } from './pages/navigation/tab-view'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
@@ -233,6 +239,16 @@ function renderSamplePage(
       return <StandardUICommandPage {...context} />
     case 'xaml-ui-command':
       return <XamlUICommandPage {...context} />
+    case 'breadcrumb-bar':
+      return <BreadcrumbBarPage {...context} />
+    case 'navigation-view':
+      return <NavigationViewPage {...context} />
+    case 'pivot':
+      return <PivotPage {...context} />
+    case 'selector-bar':
+      return <SelectorBarPage {...context} />
+    case 'tab-view':
+      return <TabViewPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
     case 'icons':
@@ -263,6 +279,8 @@ function renderRoute(
       return <LayoutCategoryPage {...context} />
     case 'category-menus-toolbars':
       return <MenusToolbarsCategoryPage {...context} />
+    case 'category-navigation':
+      return <NavigationCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -463,6 +481,19 @@ export function Shell(context: AppContext) {
     ],
     'category-menus-toolbars',
   )
+  const navigationItem = createNavigationGroup(
+    'Navigation',
+    'Navigation',
+    Symbol.GlobalNavigationButton,
+    [
+      'breadcrumb-bar',
+      'navigation-view',
+      'pivot',
+      'selector-bar',
+      'tab-view',
+    ],
+    'category-navigation',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -493,12 +524,7 @@ export function Shell(context: AppContext) {
     createNavigationGroup('Media', 'Media', Symbol.Play, []),
     menusToolbarsItem,
     createNavigationGroup('Motion', 'Motion', Symbol.Sync, []),
-    createNavigationGroup(
-      'Navigation',
-      'Navigation',
-      Symbol.GlobalNavigationButton,
-      [],
-    ),
+    navigationItem,
     createNavigationGroup(
       'Scrolling',
       'Scrolling',
@@ -546,6 +572,7 @@ export function Shell(context: AppContext) {
     'category-menus-toolbars',
     menusToolbarsItem,
   )
+  routeItems.set('category-navigation', navigationItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -617,6 +644,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-menus-toolbars')
               return
             }
+            if (currentPage?.category === 'Navigation') {
+              context.model.navigate('category-navigation')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -676,6 +707,7 @@ export function Shell(context: AppContext) {
               route === 'category-status-info' ||
               route === 'category-layout' ||
               route === 'category-menus-toolbars' ||
+              route === 'category-navigation' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

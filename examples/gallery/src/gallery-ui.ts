@@ -20,6 +20,7 @@ import {
   AppBarSeparator,
   AppBarToggleButton,
   Border,
+  BreadcrumbBar,
   Button,
   CalendarDatePicker,
   CalendarView,
@@ -62,6 +63,8 @@ import {
   NavigationViewItem,
   NumberBox,
   PasswordBox,
+  Pivot,
+  PivotItem,
   ProgressBar,
   ProgressRing,
   PropertyValue,
@@ -87,6 +90,8 @@ import {
   SwipeItem,
   SwipeItems,
   TeachingTip,
+  TabView,
+  TabViewItem,
   TextBlock,
   TextBox,
   TimePicker,
@@ -110,6 +115,7 @@ export const UI = createControls({
   AppBarSeparator,
   AppBarToggleButton,
   Border,
+  BreadcrumbBar,
   Button,
   CalendarDatePicker,
   CalendarView,
@@ -137,6 +143,7 @@ export const UI = createControls({
   MenuFlyoutSubItem,
   NumberBox,
   PasswordBox,
+  PivotItem,
   ProgressBar,
   ProgressRing,
   RadioButton,
@@ -153,6 +160,7 @@ export const UI = createControls({
   SymbolIcon,
   SwipeItem,
   TeachingTip,
+  TabViewItem,
   TextBlock,
   TextBox,
   TimePicker,
@@ -251,6 +259,36 @@ export const GallerySplitView = native<
     paneContent: adapter.slot('pane'),
   },
   children: adapter.slot('content'),
+})
+export const GalleryPivot = native(Pivot, {
+  displayName: 'Pivot',
+  adapters: {
+    selectedIndex: adapter.withPhase(
+      adapter.oneWay(),
+      'afterChildren',
+    ),
+  },
+  children: adapter.collectionSlot('items'),
+})
+export const GalleryTabView = native<
+  TabView,
+  {
+    tabStripHeaderContent?: MaybeSignal<Child>
+    tabStripFooterContent?: MaybeSignal<Child>
+  }
+>(TabView, {
+  displayName: 'TabView',
+  adapters: {
+    selectedIndex: adapter.withPhase(
+      adapter.oneWay(),
+      'afterChildren',
+    ),
+    tabStripHeaderContent: adapter.slot('tabStripHeader'),
+    tabStripFooterContent: adapter.slot('tabStripFooter'),
+  },
+  children: adapter.collectionSlotFrom(
+    (instance) => instance.tabItems,
+  ),
 })
 export const LayoutGrid = createGridControl({
   Grid,

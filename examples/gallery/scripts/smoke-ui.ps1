@@ -85,6 +85,7 @@ $dialogsFlyoutsCategoryScreenshotPath = Join-Path $evidenceRoot "dialogs-flyouts
 $statusInfoCategoryScreenshotPath = Join-Path $evidenceRoot "status-info-category.png"
 $layoutCategoryScreenshotPath = Join-Path $evidenceRoot "layout-category.png"
 $menusToolbarsCategoryScreenshotPath = Join-Path $evidenceRoot "menus-toolbars-category.png"
+$navigationCategoryScreenshotPath = Join-Path $evidenceRoot "navigation-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -327,6 +328,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryNavigationCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "NavigationCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open BreadcrumbBar",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $navigationCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open TabView",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -384,6 +409,11 @@ try {
         [pscustomobject]@{ Name = "Open SwipeControl"; Heading = "SwipeControlPageHeading"; Probe = "GalleryMenusSwipeRevealSample"; Query = "swipecontrol reveal" },
         [pscustomobject]@{ Name = "Open StandardUICommand"; Heading = "StandardUICommandPageHeading"; Probe = "GalleryStandardUICommandButton"; Query = "standarduicommand delete" },
         [pscustomobject]@{ Name = "Open XamlUICommand"; Heading = "XamlUICommandPageHeading"; Probe = "GalleryXamlUICommandPrimary"; Query = "xamluicommand reusable" },
+        [pscustomobject]@{ Name = "Open BreadcrumbBar"; Heading = "BreadcrumbBarPageHeading"; Probe = "GalleryBreadcrumbBarControl"; Query = "breadcrumbbar path" },
+        [pscustomobject]@{ Name = "Open NavigationView"; Heading = "NavigationViewPageHeading"; Probe = "GalleryNavigationViewControl"; Query = "navigationview pane" },
+        [pscustomobject]@{ Name = "Open Pivot"; Heading = "PivotPageHeading"; Probe = "GalleryPivotControl"; Query = "pivot tabbed" },
+        [pscustomobject]@{ Name = "Open SelectorBar"; Heading = "SelectorBarPageHeading"; Probe = "GallerySelectorBarControl"; Query = "selectorbar segmented" },
+        [pscustomobject]@{ Name = "Open TabView"; Heading = "TabViewPageHeading"; Probe = "GalleryTabViewControl"; Query = "tabview documents" },
         [pscustomobject]@{ Name = "Open Resources and styling"; Heading = "ResourcesPageHeading"; Probe = $null; Query = "theme resource" },
         [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
     )
@@ -1203,6 +1233,96 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "Archive command executed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "BreadcrumbBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "Northwind",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Current location: Northwind",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "NavigationViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryNavigationViewFavorites",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Favorites",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PivotPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPivotFlagged",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Flagged",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SelectorBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySelectorBarFavorites",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Favorites",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "TabViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "AddButton",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Document 3 added.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native tab count: 4",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            $tabViewTreeJson = Invoke-WinApp @(
+                "ui", "inspect",
+                "-w", "$windowHandle",
+                "--interactive",
+                "--depth", "20",
+                "--json"
+            ) -Capture
+            $tabViewTree = $tabViewTreeJson | ConvertFrom-Json
+            $lastCloseButton = Get-UiTreeElements @(
+                $tabViewTree.windows[0].elements
+            ) | Where-Object {
+                $_.automationId -eq "CloseButton"
+            } | Select-Object -Last 1
+            if (-not $lastCloseButton) {
+                throw "The TabView close button was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", $lastCloseButton.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Document 2 closed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native tab count: 3",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
