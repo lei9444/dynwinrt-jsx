@@ -849,6 +849,36 @@ export const galleryPages = [
     tags: ['typography', 'font', 'text style', 'hierarchy', 'type scale'],
     image: 'ControlImages/TextBlock.png',
   },
+  {
+    id: 'color-contrast',
+    category: 'Accessibility',
+    title: 'Color Contrast',
+    subtitle: 'Supports readability with sufficient visual contrast.',
+    description:
+      'Compare accessible and insufficient foreground/background pairs with explicit contrast guidance.',
+    tags: ['color contrast', 'high contrast', 'wcag', 'accessibility'],
+    image: 'ControlImages/Accessibility.png',
+  },
+  {
+    id: 'keyboard-navigation',
+    category: 'Accessibility',
+    title: 'Keyboard Navigation',
+    subtitle: 'Supports predictable focus and keyboard interaction.',
+    description:
+      'Use logical tab order, access keys, visible focus, and explicit focus targets.',
+    tags: ['keyboard navigation', 'focus', 'tab order', 'access keys'],
+    image: 'ControlImages/Accessibility.png',
+  },
+  {
+    id: 'screen-reader',
+    category: 'Accessibility',
+    title: 'Screen Reader',
+    subtitle: 'Exposes meaningful content to assistive technology.',
+    description:
+      'Apply automation names, help text, heading levels, and live-region settings.',
+    tags: ['screen reader', 'narrator', 'automation', 'live region'],
+    image: 'ControlImages/Accessibility.png',
+  },
 ] as const satisfies readonly GalleryPageInfo[]
 
 export type GalleryPageId =
@@ -869,6 +899,7 @@ export type GalleryRoute =
   | 'category-text'
   | 'category-fundamentals'
   | 'category-design'
+  | 'category-accessibility'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -919,6 +950,10 @@ export const fundamentalsPages = galleryPages.filter(
 
 export const designPages = galleryPages.filter(
   (page) => page.category === 'Design',
+)
+
+export const accessibilityPages = galleryPages.filter(
+  (page) => page.category === 'Accessibility',
 )
 
 export const galleryCategories = [

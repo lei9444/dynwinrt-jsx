@@ -19,7 +19,7 @@ The pages cover:
   controls;
 - the complete Date & time, Dialogs & flyouts, Status & info, Layout,
   Menus & toolbars, Navigation, Scrolling, Text, Fundamentals, and Design
-  categories;
+  categories, plus Accessibility;
 - BreadcrumbBar, NavigationView, Pivot, SelectorBar, and TabView navigation
   samples with native collection ownership and interaction;
 - AnnotatedScrollBar, PipsPager, ScrollView, ScrollViewer, and SemanticZoom
@@ -29,6 +29,8 @@ The pages cover:
 - Resources, Style, Binding, Templates, Custom & User Controls,
   XAML Conditions, and Scratch Pad fundamentals;
 - Color, Geometry, Iconography, Spacing, and Typography design guidance;
+- Color Contrast, Keyboard Navigation, and Screen Reader accessibility
+  guidance;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

@@ -143,6 +143,10 @@ import { GeometryPage } from './pages/design/geometry'
 import { IconographyPage } from './pages/design/iconography'
 import { SpacingPage } from './pages/design/spacing'
 import { TypographyPage } from './pages/design/typography'
+import { AccessibilityCategoryPage } from './pages/accessibility'
+import { ColorContrastPage } from './pages/accessibility/color-contrast'
+import { KeyboardNavigationPage } from './pages/accessibility/keyboard-navigation'
+import { ScreenReaderPage } from './pages/accessibility/screen-reader'
 import { ResourcesPage } from './pages/resources'
 import { DiagnosticsPage } from './pages/diagnostics'
 import { SettingsPage } from './pages/settings'
@@ -320,6 +324,12 @@ function renderSamplePage(
       return <SpacingPage {...context} />
     case 'typography':
       return <TypographyPage {...context} />
+    case 'color-contrast':
+      return <ColorContrastPage {...context} />
+    case 'keyboard-navigation':
+      return <KeyboardNavigationPage {...context} />
+    case 'screen-reader':
+      return <ScreenReaderPage {...context} />
   }
 }
 
@@ -356,6 +366,8 @@ function renderRoute(
       return <FundamentalsCategoryPage {...context} />
     case 'category-design':
       return <DesignCategoryPage {...context} />
+    case 'category-accessibility':
+      return <AccessibilityCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -631,17 +643,23 @@ export function Shell(context: AppContext) {
     ],
     'category-design',
   )
+  const accessibilityItem = createNavigationGroup(
+    'Accessibility',
+    'Accessibility',
+    Symbol.Permissions,
+    [
+      'color-contrast',
+      'keyboard-navigation',
+      'screen-reader',
+    ],
+    'category-accessibility',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
     fundamentalsItem,
     designItem,
-    createNavigationGroup(
-      'Accessibility',
-      'Accessibility',
-      Symbol.Permissions,
-      [],
-    ),
+    accessibilityItem,
     controlsHeader,
     allItem,
     basicInputItem,
@@ -695,6 +713,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-text', textItem)
   routeItems.set('category-fundamentals', fundamentalsItem)
   routeItems.set('category-design', designItem)
+  routeItems.set('category-accessibility', accessibilityItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -786,6 +805,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-design')
               return
             }
+            if (currentPage?.category === 'Accessibility') {
+              context.model.navigate('category-accessibility')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -850,6 +873,7 @@ export function Shell(context: AppContext) {
               route === 'category-text' ||
               route === 'category-fundamentals' ||
               route === 'category-design' ||
+              route === 'category-accessibility' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

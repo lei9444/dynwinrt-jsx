@@ -58,6 +58,8 @@
   Scratch Pad.
 - Added the complete WinUI Gallery Design category with Color, Geometry,
   Iconography, Spacing, and Typography.
+- Added the complete WinUI Gallery Accessibility category with Color Contrast,
+  Keyboard Navigation, and Screen Reader guidance.
 
 ## 1.0.0
 

@@ -90,6 +90,7 @@ $scrollingCategoryScreenshotPath = Join-Path $evidenceRoot "scrolling-category.p
 $textCategoryScreenshotPath = Join-Path $evidenceRoot "text-category.png"
 $fundamentalsCategoryScreenshotPath = Join-Path $evidenceRoot "fundamentals-category.png"
 $designCategoryScreenshotPath = Join-Path $evidenceRoot "design-category.png"
+$accessibilityCategoryScreenshotPath = Join-Path $evidenceRoot "accessibility-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -460,6 +461,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryAccessibilityCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "AccessibilityCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open Color Contrast",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $accessibilityCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open Screen Reader",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -544,7 +569,10 @@ try {
         [pscustomobject]@{ Name = "Open Geometry"; Heading = "GeometryPageHeading"; Probe = "GalleryDesignGeometrySample"; Query = "geometry corner radius" },
         [pscustomobject]@{ Name = "Open Iconography"; Heading = "IconographyPageHeading"; Probe = "GalleryIconographySample"; Query = "iconography symbolicon" },
         [pscustomobject]@{ Name = "Open Spacing"; Heading = "SpacingPageHeading"; Probe = "GalleryDesignSpacingSample"; Query = "spacing padding" },
-        [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" }
+        [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" },
+        [pscustomobject]@{ Name = "Open Color Contrast"; Heading = "ColorContrastPageHeading"; Probe = "GalleryAccessibilityContrastSample"; Query = "color contrast wcag" },
+        [pscustomobject]@{ Name = "Open Keyboard Navigation"; Heading = "KeyboardNavigationPageHeading"; Probe = "GalleryAccessibilityKeyboardTarget"; Query = "keyboard navigation focus" },
+        [pscustomobject]@{ Name = "Open Screen Reader"; Heading = "ScreenReaderPageHeading"; Probe = "GalleryAccessibilityScreenReaderAction"; Query = "screen reader automation" }
     )
 
     foreach ($route in $routes) {
@@ -1887,6 +1915,61 @@ try {
             ) {
                 throw "Native typography size did not update."
             }
+        }
+        if ($route.Heading -eq "ColorContrastPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAccessibilityContrastToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Contrast ratio: 2.3:1 (needs improvement).",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "KeyboardNavigationPageHeading") {
+            Invoke-WinApp @(
+                "ui", "focus", "GalleryAccessibilityKeyboardFirst",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "send-keys", "tab",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Target button received focus.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ScreenReaderPageHeading") {
+            $screenReaderActionJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryAccessibilityScreenReaderAction",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $screenReaderAction = $screenReaderActionJson | ConvertFrom-Json
+            if (
+                [string]$screenReaderAction.windows[0].elements[0].name -ne
+                "Complete download"
+            ) {
+                throw "The screen-reader automation name is missing."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAccessibilityScreenReaderAction",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Download completed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "LiveRegionChanged raised.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
         }
         if ($route.Heading -eq "SelectionPageHeading") {
             Invoke-WinApp @(
