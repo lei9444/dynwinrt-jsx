@@ -40,6 +40,7 @@ export interface WinUIBindings extends WinUIResourceBindings {
   readonly TextBlock?: TextBlockConstructor
   readonly Grid?: object
   readonly Canvas?: object
+  readonly ToolTipService?: object
   readonly AutomationProperties?: object
   readonly PropertyValue?: PropertyValueType
   readonly IReference_Boolean?: ReferenceType
@@ -68,6 +69,7 @@ export type WinUIRendererCapability =
   | 'resourceOverrides'
   | 'grid'
   | 'canvas'
+  | 'toolTip'
   | 'automation'
 
 export type WinUIRendererCapabilities = Readonly<
@@ -130,6 +132,11 @@ function createCapabilities(
     canvas: hasStaticMethods(bindings.Canvas, [
       'setLeft',
       'setTop',
+    ]),
+    toolTip: hasStaticMethods(bindings.ToolTipService, [
+      'setToolTip',
+      'setPlacement',
+      'setPlacementTarget',
     ]),
     automation: hasStaticMethods(
       bindings.AutomationProperties,
@@ -238,6 +245,21 @@ export function createWinUIAttachedPropertyRegistrations(
     canvasTop: {
       owner: bindings.Canvas,
       method: 'setTop',
+      optional: true,
+    },
+    toolTip: {
+      owner: bindings.ToolTipService,
+      method: 'setToolTip',
+      optional: true,
+    },
+    toolTipPlacement: {
+      owner: bindings.ToolTipService,
+      method: 'setPlacement',
+      optional: true,
+    },
+    toolTipPlacementTarget: {
+      owner: bindings.ToolTipService,
+      method: 'setPlacementTarget',
       optional: true,
     },
     automationId: {
@@ -436,6 +458,7 @@ export function createWinUIPropertyConverters(
     header: primitiveText('header'),
     onContent: primitiveText('onContent'),
     offContent: primitiveText('offContent'),
+    toolTip: primitiveText('toolTip'),
   }
 
   return converters

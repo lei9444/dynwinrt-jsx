@@ -32,6 +32,10 @@
 - Added scoped Popup rendering with close-time content disposal.
 - Added the complete WinUI Gallery Dialogs & flyouts category with
   ContentDialog, Flyout, Popup, and TeachingTip.
+- Added typed ToolTipService attached properties with primitive tooltip content
+  conversion.
+- Added the complete WinUI Gallery Status & info category with InfoBadge,
+  InfoBar, ProgressBar, ProgressRing, and ToolTip.
 
 ## 1.0.0
 

@@ -329,7 +329,11 @@ function normalizePageIds(
           ? 'items-repeater'
           : value === 'overlays'
             ? 'content-dialog'
-            : value
+            : value === 'range-progress'
+              ? 'progress-bar'
+              : value === 'choices-status'
+                ? 'info-bar'
+                : value
     const page = findGalleryPage(
       normalizedValue,
     )

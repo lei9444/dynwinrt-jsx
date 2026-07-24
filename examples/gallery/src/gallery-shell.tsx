@@ -84,8 +84,12 @@ import { PopupPage } from './pages/dialogs-flyouts/popup'
 import { TeachingTipPage } from './pages/dialogs-flyouts/teaching-tip'
 import { SelectionPage } from './pages/selection'
 import { TextInputPage } from './pages/text-input'
-import { RangeProgressPage } from './pages/range-progress'
-import { ChoicesStatusPage } from './pages/choices-status'
+import { StatusInfoCategoryPage } from './pages/status-info'
+import { InfoBadgePage } from './pages/status-info/info-badge'
+import { InfoBarPage } from './pages/status-info/info-bar'
+import { ProgressBarPage } from './pages/status-info/progress-bar'
+import { ProgressRingPage } from './pages/status-info/progress-ring'
+import { ToolTipPage } from './pages/status-info/tool-tip'
 import { LayoutPage } from './pages/layout'
 import { ResourcesPage } from './pages/resources'
 import { IconsPage } from './pages/icons'
@@ -131,10 +135,16 @@ function renderSamplePage(
       return <SelectionPage {...context} />
     case 'text-input':
       return <TextInputPage {...context} />
-    case 'range-progress':
-      return <RangeProgressPage {...context} />
-    case 'choices-status':
-      return <ChoicesStatusPage {...context} />
+    case 'info-badge':
+      return <InfoBadgePage {...context} />
+    case 'info-bar':
+      return <InfoBarPage {...context} />
+    case 'progress-bar':
+      return <ProgressBarPage {...context} />
+    case 'progress-ring':
+      return <ProgressRingPage {...context} />
+    case 'tool-tip':
+      return <ToolTipPage {...context} />
     case 'flip-view':
       return <FlipViewPage {...context} />
     case 'grid-view':
@@ -191,6 +201,8 @@ function renderRoute(
       return <DateTimeCategoryPage {...context} />
     case 'category-dialogs-flyouts':
       return <DialogsFlyoutsCategoryPage {...context} />
+    case 'category-status-info':
+      return <StatusInfoCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -343,6 +355,19 @@ export function Shell(context: AppContext) {
     ],
     'category-dialogs-flyouts',
   )
+  const statusInfoItem = createNavigationGroup(
+    'StatusInfo',
+    'Status & info',
+    Symbol.Flag,
+    [
+      'info-badge',
+      'info-bar',
+      'progress-bar',
+      'progress-ring',
+      'tool-tip',
+    ],
+    'category-status-info',
+  )
   const navigationItems = [
     homeItem,
     createNavigationGroup(
@@ -402,12 +427,7 @@ export function Shell(context: AppContext) {
       Symbol.Font,
       ['text-input'],
     ),
-    createNavigationGroup(
-      'StatusInfo',
-      'Status & info',
-      Symbol.Flag,
-      ['range-progress', 'choices-status'],
-    ),
+    statusInfoItem,
   ]
   const diagnosticsItem = createNavigationItem(
     itemBindings,
@@ -435,6 +455,7 @@ export function Shell(context: AppContext) {
     'category-dialogs-flyouts',
     dialogsFlyoutsItem,
   )
+  routeItems.set('category-status-info', statusInfoItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -494,6 +515,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-dialogs-flyouts')
               return
             }
+            if (currentPage?.category === 'Status & info') {
+              context.model.navigate('category-status-info')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -550,6 +575,7 @@ export function Shell(context: AppContext) {
               route === 'category-collections' ||
               route === 'category-date-time' ||
               route === 'category-dialogs-flyouts' ||
+              route === 'category-status-info' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)

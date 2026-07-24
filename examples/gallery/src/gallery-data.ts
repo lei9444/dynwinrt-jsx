@@ -180,24 +180,54 @@ export const galleryPages = [
     image: 'ControlImages/TextBox.png',
   },
   {
-    id: 'range-progress',
-    category: 'Controls',
-    title: 'Range and progress',
-    subtitle: 'Slider, ProgressBar, and ProgressRing state.',
+    id: 'info-badge',
+    category: 'Status & info',
+    title: 'InfoBadge',
+    subtitle: 'Displays a count, dot, or icon for attention and status.',
     description:
-      'Share one signal across interactive range input and determinate or indeterminate progress indicators.',
-    tags: ['slider', 'progressbar', 'progressring', 'range', 'progress'],
-    image: 'ControlImages/Slider.png',
+      'Embed badges in navigation, switch semantic styles, overlay an icon, and update or hide numeric values.',
+    tags: ['infobadge', 'badge', 'notification', 'count', 'status'],
+    image: 'ControlImages/InfoBadge.png',
   },
   {
-    id: 'choices-status',
-    category: 'Controls',
-    title: 'Choices and status',
-    subtitle: 'RadioButton, ToggleButton, and InfoBar.',
+    id: 'info-bar',
+    category: 'Status & info',
+    title: 'InfoBar',
+    subtitle: 'Shows an inline app-wide message with optional actions.',
     description:
-      'Model mutually exclusive choices, persistent toggle state, and severity-aware notifications.',
-    tags: ['radiobutton', 'togglebutton', 'infobar', 'choice', 'status'],
+      'Configure severity, message length, action buttons, icons, open state, and close behavior.',
+    tags: ['infobar', 'message', 'severity', 'notification', 'status'],
     image: 'ControlImages/InfoBar.png',
+  },
+  {
+    id: 'progress-bar',
+    category: 'Status & info',
+    title: 'ProgressBar',
+    subtitle: 'Shows determinate or indeterminate linear progress.',
+    description:
+      'Display running, paused, error, and numeric progress states in a horizontal indicator.',
+    tags: ['progressbar', 'progress', 'loading', 'paused', 'error'],
+    image: 'ControlImages/ProgressBar.png',
+  },
+  {
+    id: 'progress-ring',
+    category: 'Status & info',
+    title: 'ProgressRing',
+    subtitle: 'Shows circular activity or determinate progress.',
+    description:
+      'Toggle active work, choose a background, and set a numeric circular progress value.',
+    tags: ['progressring', 'progress', 'loading', 'activity', 'ring'],
+    image: 'ControlImages/ProgressRing.png',
+  },
+  {
+    id: 'tool-tip',
+    category: 'Status & info',
+    title: 'ToolTip',
+    subtitle: 'Displays contextual information when an element is hovered or focused.',
+    description:
+      'Attach simple or custom tooltips with offsets, placement rectangles, and non-occluding placement.',
+    tags: ['tooltip', 'help', 'hover', 'focus', 'placement'],
+    image: 'ControlImages/ToolTip.png',
   },
   {
     id: 'flip-view',
@@ -391,6 +421,7 @@ export type GalleryRoute =
   | 'category-collections'
   | 'category-date-time'
   | 'category-dialogs-flyouts'
+  | 'category-status-info'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -409,6 +440,10 @@ export const dateTimePages = galleryPages.filter(
 
 export const dialogsFlyoutsPages = galleryPages.filter(
   (page) => page.category === 'Dialogs & flyouts',
+)
+
+export const statusInfoPages = galleryPages.filter(
+  (page) => page.category === 'Status & info',
 )
 
 export const galleryCategories = [

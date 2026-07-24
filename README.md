@@ -636,6 +636,21 @@ const renderer = createWinUIRenderer(bindings, {
 })
 ```
 
+When `ToolTipService` is present in the generated binding namespace, native
+controls accept typed tooltip attached properties directly:
+
+```tsx
+<UI.Button
+  toolTip="Save the current document"
+  toolTipPlacement={PlacementMode.Top}
+>
+  Save
+</UI.Button>
+```
+
+Primitive tooltip values are converted to native `TextBlock` content; pass a
+projected `ToolTip` instance for offsets, placement, or custom content.
+
 Custom registrations require the named static setter. Add the matching prop to
 a specialized `native<Instance, ExtraProps>()` component contract so TSX remains
 strict.

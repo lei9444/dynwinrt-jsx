@@ -805,6 +805,8 @@ export const typeCheckedTree = (
         variant: signal<'standard' | 'accent'>('accent'),
       })}
       isEnabled={enabled}
+      toolTip="Increment the current count"
+      toolTipPlacement={1}
       onClick={clickHandler}
     >
       Increment

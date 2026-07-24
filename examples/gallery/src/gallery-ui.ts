@@ -10,6 +10,7 @@ import {
   createSelectorBarControl,
   createVirtualizedItemsControl,
   native,
+  type Child,
   type MaybeSignal,
   type Renderer,
 } from 'dynwinrt-jsx'
@@ -38,6 +39,7 @@ import {
   IObservableVector_Object,
   InfoBar,
   Image,
+  InfoBadge,
   ItemContainer,
   IReference_Int32,
   ItemsRepeater,
@@ -98,6 +100,7 @@ export const UI = createControls({
   GridView,
   GridViewItem,
   HyperlinkButton,
+  InfoBadge,
   InfoBar,
   Image,
   ListViewItem,
@@ -123,6 +126,17 @@ export const UI = createControls({
   TitleBar,
   ToggleButton,
   ToggleSwitch,
+})
+export const GalleryInfoBar = native<
+  InfoBar,
+  {
+    action?: MaybeSignal<Child>
+  }
+>(InfoBar, {
+  displayName: 'InfoBar',
+  adapters: {
+    action: adapter.slot('actionButton'),
+  },
 })
 export const LayoutGrid = createGridControl({
   Grid,

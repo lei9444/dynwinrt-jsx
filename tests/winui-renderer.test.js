@@ -54,6 +54,8 @@ class TestTimePicker {
 }
 
 test('WinUI renderer preset detects and applies generated binding capabilities', () => {
+  const toolTips = new WeakMap()
+  const toolTipPlacements = new WeakMap()
   const bindings = {
     TextBlock: TestTextBlock,
     PropertyValue: {
@@ -99,6 +101,15 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
       setLeft() {},
       setTop() {},
     },
+    ToolTipService: {
+      setToolTip(target, value) {
+        toolTips.set(target, value)
+      },
+      setPlacement(target, value) {
+        toolTipPlacements.set(target, value)
+      },
+      setPlacementTarget() {},
+    },
     AutomationProperties: {
       setAutomationId() {},
       setName() {},
@@ -124,6 +135,7 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
     resourceOverrides: true,
     grid: true,
     canvas: true,
+    toolTip: true,
     automation: true,
   })
 
@@ -175,10 +187,19 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
 
   const contentWindow = new TestWindow()
   const contentHandle = preset.createRenderer().render(
-    UI.ContentControl({ content: 'Hello' }),
+    UI.ContentControl({
+      content: 'Hello',
+      toolTip: 'More information',
+      toolTipPlacement: 1,
+    }),
     contentWindow,
   )
   assert.equal(contentWindow.content.content.text, 'Hello')
+  assert.equal(
+    toolTips.get(contentWindow.content).text,
+    'More information',
+  )
+  assert.equal(toolTipPlacements.get(contentWindow.content), 1)
   contentHandle.dispose()
 
   const date = { universalTime: 133_986_528_000_000_000n }

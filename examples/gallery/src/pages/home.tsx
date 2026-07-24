@@ -320,7 +320,7 @@ export function HomePage(context: AppContext) {
       title: 'Community Toolkit',
       description: 'A collection of helper functions, controls, and app services.',
       symbol: Symbol.ViewAll,
-      route: 'choices-status',
+      route: 'info-bar',
       tone: 'caution',
       image: toolkitImage,
     },

@@ -204,6 +204,7 @@ The built-in WinUI layer currently provides:
 - Typed design tokens, signal-backed style recipes, and a centralized WinUI
   theme controller.
 - Canvas left and top attached setters.
+- ToolTip content, placement, and placement-target attached setters.
 - Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.
 - Automation help, labeled-by, heading, set-position, live, dialog, and control-type metadata.

@@ -82,6 +82,9 @@ export interface NativeCommonProps<Value> {
   gridColumnSpan?: MaybeSignal<number>
   canvasLeft?: MaybeSignal<number>
   canvasTop?: MaybeSignal<number>
+  toolTip?: MaybeSignal<unknown>
+  toolTipPlacement?: MaybeSignal<number>
+  toolTipPlacementTarget?: MaybeSignal<object>
   automationId?: MaybeSignal<string>
   automationName?: MaybeSignal<string>
   automationHelpText?: MaybeSignal<string>

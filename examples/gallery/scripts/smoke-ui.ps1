@@ -82,6 +82,7 @@ $categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
 $collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-category.png"
 $dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.png"
 $dialogsFlyoutsCategoryScreenshotPath = Join-Path $evidenceRoot "dialogs-flyouts-category.png"
+$statusInfoCategoryScreenshotPath = Join-Path $evidenceRoot "status-info-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -91,7 +92,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays"],"favoritePageIds":["buttons","collections","overlays"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -125,12 +126,20 @@ try {
         $migratedState.favoritePageIds -notcontains "items-repeater" -or
         $migratedState.recentPageIds -notcontains "content-dialog" -or
         $migratedState.favoritePageIds -notcontains "content-dialog" -or
+        $migratedState.recentPageIds -notcontains "progress-bar" -or
+        $migratedState.favoritePageIds -notcontains "progress-bar" -or
+        $migratedState.recentPageIds -notcontains "info-bar" -or
+        $migratedState.favoritePageIds -notcontains "info-bar" -or
         $migratedState.recentPageIds -contains "buttons" -or
         $migratedState.favoritePageIds -contains "buttons" -or
         $migratedState.recentPageIds -contains "collections" -or
         $migratedState.favoritePageIds -contains "collections" -or
         $migratedState.recentPageIds -contains "overlays" -or
-        $migratedState.favoritePageIds -contains "overlays"
+        $migratedState.favoritePageIds -contains "overlays" -or
+        $migratedState.recentPageIds -contains "range-progress" -or
+        $migratedState.favoritePageIds -contains "range-progress" -or
+        $migratedState.recentPageIds -contains "choices-status" -or
+        $migratedState.favoritePageIds -contains "choices-status"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
     }
@@ -240,6 +249,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryStatusInfoCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "StatusInfoCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open InfoBadge",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $statusInfoCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open ToolTip",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -258,8 +291,11 @@ try {
         [pscustomobject]@{ Name = "Open ToggleSwitch"; Heading = "ToggleSwitchPageHeading"; Probe = $null; Query = "toggleswitch" },
         [pscustomobject]@{ Name = "Open Selection controls"; Heading = "SelectionPageHeading"; Probe = "GalleryControlledListViewSample"; Query = "listview" },
         [pscustomobject]@{ Name = "Open Text and numeric input"; Heading = "TextInputPageHeading"; Probe = "GalleryTextInputSample"; Query = "passwordbox" },
-        [pscustomobject]@{ Name = "Open Range and progress"; Heading = "RangeProgressPageHeading"; Probe = "GalleryRangeProgressSample"; Query = "progressring" },
-        [pscustomobject]@{ Name = "Open Choices and status"; Heading = "ChoicesStatusPageHeading"; Probe = "GalleryChoicesStatusSample"; Query = "infobar" },
+        [pscustomobject]@{ Name = "Open InfoBadge"; Heading = "InfoBadgePageHeading"; Probe = "GalleryInfoBadgeDynamic"; Query = "infobadge count" },
+        [pscustomobject]@{ Name = "Open InfoBar"; Heading = "InfoBarPageHeading"; Probe = "GalleryInfoBarSeverityControl"; Query = "infobar severity" },
+        [pscustomobject]@{ Name = "Open ProgressBar"; Heading = "ProgressBarPageHeading"; Probe = "GalleryProgressBarDeterminate"; Query = "progressbar paused" },
+        [pscustomobject]@{ Name = "Open ProgressRing"; Heading = "ProgressRingPageHeading"; Probe = "GalleryProgressRingDeterminate"; Query = "progressring activity" },
+        [pscustomobject]@{ Name = "Open ToolTip"; Heading = "ToolTipPageHeading"; Probe = "GalleryToolTipSimpleButton"; Query = "tooltip placement" },
         [pscustomobject]@{ Name = "Open FlipView"; Heading = "FlipViewPageHeading"; Probe = "GalleryCollectionsFlipViewSample"; Query = "flipview carousel" },
         [pscustomobject]@{ Name = "Open GridView"; Heading = "GridViewPageHeading"; Probe = "GalleryCollectionsGridViewSample"; Query = "gridview tiles" },
         [pscustomobject]@{ Name = "Open ItemsRepeater"; Heading = "ItemsRepeaterPageHeading"; Probe = "GalleryCollectionsItemsRepeaterSample"; Query = "itemsrepeater virtualization" },
@@ -921,6 +957,46 @@ try {
                 "ui", "wait-for", "Non-targeted tip is closed.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "InfoBadgePageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryInfoBadgeValueInput", "7",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "InfoBadge value: 7",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "InfoBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryInfoBarIconVisible",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "ProgressBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryProgressBarValue", "42",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "42%",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ProgressRingPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryProgressRingValue", "64",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "ToolTipPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryToolTipSimpleButton",
+                "-w", "$windowHandle"
             )
         }
         if ($route.Heading -eq "SelectionPageHeading") {
