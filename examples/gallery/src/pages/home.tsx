@@ -5,14 +5,16 @@ import {
   computed,
   createScrollViewerController,
   createSolidColorBrush,
-  createSymbolIcon,
   gridLength,
   signal,
   styles,
   theme,
   thickness,
   tokens,
+  type Child,
   type MaybeSignal,
+  type ReadonlySignal,
+  type ScrollViewerController,
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
@@ -22,14 +24,12 @@ import {
   SolidColorBrush,
   Stretch,
   Symbol,
-  SymbolIcon,
   TextWrapping,
   VerticalAlignment,
   Visibility,
 } from '#winapp/bindings'
 import {
   type AppContext,
-  GallerySelectorBar,
   LayoutGrid,
   type ScrollViewerInstance,
   UI,
@@ -48,10 +48,201 @@ import {
   type StatusTone,
 } from '../components/gallery-components'
 
+function HomeHorizontalScroller(props: {
+  readonly controller: ScrollViewerController<ScrollViewerInstance>
+  readonly automationId: string
+  readonly previousAutomationId: string
+  readonly nextAutomationId: string
+  readonly children: Child
+}) {
+  const buttonResources = {
+    ButtonBackgroundPointerOver: theme.ref(
+      'FlipViewNextPreviousButtonBackgroundPointerOver',
+    ),
+    ButtonBackgroundPressed: theme.ref(
+      'FlipViewNextPreviousButtonBackgroundPressed',
+    ),
+    ButtonBorderBrushPointerOver: theme.ref(
+      'FlipViewNextPreviousButtonBorderBrushPointerOver',
+    ),
+    ButtonBorderBrushPressed: theme.ref(
+      'FlipViewNextPreviousButtonBorderBrushPressed',
+    ),
+    ButtonForegroundPointerOver: theme.ref(
+      'FlipViewNextPreviousArrowForegroundPointerOver',
+    ),
+    ButtonForegroundPressed: theme.ref(
+      'FlipViewNextPreviousArrowForegroundPressed',
+    ),
+  }
+  return (
+    <LayoutGrid>
+      <UI.ScrollViewer
+        ref={props.controller}
+        automationId={props.automationId}
+        horizontalScrollMode={ScrollMode.Enabled}
+        horizontalScrollBarVisibility={ScrollBarVisibility.Hidden}
+        verticalScrollBarVisibility={ScrollBarVisibility.Hidden}
+        verticalScrollMode={ScrollMode.Disabled}
+      >
+        {props.children}
+      </UI.ScrollViewer>
+      <UI.Button
+        automationId={props.previousAutomationId}
+        automationName="Scroll left"
+        visibility={computed(() =>
+          props.controller.canScrollBackward.value
+            ? Visibility.Visible
+            : Visibility.Collapsed,
+        )}
+        width={16}
+        height={38}
+        margin={thickness(8, -16, 0, 0)}
+        padding={thickness(0)}
+        background={theme.ref(
+          'FlipViewNextPreviousButtonBackground',
+        )}
+        borderBrush={theme.ref(
+          'FlipViewNextPreviousButtonBorderBrush',
+        )}
+        borderThickness={thickness(1)}
+        cornerRadius={tokens.radius.control}
+        foreground={theme.ref('ButtonForeground')}
+        resourceOverrides={buttonResources}
+        horizontalAlignment={HorizontalAlignment.Left}
+        verticalAlignment={VerticalAlignment.Center}
+        onClick={() =>
+          props.controller.scrollHorizontalByViewport(-1, true)}
+      >
+        <UI.FontIcon glyph={'\uEDD9'} fontSize={8} />
+      </UI.Button>
+      <UI.Button
+        automationId={props.nextAutomationId}
+        automationName="Scroll right"
+        visibility={computed(() =>
+          props.controller.canScrollForward.value
+            ? Visibility.Visible
+            : Visibility.Collapsed,
+        )}
+        width={16}
+        height={38}
+        margin={thickness(0, -16, 8, 0)}
+        padding={thickness(0)}
+        background={theme.ref(
+          'FlipViewNextPreviousButtonBackground',
+        )}
+        borderBrush={theme.ref(
+          'FlipViewNextPreviousButtonBorderBrush',
+        )}
+        borderThickness={thickness(1)}
+        cornerRadius={tokens.radius.control}
+        foreground={theme.ref('ButtonForeground')}
+        resourceOverrides={buttonResources}
+        horizontalAlignment={HorizontalAlignment.Right}
+        verticalAlignment={VerticalAlignment.Center}
+        onClick={() =>
+          props.controller.scrollHorizontalByViewport(1, true)}
+      >
+        <UI.FontIcon glyph={'\uEDDA'} fontSize={8} />
+      </UI.Button>
+    </LayoutGrid>
+  )
+}
+
+function HomeSectionButton(props: {
+  readonly selected: ReadonlySignal<boolean>
+  readonly automationId: string
+  readonly symbol: Symbol
+  readonly text: string
+  readonly onClick: () => void
+}) {
+  const pointerOver = signal(false)
+  const transparentBrush = createSolidColorBrush(
+    SolidColorBrush,
+    color(0, 0, 0, 0),
+  )
+  const background = computed(() => {
+    if (props.selected.value) {
+      return pointerOver.value
+        ? theme.accentSecondary
+        : theme.accent
+    }
+    return pointerOver.value
+      ? theme.controlFillSecondary
+      : theme.controlFill
+  })
+  const borderBrush = computed(() =>
+    props.selected.value
+      ? pointerOver.value
+        ? theme.accentSecondary
+        : theme.accent
+      : theme.controlStroke,
+  )
+  const foreground = computed(() =>
+    props.selected.value
+      ? theme.textOnAccent
+      : theme.primaryText,
+  )
+  const buttonResources = computed(() => ({
+    ButtonBackgroundPointerOver: transparentBrush,
+    ButtonBackgroundPressed: transparentBrush,
+    ButtonBorderBrushPointerOver: transparentBrush,
+    ButtonBorderBrushPressed: transparentBrush,
+    ButtonForegroundPointerOver: props.selected.value
+      ? theme.textOnAccent
+      : theme.primaryText,
+    ButtonForegroundPressed: props.selected.value
+      ? theme.textOnAccent
+      : theme.secondaryText,
+  }))
+  return (
+    <UI.Border
+      background={background}
+      borderBrush={borderBrush}
+      borderThickness={thickness(1)}
+      cornerRadius={tokens.radius.control}
+    >
+      <UI.Button
+        automationId={props.automationId}
+        padding={thickness(23, 5, 23, 6)}
+        background={transparentBrush}
+        borderBrush={transparentBrush}
+        borderThickness={thickness(0)}
+        cornerRadius={tokens.radius.control}
+        foreground={foreground}
+        resourceOverrides={buttonResources}
+        onPointerEntered={() => {
+          pointerOver.value = true
+        }}
+        onPointerExited={() => {
+          pointerOver.value = false
+        }}
+        onClick={props.onClick}
+      >
+        <UI.StackPanel
+          orientation={Orientation.Horizontal}
+          spacing={8}
+        >
+          <UI.SymbolIcon symbol={props.symbol} />
+          <UI.TextBlock text={props.text} />
+        </UI.StackPanel>
+      </UI.Button>
+    </UI.Border>
+  )
+}
+
 export function HomePage(context: AppContext) {
   const featureScroller =
     createScrollViewerController<ScrollViewerInstance>()
+  const recentScroller =
+    createScrollViewerController<ScrollViewerInstance>()
   const selectedSection = signal(0)
+  const recentSelected = computed(
+    () => selectedSection.value === 0,
+  )
+  const favoritesSelected = computed(
+    () => selectedSection.value === 1,
+  )
   const recentPages = computed(() =>
     context.model.recentPageIds.value
       .map((id) => findGalleryPage(id))
@@ -232,17 +423,11 @@ export function HomePage(context: AppContext) {
               verticalAlignment={VerticalAlignment.Bottom}
               margin={thickness(0, 0, 0, 23)}
             >
-              <UI.ScrollViewer
-                ref={featureScroller}
+              <HomeHorizontalScroller
+                controller={featureScroller}
                 automationId="GalleryFeatureScroller"
-                horizontalScrollMode={ScrollMode.Enabled}
-                horizontalScrollBarVisibility={
-                  ScrollBarVisibility.Hidden
-                }
-                verticalScrollBarVisibility={
-                  ScrollBarVisibility.Hidden
-                }
-                verticalScrollMode={ScrollMode.Disabled}
+                previousAutomationId="GalleryFeaturePrevious"
+                nextAutomationId="GalleryFeatureNext"
               >
                 <UI.StackPanel
                   orientation={Orientation.Horizontal}
@@ -258,67 +443,7 @@ export function HomePage(context: AppContext) {
                     />
                   ))}
                 </UI.StackPanel>
-              </UI.ScrollViewer>
-              <UI.Button
-                automationId="GalleryFeaturePrevious"
-                automationName="Scroll left"
-                visibility={computed(() =>
-                  featureScroller.canScrollBackward.value
-                    ? Visibility.Visible
-                    : Visibility.Collapsed,
-                )}
-                width={16}
-                height={38}
-                margin={thickness(8, -16, 0, 0)}
-                padding={thickness(0)}
-                background={theme.ref(
-                  'FlipViewNextPreviousButtonBackground',
-                )}
-                borderBrush={theme.ref(
-                  'FlipViewNextPreviousButtonBorderBrush',
-                )}
-                borderThickness={thickness(1)}
-                cornerRadius={tokens.radius.control}
-                horizontalAlignment={HorizontalAlignment.Left}
-                verticalAlignment={VerticalAlignment.Center}
-                onClick={() =>
-                  featureScroller.scrollHorizontalByViewport(
-                    -1,
-                    true,
-                  )}
-              >
-                <UI.FontIcon glyph={'\uEDD9'} fontSize={8} />
-              </UI.Button>
-              <UI.Button
-                automationId="GalleryFeatureNext"
-                automationName="Scroll right"
-                visibility={computed(() =>
-                  featureScroller.canScrollForward.value
-                    ? Visibility.Visible
-                    : Visibility.Collapsed,
-                )}
-                width={16}
-                height={38}
-                margin={thickness(0, -16, 8, 0)}
-                padding={thickness(0)}
-                background={theme.ref(
-                  'FlipViewNextPreviousButtonBackground',
-                )}
-                borderBrush={theme.ref(
-                  'FlipViewNextPreviousButtonBorderBrush',
-                )}
-                borderThickness={thickness(1)}
-                cornerRadius={tokens.radius.control}
-                horizontalAlignment={HorizontalAlignment.Right}
-                verticalAlignment={VerticalAlignment.Center}
-                onClick={() =>
-                  featureScroller.scrollHorizontalByViewport(
-                    1,
-                    true,
-                  )}
-              >
-                <UI.FontIcon glyph={'\uEDDA'} fontSize={8} />
-              </UI.Button>
+              </HomeHorizontalScroller>
             </LayoutGrid>
           </LayoutGrid>
         </UI.Border>
@@ -328,32 +453,30 @@ export function HomePage(context: AppContext) {
           maxWidth={1112}
           horizontalAlignment={HorizontalAlignment.Stretch}
         >
-          <GallerySelectorBar
-            selectedIndex={selectedSection}
-            onSelectedIndexChange={(index) => {
-              if (index >= 0) {
-                selectedSection.value = index
-              }
-            }}
+          <UI.StackPanel
+            orientation={Orientation.Horizontal}
+            spacing={8}
             horizontalAlignment={HorizontalAlignment.Center}
           >
-            <UI.SelectorBarItem
+            <HomeSectionButton
+              selected={recentSelected}
               automationId="GalleryRecentSelector"
+              symbol={Symbol.Clock}
               text="Recent"
-              icon={createSymbolIcon(
-                SymbolIcon,
-                Symbol.Clock,
-              )}
+              onClick={() => {
+                selectedSection.value = 0
+              }}
             />
-            <UI.SelectorBarItem
+            <HomeSectionButton
+              selected={favoritesSelected}
               automationId="GalleryFavoritesSelector"
+              symbol={Symbol.Favorite}
               text="Favorites"
-              icon={createSymbolIcon(
-                SymbolIcon,
-                Symbol.Favorite,
-              )}
+              onClick={() => {
+                selectedSection.value = 1
+              }}
             />
-          </GallerySelectorBar>
+          </UI.StackPanel>
           <Show when={computed(
             () => selectedSection.value === 0,
           )}>
@@ -367,32 +490,35 @@ export function HomePage(context: AppContext) {
                     automationHeadingLevel={2}
                     text="Recently visited"
                   />
-                  <UI.ScrollViewer
-                    horizontalScrollBarVisibility={
-                      ScrollBarVisibility.Auto
-                    }
-                    verticalScrollBarVisibility={
-                      ScrollBarVisibility.Disabled
-                    }
+                  <LayoutGrid
+                    margin={thickness(-36, 0, -36, 12)}
                   >
-                    <UI.StackPanel
-                      orientation={Orientation.Horizontal}
-                      spacing={12}
+                    <HomeHorizontalScroller
+                      controller={recentScroller}
+                      automationId="GalleryRecentScroller"
+                      previousAutomationId="GalleryRecentPrevious"
+                      nextAutomationId="GalleryRecentNext"
                     >
-                      <For
-                        each={recentPages}
-                        key={(page) => page.id}
+                      <UI.StackPanel
+                        orientation={Orientation.Horizontal}
+                        spacing={12}
+                        margin={thickness(36, 0)}
                       >
-                        {(page) => (
-                          <PageLink
-                            page={page}
-                            model={context.model}
-                            width={300}
-                          />
-                        )}
-                      </For>
-                    </UI.StackPanel>
-                  </UI.ScrollViewer>
+                        <For
+                          each={recentPages}
+                          key={(page) => page.id}
+                        >
+                          {(page) => (
+                            <PageLink
+                              page={page}
+                              model={context.model}
+                              width={300}
+                            />
+                          )}
+                        </For>
+                      </UI.StackPanel>
+                    </HomeHorizontalScroller>
+                  </LayoutGrid>
                 </UI.StackPanel>
               </Show>
               <UI.StackPanel spacing={tokens.spacing.md}>

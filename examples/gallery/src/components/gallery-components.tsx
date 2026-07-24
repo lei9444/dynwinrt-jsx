@@ -298,56 +298,85 @@ export function HomeFeatureTile(props: {
   readonly glyph?: string
 }) {
   return (
-    <UI.Button
-      automationName={`Open ${props.title}`}
+    <UI.Border
       width={232}
       height={172}
-      padding={thickness(24)}
       background={theme.ref('AcrylicBackgroundFillColorDefaultBrush')}
-      borderBrush={theme.ref('SurfaceStrokeColorFlyoutBrush')}
-      borderThickness={thickness(1)}
-      horizontalContentAlignment={HorizontalAlignment.Stretch}
-      onClick={() => {
-        props.model.navigate(props.route)
-      }}
+      cornerRadius={tokens.radius.card}
     >
-      <UI.StackPanel spacing={10}>
-        {props.image ? (
-          <UI.Image
-            source={props.image}
-            stretch={Stretch.Uniform}
-            width={36}
-            height={36}
-            horizontalAlignment={HorizontalAlignment.Left}
-          />
-        ) : props.glyph ? (
+      <UI.Button
+        automationName={`Open ${props.title}`}
+        width={232}
+        height={172}
+        padding={thickness(24)}
+        background={theme.ref('SubtleFillColorTransparentBrush')}
+        borderBrush={theme.ref('SurfaceStrokeColorFlyoutBrush')}
+        borderThickness={thickness(1)}
+        cornerRadius={tokens.radius.card}
+        resourceOverrides={{
+          ButtonBackgroundPointerOver: theme.ref(
+            'SubtleFillColorSecondaryBrush',
+          ),
+          ButtonBackgroundPressed: theme.ref(
+            'SubtleFillColorTertiaryBrush',
+          ),
+          ButtonBorderBrushPointerOver: theme.controlStrokeSecondary,
+          ButtonBorderBrushPressed: theme.controlStroke,
+        }}
+        horizontalContentAlignment={HorizontalAlignment.Stretch}
+        verticalContentAlignment={VerticalAlignment.Stretch}
+        onClick={() => {
+          props.model.navigate(props.route)
+        }}
+      >
+        <LayoutGrid>
           <UI.FontIcon
-            glyph={props.glyph}
-            fontSize={28}
-            horizontalAlignment={HorizontalAlignment.Left}
+            glyph={'\uE8A7'}
+            fontSize={14}
+            foreground={theme.secondaryText}
+            margin={thickness(-12)}
+            horizontalAlignment={HorizontalAlignment.Right}
+            verticalAlignment={VerticalAlignment.Bottom}
           />
-        ) : (
-          <UI.Border
-            {...styles.status({ tone: props.tone })}
-            width={36}
-            height={36}
-            padding={thickness(8)}
-            horizontalAlignment={HorizontalAlignment.Left}
-          >
-            <UI.SymbolIcon symbol={props.symbol} />
-          </UI.Border>
-        )}
-        <UI.TextBlock
-          {...styles.heading({ level: 'bodyStrong' })}
-          text={props.title}
-        />
-        <UI.TextBlock
-          foreground={theme.secondaryText}
-          fontSize={12}
-          text={props.description}
-          textWrapping={TextWrapping.Wrap}
-        />
-      </UI.StackPanel>
-    </UI.Button>
+          <UI.StackPanel spacing={10}>
+            {props.image ? (
+              <UI.Image
+                source={props.image}
+                stretch={Stretch.Uniform}
+                width={36}
+                height={36}
+                horizontalAlignment={HorizontalAlignment.Left}
+              />
+            ) : props.glyph ? (
+              <UI.FontIcon
+                glyph={props.glyph}
+                fontSize={28}
+                horizontalAlignment={HorizontalAlignment.Left}
+              />
+            ) : (
+              <UI.Border
+                {...styles.status({ tone: props.tone })}
+                width={36}
+                height={36}
+                padding={thickness(8)}
+                horizontalAlignment={HorizontalAlignment.Left}
+              >
+                <UI.SymbolIcon symbol={props.symbol} />
+              </UI.Border>
+            )}
+            <UI.TextBlock
+              {...styles.heading({ level: 'bodyStrong' })}
+              text={props.title}
+            />
+            <UI.TextBlock
+              foreground={theme.secondaryText}
+              fontSize={12}
+              text={props.description}
+              textWrapping={TextWrapping.Wrap}
+            />
+          </UI.StackPanel>
+        </LayoutGrid>
+      </UI.Button>
+    </UI.Border>
   )
 }

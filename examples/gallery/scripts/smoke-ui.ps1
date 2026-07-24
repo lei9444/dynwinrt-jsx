@@ -242,6 +242,33 @@ try {
         "ui", "invoke", "GalleryFeaturePrevious",
         "-w", "$windowHandle"
     )
+    $recentScrollBeforeJson = Invoke-WinApp @(
+        "ui", "get-property", "GalleryRecentScroller",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $recentScrollBefore = $recentScrollBeforeJson | ConvertFrom-Json
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryRecentNext",
+        "-w", "$windowHandle"
+    )
+    Start-Sleep -Milliseconds 200
+    $recentScrollAfterJson = Invoke-WinApp @(
+        "ui", "get-property", "GalleryRecentScroller",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $recentScrollAfter = $recentScrollAfterJson | ConvertFrom-Json
+    if (
+        [double]$recentScrollAfter.properties.ScrollHorizontalPercent -le
+        [double]$recentScrollBefore.properties.ScrollHorizontalPercent
+    ) {
+        throw "The recently visited carousel did not move forward."
+    }
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryRecentPrevious",
+        "-w", "$windowHandle"
+    )
     Invoke-WinApp @(
         "ui", "invoke", "GalleryFavoritesSelector",
         "-w", "$windowHandle"
