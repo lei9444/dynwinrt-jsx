@@ -20,14 +20,144 @@ export const galleryPages = [
     image: 'ControlImages/CodeTagIcon.png',
   },
   {
-    id: 'buttons',
-    category: 'Controls',
-    title: 'Buttons and toggles',
-    subtitle: 'Native command and boolean input controls.',
+    id: 'button',
+    category: 'Basic input',
+    title: 'Button',
+    subtitle: 'A control that responds to user input and raises a Click event.',
     description:
-      'Compose Button, CheckBox, and ToggleSwitch with signal-backed properties and events.',
-    tags: ['button', 'checkbox', 'toggle', 'input', 'event'],
+      'Place text, images, or custom content in a native button and respond to its Click event.',
+    tags: ['button', 'click', 'command', 'input'],
     image: 'ControlImages/Button.png',
+  },
+  {
+    id: 'drop-down-button',
+    category: 'Basic input',
+    title: 'DropDownButton',
+    subtitle: 'A button that displays a flyout of choices when clicked.',
+    description:
+      'Attach an owned MenuFlyout or Flyout to a button and select from its commands.',
+    tags: ['dropdownbutton', 'flyout', 'menu', 'button'],
+    image: 'ControlImages/DropDownButton.png',
+  },
+  {
+    id: 'hyperlink-button',
+    category: 'Basic input',
+    title: 'HyperlinkButton',
+    subtitle: 'A hyperlink that navigates to a URI or handles Click.',
+    description:
+      'Navigate to an external URI or use the Click event for application navigation.',
+    tags: ['hyperlinkbutton', 'uri', 'link', 'navigate'],
+    image: 'ControlImages/HyperlinkButton.png',
+  },
+  {
+    id: 'repeat-button',
+    category: 'Basic input',
+    title: 'RepeatButton',
+    subtitle: 'Raises Click repeatedly while it is pressed.',
+    description:
+      'Configure the initial delay and repeat interval for press-and-hold commands.',
+    tags: ['repeatbutton', 'hold', 'click', 'command'],
+    image: 'ControlImages/RepeatButton.png',
+  },
+  {
+    id: 'toggle-button',
+    category: 'Basic input',
+    title: 'ToggleButton',
+    subtitle: 'A button that switches between checked and unchecked states.',
+    description:
+      'Use native checked state and events for persistent two-state actions.',
+    tags: ['togglebutton', 'checked', 'toggle', 'state'],
+    image: 'ControlImages/ToggleButton.png',
+  },
+  {
+    id: 'split-button',
+    category: 'Basic input',
+    title: 'SplitButton',
+    subtitle: 'A primary action paired with a secondary flyout.',
+    description:
+      'Invoke the current action directly or choose a different action from an owned flyout.',
+    tags: ['splitbutton', 'flyout', 'dropdown', 'command'],
+    image: 'ControlImages/SplitButton.png',
+  },
+  {
+    id: 'toggle-split-button',
+    category: 'Basic input',
+    title: 'ToggleSplitButton',
+    subtitle: 'A SplitButton whose primary action toggles on and off.',
+    description:
+      'Combine checked state with a secondary flyout of related toggle modes.',
+    tags: ['togglesplitbutton', 'toggle', 'flyout', 'command'],
+    image: 'ControlImages/ToggleSplitButton.png',
+  },
+  {
+    id: 'check-box',
+    category: 'Basic input',
+    title: 'CheckBox',
+    subtitle: 'A control that a user can select or clear.',
+    description:
+      'Model two-state, three-state, and select-all checkbox interactions.',
+    tags: ['checkbox', 'checkmark', 'three state', 'selection'],
+    image: 'ControlImages/Checkbox.png',
+  },
+  {
+    id: 'color-picker',
+    category: 'Basic input',
+    title: 'ColorPicker',
+    subtitle: 'A control that displays a selectable color spectrum.',
+    description:
+      'Choose colors through a spectrum, sliders, channels, alpha, and hexadecimal input.',
+    tags: ['colorpicker', 'spectrum', 'rgb', 'hex', 'alpha'],
+    image: 'ControlImages/ColorPicker.png',
+  },
+  {
+    id: 'combo-box',
+    category: 'Basic input',
+    title: 'ComboBox',
+    subtitle: 'A drop-down list of items a user can select from.',
+    description:
+      'Own native items and keep selectedIndex synchronized with application state.',
+    tags: ['combobox', 'dropdown', 'selection', 'picker'],
+    image: 'ControlImages/ComboBox.png',
+  },
+  {
+    id: 'radio-button',
+    category: 'Basic input',
+    title: 'RadioButton',
+    subtitle: 'Select a single option from a group of related choices.',
+    description:
+      'Use grouped RadioButton controls or a RadioButtons collection for exclusive selection.',
+    tags: ['radiobutton', 'radiobuttons', 'choice', 'selection'],
+    image: 'ControlImages/RadioButton.png',
+  },
+  {
+    id: 'rating-control',
+    category: 'Basic input',
+    title: 'RatingControl',
+    subtitle: 'Rate something from one to five stars.',
+    description:
+      'Capture a star rating, placeholder value, caption, and read-only or clear behavior.',
+    tags: ['ratingcontrol', 'rating', 'stars', 'review'],
+    image: 'ControlImages/RatingControl.png',
+  },
+  {
+    id: 'slider',
+    category: 'Basic input',
+    title: 'Slider',
+    subtitle: 'Select a value by moving a thumb along a track.',
+    description:
+      'Configure ranges, steps, tick marks, snapping, and horizontal or vertical orientation.',
+    tags: ['slider', 'range', 'track', 'thumb', 'ticks'],
+    image: 'ControlImages/Slider.png',
+  },
+  {
+    id: 'toggle-switch',
+    category: 'Basic input',
+    title: 'ToggleSwitch',
+    subtitle: 'A switch that toggles between two immediate states.',
+    description:
+      'Use native on/off state with labels, custom content, and dependent controls.',
+    tags: ['toggleswitch', 'toggle', 'on off', 'switch'],
+    image: 'ControlImages/ToggleSwitch.png',
   },
   {
     id: 'selection',
@@ -127,9 +257,14 @@ export type GalleryPageId =
 export type GalleryRoute =
   | 'home'
   | 'search'
+  | 'category-basic-input'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
+
+export const basicInputPages = galleryPages.filter(
+  (page) => page.category === 'Basic input',
+)
 
 export const galleryCategories = [
   ...new Set(galleryPages.map((page) => page.category)),

@@ -204,8 +204,8 @@ The built-in WinUI layer currently provides:
 - Custom attached-property registration through `createWinUIRenderer()`.
 - Automation ID and name attached setters when those bindings are supplied.
 - Automation help, labeled-by, heading, set-position, live, dialog, and control-type metadata.
-- Primitive `content` and `header` conversion to native `TextBlock`.
-- Boolean `isChecked` conversion to `IReference<Boolean>`.
+- Primitive `content`, `header`, `onContent`, and `offContent` conversion to native `TextBlock`.
+- Nullable Boolean `isChecked` conversion to `IReference<Boolean>` while non-nullable controls receive native Booleans and reject `null`.
 - ContentDialog cleanup and focus restoration from the native Closed event.
 - Property adapters can apply before children, after children, or after the
   native record mounts.

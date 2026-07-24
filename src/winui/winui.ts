@@ -282,9 +282,38 @@ export function createWinUIAttachedPropertyRegistrations(
 export function createWinUIPropertyConverters(
   bindings: WinUIBindings,
 ): Record<string, NativePropertyConverter> {
+  const primitiveText = (
+    property: string,
+  ): NativePropertyConverter => (_target, value) => {
+    if (
+      typeof value !== 'string' &&
+      typeof value !== 'number' &&
+      typeof value !== 'bigint'
+    ) {
+      return value
+    }
+    if (!bindings.TextBlock) {
+      throw missingCapability(
+        `Primitive ${property} conversion`,
+        ['TextBlock'],
+      )
+    }
+    const textBlock = new bindings.TextBlock()
+    textBlock.text = String(value)
+    return textBlock
+  }
   const converters: Record<string, NativePropertyConverter> = {
-    isChecked: (_target, value) => {
-      if (value == null || typeof value !== 'boolean') {
+    isChecked: (target, value) => {
+      const nullable = 'isThreeState' in target
+      if (value === null && !nullable) {
+        throw new TypeError(
+          'isChecked does not accept null on this native control.',
+        )
+      }
+      if (value === null || typeof value !== 'boolean') {
+        return value
+      }
+      if (!nullable) {
         return value
       }
       if (
@@ -300,42 +329,10 @@ export function createWinUIPropertyConverters(
         bindings.PropertyValue.createBoolean(value),
       )
     },
-    content: (_target, value) => {
-      if (
-        typeof value !== 'string' &&
-        typeof value !== 'number' &&
-        typeof value !== 'bigint'
-      ) {
-        return value
-      }
-      if (!bindings.TextBlock) {
-        throw missingCapability(
-          'Primitive content conversion',
-          ['TextBlock'],
-        )
-      }
-      const textBlock = new bindings.TextBlock()
-      textBlock.text = String(value)
-      return textBlock
-    },
-    header: (_target, value) => {
-      if (
-        typeof value !== 'string' &&
-        typeof value !== 'number' &&
-        typeof value !== 'bigint'
-      ) {
-        return value
-      }
-      if (!bindings.TextBlock) {
-        throw missingCapability(
-          'Primitive header conversion',
-          ['TextBlock'],
-        )
-      }
-      const textBlock = new bindings.TextBlock()
-      textBlock.text = String(value)
-      return textBlock
-    }
+    content: primitiveText('content'),
+    header: primitiveText('header'),
+    onContent: primitiveText('onContent'),
+    offContent: primitiveText('offContent'),
   }
 
   return converters

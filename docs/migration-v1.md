@@ -40,7 +40,7 @@ The WinUI renderer converts Boolean `isChecked` values to generated nullable Boo
 <UI.ToggleSwitch header="Dark theme" />
 ```
 
-Manual `PropertyValue.createBoolean()` wrappers are no longer needed for these JSX properties.
+Manual `PropertyValue.createBoolean()` wrappers are no longer needed for these JSX properties. `null` remains valid only when the generated native property is nullable; non-nullable controls such as `ToggleSplitButton` now reject it in TSX and at runtime.
 
 Use the struct helpers instead of repeating object literals:
 

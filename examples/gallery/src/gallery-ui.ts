@@ -1,4 +1,5 @@
 import {
+  adapter,
   createComboBoxControl,
   createContext,
   createControls,
@@ -7,6 +8,7 @@ import {
   createListViewControl,
   createNavigationViewControl,
   createSelectorBarControl,
+  native,
   type Renderer,
 } from 'dynwinrt-jsx'
 import {
@@ -15,10 +17,15 @@ import {
   Button,
   CheckBox,
   ColumnDefinition,
+  ColorPicker,
   ComboBox,
   ContentControl,
+  DropDownButton,
+  Expander,
+  Flyout,
   FontIcon,
   Grid,
+  HyperlinkButton,
   IElementFactory,
   IObservableVector_Object,
   InfoBar,
@@ -27,6 +34,8 @@ import {
   ItemsRepeater,
   ListView,
   ListViewItem,
+  MenuFlyout,
+  MenuFlyoutItem,
   NavigationView,
   NavigationViewItem,
   NumberBox,
@@ -35,6 +44,9 @@ import {
   ProgressRing,
   PropertyValue,
   RadioButton,
+  RadioButtons,
+  RatingControl,
+  RepeatButton,
   RowDefinition,
   ScrollViewer,
   Selector,
@@ -42,11 +54,13 @@ import {
   SelectorBarItem,
   Slider,
   StackPanel,
+  SplitButton,
   SymbolIcon,
   TextBlock,
   TextBox,
   TitleBar,
   ToggleButton,
+  ToggleSplitButton,
   ToggleSwitch,
   Window,
 } from '#winapp/bindings'
@@ -57,16 +71,24 @@ export const UI = createControls({
   Border,
   Button,
   CheckBox,
+  ColorPicker,
+  Expander,
+  Flyout,
   Grid,
   FontIcon,
+  HyperlinkButton,
   InfoBar,
   Image,
   ListViewItem,
+  MenuFlyout,
+  MenuFlyoutItem,
   NumberBox,
   PasswordBox,
   ProgressBar,
   ProgressRing,
   RadioButton,
+  RatingControl,
+  RepeatButton,
   ScrollViewer,
   SelectorBarItem,
   Slider,
@@ -91,6 +113,31 @@ export const GalleryComboBox = createComboBoxControl({
   ComboBox,
   selectedIndexProperty: Selector.selectedIndexProperty,
 })
+export const GalleryRadioButtons = native(RadioButtons, {
+  displayName: 'RadioButtons',
+  adapters: {
+    selectedIndex: adapter.withPhase(
+      adapter.oneWay(),
+      'afterChildren',
+    ),
+  },
+  children: adapter.collectionSlot('items'),
+})
+export const GalleryDropDownButton = native(DropDownButton, {
+  displayName: 'DropDownButton',
+  children: adapter.slot('flyout'),
+})
+export const GallerySplitButton = native(SplitButton, {
+  displayName: 'SplitButton',
+  children: adapter.slot('flyout'),
+})
+export const GalleryToggleSplitButton = native(
+  ToggleSplitButton,
+  {
+    displayName: 'ToggleSplitButton',
+    children: adapter.slot('flyout'),
+  },
+)
 export const GalleryListView = createListViewControl({
   ListView,
   selectedIndexProperty: Selector.selectedIndexProperty,
@@ -118,6 +165,7 @@ export type SliderInstance = InstanceType<typeof Slider>
 export type ScrollViewerInstance = InstanceType<typeof ScrollViewer>
 export type TextBoxInstance = InstanceType<typeof TextBox>
 export type ToggleButtonInstance = InstanceType<typeof ToggleButton>
+export type FlyoutInstance = InstanceType<typeof Flyout>
 export type ToggleInstance = InstanceType<typeof ToggleSwitch>
 
 export interface AppContext {

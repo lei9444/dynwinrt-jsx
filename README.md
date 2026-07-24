@@ -189,7 +189,7 @@ const UI = createControls({
 
 Writable generated properties become JSX properties. Generated `onX(callback)` methods become typed event properties. Use `native()` when a class needs custom construction.
 
-Primitive children become native `TextBlock` instances. Primitive `content` and `header` values are also converted to `TextBlock`; Boolean `isChecked` values are boxed as `IReference<Boolean>` when the required generated bindings are supplied.
+Primitive children become native `TextBlock` instances. Primitive `content`, `header`, `onContent`, and `offContent` values are also converted to `TextBlock`; Boolean `isChecked` values on nullable ToggleButton-family controls are boxed as `IReference<Boolean>` when the required generated bindings are supplied. Controls with a non-nullable Boolean `isChecked`, such as `ToggleSplitButton`, receive the Boolean directly and reject `null` in both TSX and runtime property conversion.
 
 ```tsx
 <UI.ToggleSwitch header="Dark theme" isOn={darkTheme} />
@@ -615,10 +615,11 @@ const renderer = winuiRenderer.createRenderer()
 
 `winuiRenderer.capabilities` reports text, nullable Boolean, projected
 collection, resource, Grid, Canvas, and Automation support. Passing the full
-namespace automatically enables every generated capability. If a Boolean
-`isChecked`, primitive content/header, primitive child, or projected collection
-is used without its required binding, the renderer names the missing generated
-type instead of forwarding an invalid value to WinUI.
+namespace automatically enables every generated capability. If a nullable
+ToggleButton-family `isChecked`, primitive content/header/on/off content,
+primitive child, or
+projected collection is used without its required binding, the renderer names
+the missing generated type instead of forwarding an invalid value to WinUI.
 
 Register additional WinUI attached properties when an application generates
 the owning type:

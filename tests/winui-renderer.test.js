@@ -15,6 +15,16 @@ class TestWindow {
 
 class TestCheckBox {
   isChecked = null
+  isThreeState = false
+}
+
+class TestToggleSplitButton {
+  isChecked = false
+}
+
+class TestToggleSwitch {
+  onContent = null
+  offContent = null
 }
 
 class TestContentControl {
@@ -84,6 +94,8 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
   const UI = createControls({
     CheckBox: TestCheckBox,
     ContentControl: TestContentControl,
+    ToggleSplitButton: TestToggleSplitButton,
+    ToggleSwitch: TestToggleSwitch,
   })
   const checkedWindow = new TestWindow()
   const checkedHandle = preset.createRenderer().render(
@@ -94,6 +106,33 @@ test('WinUI renderer preset detects and applies generated binding capabilities',
     reference: { value: true },
   })
   checkedHandle.dispose()
+
+  const toggleWindow = new TestWindow()
+  const toggleHandle = preset.createRenderer().render(
+    UI.ToggleSplitButton({ isChecked: true }),
+    toggleWindow,
+  )
+  assert.equal(toggleWindow.content.isChecked, true)
+  toggleHandle.dispose()
+  assert.throws(
+    () => preset.createRenderer().render(
+      UI.ToggleSplitButton({ isChecked: null }),
+      new TestWindow(),
+    ),
+    /isChecked does not accept null on this native control/,
+  )
+
+  const switchWindow = new TestWindow()
+  const switchHandle = preset.createRenderer().render(
+    UI.ToggleSwitch({
+      onContent: 'Working',
+      offContent: 'Paused',
+    }),
+    switchWindow,
+  )
+  assert.equal(switchWindow.content.onContent.text, 'Working')
+  assert.equal(switchWindow.content.offContent.text, 'Paused')
+  switchHandle.dispose()
 
   const contentWindow = new TestWindow()
   const contentHandle = preset.createRenderer().render(
@@ -108,6 +147,8 @@ test('WinUI renderer reports missing generated conversion bindings', () => {
   const UI = createControls({
     CheckBox: TestCheckBox,
     ContentControl: TestContentControl,
+    ToggleSplitButton: TestToggleSplitButton,
+    ToggleSwitch: TestToggleSwitch,
   })
 
   assert.throws(
@@ -116,6 +157,20 @@ test('WinUI renderer reports missing generated conversion bindings', () => {
       new TestWindow(),
     ),
     /Boolean isChecked conversion requires generated WinUI bindings for PropertyValue and IReference_Boolean/,
+  )
+  const toggleWindow = new TestWindow()
+  const toggleHandle = createWinUIRenderer({}).render(
+    UI.ToggleSplitButton({ isChecked: true }),
+    toggleWindow,
+  )
+  assert.equal(toggleWindow.content.isChecked, true)
+  toggleHandle.dispose()
+  assert.throws(
+    () => createWinUIRenderer({}).render(
+      UI.ToggleSplitButton({ isChecked: null }),
+      new TestWindow(),
+    ),
+    /isChecked does not accept null on this native control/,
   )
   assert.throws(
     () => createWinUIRenderer({}).render(

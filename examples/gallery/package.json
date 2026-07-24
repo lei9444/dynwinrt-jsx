@@ -41,6 +41,13 @@
     "jsBindings": {
       "additionalWinmds": [
         {
+          "namespace": "Windows.ApplicationModel.DataTransfer",
+          "classes": [
+            "Clipboard",
+            "DataPackage"
+          ]
+        },
+        {
           "namespace": "Windows.Foundation",
           "classes": [
             "PropertyValue",
@@ -76,12 +83,16 @@
             "BitmapIcon",
             "CheckBox",
             "ColumnDefinition",
+            "ColorPicker",
             "ComboBox",
             "ContentDialog",
             "ContentControl",
+            "DropDownButton",
+            "Expander",
             "Flyout",
             "FontIcon",
             "Grid",
+            "HyperlinkButton",
             "Image",
             "ImageIconSource",
             "InfoBar",
@@ -100,6 +111,8 @@
             "ProgressBar",
             "ProgressRing",
             "RadioButton",
+            "RadioButtons",
+            "RatingControl",
             "RowDefinition",
             "ScrollViewer",
             "SelectorBar",
@@ -107,11 +120,13 @@
             "Slider",
             "StackPanel",
             "StackLayout",
+            "SplitButton",
             "SymbolIcon",
             "TeachingTip",
             "TextBlock",
             "TextBox",
             "TitleBar",
+            "ToggleSplitButton",
             "ToggleSwitch"
           ]
         },
@@ -119,6 +134,7 @@
           "namespace": "Microsoft.UI.Xaml.Controls.Primitives",
           "classes": [
             "Selector",
+            "RepeatButton",
             "ToggleButton"
           ]
         },

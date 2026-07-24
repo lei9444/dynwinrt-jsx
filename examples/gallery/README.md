@@ -5,13 +5,19 @@ The Gallery is an interactive native WinUI 3 reference application for
 structure of WinUI Gallery while using TypeScript JSX instead of compiled XAML,
 reflection, or source-generated page mappings.
 
-The initial pages cover:
+The pages cover:
 
 - signals, computed values, `Show`, and keyed `For`;
-- Button, CheckBox, ToggleSwitch, ComboBox, and ListView;
+- the complete WinUI Gallery Basic input category: Button, DropDownButton,
+  HyperlinkButton, RepeatButton, ToggleButton, SplitButton, ToggleSplitButton,
+  CheckBox, ColorPicker, ComboBox, RadioButton, RatingControl, Slider, and
+  ToggleSwitch;
+- a Basic input category landing page with links to all 14 controls;
+- integrated expandable source sections with native clipboard copy actions;
+- owned Flyout and MenuFlyout content attached to button controls;
+- ListView selection and native ItemsRepeater virtualization;
 - TextBox, PasswordBox, AutoSuggestBox, and NumberBox;
-- Slider, ProgressBar, ProgressRing, RadioButton, ToggleButton, and InfoBar;
-- native ItemsRepeater virtualization;
+- ProgressBar, ProgressRing, and InfoBar;
 - typed Grid layout;
 - ContentDialog and Flyout lifetimes;
 - theme resources, tokens, style recipes, icons, settings, and diagnostics.

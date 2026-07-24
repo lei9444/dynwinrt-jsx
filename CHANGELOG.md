@@ -16,6 +16,8 @@
 - Added Automation relationship metadata, deterministic dialog focus restoration, and accessibility UIA assertions.
 - Added structured diagnostic records, multi-cycle hot reload/lifecycle soak tests, resource trend reporting, and Windows source/package CI.
 - Added validated atomic JSON persistence with corrupt-file recovery for dashboard and generated app state.
+- Limited nullable `isChecked` boxing to ToggleButton-family controls so non-nullable controls such as ToggleSplitButton receive native Booleans and reject `null`.
+- Added primitive `onContent` and `offContent` conversion for ToggleSwitch.
 
 ## 1.0.0
 

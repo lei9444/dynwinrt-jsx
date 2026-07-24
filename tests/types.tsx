@@ -348,6 +348,10 @@ class TypeCheckBox {
   isChecked: TypeBooleanReference | null = null
 }
 
+class TypeToggleSplitButton {
+  isChecked = false
+}
+
 class TypeButton {
   content: unknown = null
   isEnabled = true
@@ -370,6 +374,7 @@ const UI = createControls({
   SelectorBarItem: TypeSelectorBarItem,
   TextBlock: TypeTextBlock,
   TextBox: TypeTextBox,
+  ToggleSplitButton: TypeToggleSplitButton,
 })
 const DockedPanel = native<
   TypePanel,
@@ -728,6 +733,9 @@ export const typeCheckedTree = (
     </UI.Button>
 
     <UI.CheckBox isChecked={enabled} />
+    <UI.ToggleSplitButton isChecked={enabled} />
+    {/* @ts-expect-error Non-nullable native isChecked properties reject null. */}
+    <UI.ToggleSplitButton isChecked={null} />
     <UI.TextBox {...oneWayBinding} />
     <UI.TextBox {...twoWayBinding} />
     <DockedPanel dock={signal(2)} spacing={8} />

@@ -322,7 +322,9 @@ function normalizePageIds(
 ): readonly GalleryPageId[] {
   const result: GalleryPageId[] = []
   for (const value of values ?? []) {
-    const page = findGalleryPage(value)
+    const page = findGalleryPage(
+      value === 'buttons' ? 'button' : value,
+    )
     if (!page) {
       continue
     }

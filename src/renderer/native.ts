@@ -59,7 +59,7 @@ export type NativeValueForProperty<
   Key extends string,
   Value,
 > = Key extends 'isChecked'
-  ? NativeValue<Value> | boolean | null
+  ? NativeValue<Value> | boolean
   : NativeValue<Value>
 
 export type NativePropertyProps<Value> = {

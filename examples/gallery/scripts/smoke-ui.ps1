@@ -60,12 +60,26 @@ function Assert-Responsive([int]$ProcessId, [string]$Page) {
     }
 }
 
+function Get-UiTreeElements([object[]]$Nodes) {
+    foreach ($node in @($Nodes)) {
+        $node
+        if (
+            $node.PSObject.Properties.Name -contains "children" -and
+            $node.children
+        ) {
+            Get-UiTreeElements @($node.children)
+        }
+    }
+}
+
 $evidenceRoot = Join-Path $galleryRoot ".winapp\smoke"
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $stdoutPath = Join-Path $evidenceRoot "gallery.stdout.log"
 $stderrPath = Join-Path $evidenceRoot "gallery.stderr.log"
 $screenshotPath = Join-Path $evidenceRoot "gallery.png"
 $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
+$categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
+$sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
 $inspectorExportPath = Join-Path $evidenceRoot "inspector-snapshot.json"
@@ -74,7 +88,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":[],"favoritePageIds":[]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons"],"favoritePageIds":["buttons"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -98,10 +112,67 @@ $windowHandle = $null
 try {
     $window = Wait-ForGalleryWindow $appProcess.Id
     $windowHandle = [int64]$window.hwnd
+    Start-Sleep -Milliseconds 200
+    $migratedState = Get-Content $smokeStatePath -Raw |
+        ConvertFrom-Json
+    if (
+        $migratedState.recentPageIds -notcontains "button" -or
+        $migratedState.favoritePageIds -notcontains "button" -or
+        $migratedState.recentPageIds -contains "buttons" -or
+        $migratedState.favoritePageIds -contains "buttons"
+    ) {
+        throw "The legacy 'buttons' page ID was not migrated to 'button'."
+    }
+
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryBasicInputCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "BasicInputCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open Button",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $categoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open ToggleSwitch",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "Open ToggleSwitch",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "ToggleSwitchPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
 
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
-        [pscustomobject]@{ Name = "Open Buttons and toggles"; Heading = "ButtonsPageHeading"; Probe = $null; Query = "checkbox" },
+        [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
+        [pscustomobject]@{ Name = "Open DropDownButton"; Heading = "DropDownButtonPageHeading"; Probe = $null; Query = "dropdownbutton" },
+        [pscustomobject]@{ Name = "Open HyperlinkButton"; Heading = "HyperlinkButtonPageHeading"; Probe = $null; Query = "hyperlinkbutton" },
+        [pscustomobject]@{ Name = "Open RepeatButton"; Heading = "RepeatButtonPageHeading"; Probe = $null; Query = "repeatbutton" },
+        [pscustomobject]@{ Name = "Open ToggleButton"; Heading = "ToggleButtonPageHeading"; Probe = $null; Query = "togglebutton" },
+        [pscustomobject]@{ Name = "Open SplitButton"; Heading = "SplitButtonPageHeading"; Probe = $null; Query = "splitbutton" },
+        [pscustomobject]@{ Name = "Open ToggleSplitButton"; Heading = "ToggleSplitButtonPageHeading"; Probe = $null; Query = "togglesplitbutton" },
+        [pscustomobject]@{ Name = "Open CheckBox"; Heading = "CheckBoxPageHeading"; Probe = $null; Query = "three state checkbox" },
+        [pscustomobject]@{ Name = "Open ColorPicker"; Heading = "ColorPickerPageHeading"; Probe = $null; Query = "colorpicker spectrum" },
+        [pscustomobject]@{ Name = "Open ComboBox"; Heading = "ComboBoxPageHeading"; Probe = $null; Query = "combobox picker" },
+        [pscustomobject]@{ Name = "Open RadioButton"; Heading = "RadioButtonPageHeading"; Probe = $null; Query = "radiobutton choice" },
+        [pscustomobject]@{ Name = "Open RatingControl"; Heading = "RatingControlPageHeading"; Probe = $null; Query = "ratingcontrol stars" },
+        [pscustomobject]@{ Name = "Open Slider"; Heading = "SliderPageHeading"; Probe = $null; Query = "slider ticks" },
+        [pscustomobject]@{ Name = "Open ToggleSwitch"; Heading = "ToggleSwitchPageHeading"; Probe = $null; Query = "toggleswitch" },
         [pscustomobject]@{ Name = "Open Selection controls"; Heading = "SelectionPageHeading"; Probe = "GalleryControlledListViewSample"; Query = "listview" },
         [pscustomobject]@{ Name = "Open Text and numeric input"; Heading = "TextInputPageHeading"; Probe = "GalleryTextInputSample"; Query = "passwordbox" },
         [pscustomobject]@{ Name = "Open Range and progress"; Heading = "RangeProgressPageHeading"; Probe = "GalleryRangeProgressSample"; Query = "progressring" },
@@ -155,6 +226,353 @@ try {
             )
         }
         Assert-Responsive $appProcess.Id $route.Name
+        if ($route.Heading -eq "ButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputButtonControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "You clicked the button 1 times.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputButtonSampleSourceToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryBasicInputButtonSampleCopy",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputButtonSampleCopy",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Copied",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryCopyLinkButton-button",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Page link copied",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "screenshot",
+                "-w", "$windowHandle",
+                "--output", $sourceCodeScreenshotPath
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryThemeButton-button",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 150
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryThemeButton-button",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 150
+        }
+        if ($route.Heading -eq "DropDownButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputDropDownButtonControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryBasicInputDropDownSend",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputDropDownSend",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Send",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "HyperlinkButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputHyperlinkInternal",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "ToggleButtonPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RepeatButtonPageHeading") {
+            $repeatSearchJson = Invoke-WinApp @(
+                "ui", "search", "Click and hold",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $repeatButton = @(
+                ($repeatSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "Button"
+            } | Select-Object -First 1
+            if (-not $repeatButton) {
+                throw "The RepeatButton interaction target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", $repeatButton.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Repeat count: 1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ToggleButtonPageHeading") {
+            $toggleButtonSearchJson = Invoke-WinApp @(
+                "ui", "search", "Toggle is off",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $toggleButton = @(
+                ($toggleButtonSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "Button"
+            } | Select-Object -First 1
+            if (-not $toggleButton) {
+                throw "The ToggleButton interaction target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", $toggleButton.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Output: checked",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SplitButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "focus", "GalleryBasicInputSplitButtonControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "send-keys", "alt+down",
+                "-w", "$windowHandle",
+                "--via", "send-input"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryBasicInputSplitBlue",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputSplitBlue",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected color: Blue; applied 0 times",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ToggleSplitButtonPageHeading") {
+            Invoke-WinApp @(
+                "ui", "focus", "GalleryBasicInputToggleSplitButtonControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "send-keys", "alt+down",
+                "-w", "$windowHandle",
+                "--via", "send-input"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryBasicInputToggleSplitRoman",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputToggleSplitRoman",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Roman numerals: enabled",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CheckBoxPageHeading") {
+            $checkBoxSearchJson = Invoke-WinApp @(
+                "ui", "search", "Two-state CheckBox",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $checkBox = @(
+                ($checkBoxSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "CheckBox"
+            } | Select-Object -First 1
+            if (-not $checkBox) {
+                throw "The CheckBox interaction target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "click", $checkBox.selector,
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 150
+            $checkBoxStateJson = Invoke-WinApp @(
+                "ui", "get-property", $checkBox.selector,
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $checkBoxState = $checkBoxStateJson | ConvertFrom-Json
+            if ($checkBoxState.properties.ToggleState -ne "On") {
+                throw "The CheckBox did not enter the checked state."
+            }
+            Invoke-WinApp @(
+                "ui", "wait-for", "Two-state output: checked",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ColorPickerPageHeading") {
+            $ringSearchJson = Invoke-WinApp @(
+                "ui", "search", "Ring spectrum",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $ringCheckBox = @(
+                ($ringSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "CheckBox"
+            } | Select-Object -First 1
+            if (-not $ringCheckBox) {
+                throw "The ColorPicker ring option was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", $ringCheckBox.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "click", $ringCheckBox.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Spectrum: Ring",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ComboBoxPageHeading") {
+            $comboBoxTreeJson = Invoke-WinApp @(
+                "ui", "inspect",
+                "-w", "$windowHandle",
+                "--interactive",
+                "--json"
+            ) -Capture
+            $comboBoxTree = $comboBoxTreeJson | ConvertFrom-Json
+            $comboBox = Get-UiTreeElements @(
+                $comboBoxTree.windows[0].elements
+            ) | Where-Object {
+                $_.type -eq "ComboBox" -and
+                -not $_.isOffscreen -and
+                $_.width -gt 0
+            } | Sort-Object y | Select-Object -First 1
+            if (-not $comboBox) {
+                throw "The ComboBox interaction target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "focus", $comboBox.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", $comboBox.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "send-keys", "down",
+                "-w", "$windowHandle",
+                "--via", "send-input"
+            )
+            Invoke-WinApp @(
+                "ui", "send-keys", "enter",
+                "-w", "$windowHandle",
+                "--via", "send-input"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Green",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RadioButtonPageHeading") {
+            $radioButtonSearchJson = Invoke-WinApp @(
+                "ui", "search", "Option 2",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $radioButton = @(
+                ($radioButtonSearchJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.type -eq "RadioButton"
+            } | Select-Object -First 1
+            if (-not $radioButton) {
+                throw "The RadioButton interaction target was not found."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", $radioButton.selector,
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected: Option 2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "RatingControlPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryBasicInputRatingPlaceholderSlider",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryBasicInputRatingPlaceholderSlider", "4",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Placeholder: 4",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SliderPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryBasicInputSliderControl", "60",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Value: 60",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ToggleSwitchPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBasicInputToggleSwitchControl",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Notifications are on",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
         if ($route.Heading -eq "SelectionPageHeading") {
             Invoke-WinApp @(
                 "ui", "scroll-into-view", "GalleryControlledListViewSample",
