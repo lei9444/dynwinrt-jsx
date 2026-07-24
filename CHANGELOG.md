@@ -56,6 +56,8 @@
 - Added the complete WinUI Gallery Fundamentals category with Resources,
   Style, Binding, Templates, Custom & User Controls, XAML Conditions, and
   Scratch Pad.
+- Added the complete WinUI Gallery Design category with Color, Geometry,
+  Iconography, Spacing, and Typography.
 
 ## 1.0.0
 

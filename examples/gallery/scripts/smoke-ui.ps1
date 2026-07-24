@@ -89,6 +89,7 @@ $navigationCategoryScreenshotPath = Join-Path $evidenceRoot "navigation-category
 $scrollingCategoryScreenshotPath = Join-Path $evidenceRoot "scrolling-category.png"
 $textCategoryScreenshotPath = Join-Path $evidenceRoot "text-category.png"
 $fundamentalsCategoryScreenshotPath = Join-Path $evidenceRoot "fundamentals-category.png"
+$designCategoryScreenshotPath = Join-Path $evidenceRoot "design-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -98,7 +99,7 @@ Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 [IO.File]::WriteAllText(
     $smokeStatePath,
-    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input"]}'
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
 )
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
@@ -140,6 +141,8 @@ try {
         $migratedState.favoritePageIds -notcontains "grid" -or
         $migratedState.recentPageIds -notcontains "text-box" -or
         $migratedState.favoritePageIds -notcontains "text-box" -or
+        $migratedState.recentPageIds -notcontains "iconography" -or
+        $migratedState.favoritePageIds -notcontains "iconography" -or
         $migratedState.recentPageIds -contains "buttons" -or
         $migratedState.favoritePageIds -contains "buttons" -or
         $migratedState.recentPageIds -contains "collections" -or
@@ -153,7 +156,9 @@ try {
         $migratedState.recentPageIds -contains "layout" -or
         $migratedState.favoritePageIds -contains "layout" -or
         $migratedState.recentPageIds -contains "text-input" -or
-        $migratedState.favoritePageIds -contains "text-input"
+        $migratedState.favoritePageIds -contains "text-input" -or
+        $migratedState.recentPageIds -contains "icons" -or
+        $migratedState.favoritePageIds -contains "icons"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
     }
@@ -431,6 +436,30 @@ try {
         "-w", "$windowHandle"
     )
 
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryDesignCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "DesignCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open Color",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $designCategoryScreenshotPath
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open Typography",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -511,7 +540,11 @@ try {
         [pscustomobject]@{ Name = "Open Custom & User Controls"; Heading = "CustomUserControlsPageHeading"; Probe = "GalleryCustomControlsSample"; Query = "custom user controls" },
         [pscustomobject]@{ Name = "Open XAML Conditions"; Heading = "XamlConditionsPageHeading"; Probe = "GalleryXamlConditionsSample"; Query = "xaml conditions" },
         [pscustomobject]@{ Name = "Open Scratch Pad"; Heading = "ScratchPadPageHeading"; Probe = "GalleryScratchPadSample"; Query = "scratch pad playground" },
-        [pscustomobject]@{ Name = "Open Icons and glyphs"; Heading = "IconsPageHeading"; Probe = "GalleryIconsSample"; Query = "symbolicon" }
+        [pscustomobject]@{ Name = "Open Color"; Heading = "ColorPageHeading"; Probe = "GalleryDesignColorSample"; Query = "color palette" },
+        [pscustomobject]@{ Name = "Open Geometry"; Heading = "GeometryPageHeading"; Probe = "GalleryDesignGeometrySample"; Query = "geometry corner radius" },
+        [pscustomobject]@{ Name = "Open Iconography"; Heading = "IconographyPageHeading"; Probe = "GalleryIconographySample"; Query = "iconography symbolicon" },
+        [pscustomobject]@{ Name = "Open Spacing"; Heading = "SpacingPageHeading"; Probe = "GalleryDesignSpacingSample"; Query = "spacing padding" },
+        [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" }
     )
 
     foreach ($route in $routes) {
@@ -1773,6 +1806,86 @@ try {
                 "Scratch"
             ) {
                 throw "The Scratch Pad preview did not update."
+            }
+        }
+        if ($route.Heading -eq "ColorPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryDesignColorPurple",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected color: Purple",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Native brush applied for Purple.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "GeometryPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryDesignGeometryRadius", "20",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 200
+            $geometryNativeJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryDesignGeometryNativeStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $geometryNative = $geometryNativeJson | ConvertFrom-Json
+            if (
+                [string]$geometryNative.windows[0].elements[0].name -ne
+                "Native corner radius: 20"
+            ) {
+                throw "Geometry native radius did not update."
+            }
+        }
+        if ($route.Heading -eq "IconographyPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "Document glyph",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SpacingPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryDesignSpacingValue", "20",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 200
+            $spacingNativeJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryDesignSpacingNativeStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $spacingNative = $spacingNativeJson | ConvertFrom-Json
+            if (
+                [string]$spacingNative.windows[0].elements[0].name -ne
+                "Native spacing: 20"
+            ) {
+                throw "Native spacing did not update."
+            }
+        }
+        if ($route.Heading -eq "TypographyPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryDesignTypographySize", "22",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 200
+            $typographyNativeJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryDesignTypographyNativeStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $typographyNative = $typographyNativeJson | ConvertFrom-Json
+            if (
+                [string]$typographyNative.windows[0].elements[0].name -ne
+                "Native body font size: 22"
+            ) {
+                throw "Native typography size did not update."
             }
         }
         if ($route.Heading -eq "SelectionPageHeading") {

@@ -800,14 +800,54 @@ export const galleryPages = [
     image: 'ControlImages/ScratchPad.png',
   },
   {
-    id: 'icons',
+    id: 'color',
     category: 'Design',
-    title: 'Icons and glyphs',
-    subtitle: 'SymbolIcon and FontIcon with native sizing.',
+    title: 'Color',
+    subtitle: 'Creates clarity, hierarchy, and theme-aware contrast.',
     description:
-      'Use enum-backed symbols or explicit Segoe Fluent glyph strings without image assets.',
-    tags: ['symbolicon', 'fonticon', 'glyph', 'icon', 'design'],
+      'Use typed colors, native brushes, theme resources, and purposeful accent roles.',
+    tags: ['color', 'palette', 'brush', 'accent', 'theme'],
+    image: 'ControlImages/ColorPaletteResources.png',
+  },
+  {
+    id: 'geometry',
+    category: 'Design',
+    title: 'Geometry',
+    subtitle: 'Creates visual structure with consistent shapes and corners.',
+    description:
+      'Apply a shared corner-radius scale to native surfaces and controls.',
+    tags: ['geometry', 'corner radius', 'shape', 'rounded', 'surface'],
+    image: 'ControlImages/Shape.png',
+  },
+  {
+    id: 'iconography',
+    category: 'Design',
+    title: 'Iconography',
+    subtitle: 'Communicates commands and concepts with Fluent icons.',
+    description:
+      'Use enum-backed SymbolIcon values and explicit FontIcon glyph strings.',
+    tags: ['iconography', 'symbolicon', 'fonticon', 'glyph', 'fluent'],
     image: 'ControlImages/IconElement.png',
+  },
+  {
+    id: 'spacing',
+    category: 'Design',
+    title: 'Spacing',
+    subtitle: 'Improves readability and visual flow.',
+    description:
+      'Use consistent gaps and native Thickness values for padding and margins.',
+    tags: ['spacing', 'margin', 'padding', 'gap', 'layout'],
+    image: 'ControlImages/CompactSizing.png',
+  },
+  {
+    id: 'typography',
+    category: 'Design',
+    title: 'Typography',
+    subtitle: 'Guides attention with a clear type hierarchy.',
+    description:
+      'Combine native font sizes, weights, and typed heading recipes.',
+    tags: ['typography', 'font', 'text style', 'hierarchy', 'type scale'],
+    image: 'ControlImages/TextBlock.png',
   },
 ] as const satisfies readonly GalleryPageInfo[]
 
@@ -828,6 +868,7 @@ export type GalleryRoute =
   | 'category-scrolling'
   | 'category-text'
   | 'category-fundamentals'
+  | 'category-design'
   | 'diagnostics'
   | 'settings'
   | GalleryPageId
@@ -874,6 +915,10 @@ export const textPages = galleryPages.filter(
 
 export const fundamentalsPages = galleryPages.filter(
   (page) => page.category === 'Fundamentals',
+)
+
+export const designPages = galleryPages.filter(
+  (page) => page.category === 'Design',
 )
 
 export const galleryCategories = [

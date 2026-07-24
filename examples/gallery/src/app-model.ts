@@ -337,6 +337,8 @@ function normalizePageIds(
                   ? 'grid'
                   : value === 'text-input'
                     ? 'text-box'
+                    : value === 'icons'
+                      ? 'iconography'
                     : value
     const page = findGalleryPage(
       normalizedValue,

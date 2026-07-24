@@ -1,9 +1,9 @@
 import { gridLength, styles, thickness } from 'dynwinrt-jsx'
 import { HorizontalAlignment, Symbol } from '#winapp/bindings'
-import { type AppContext, LayoutGrid, UI } from '../gallery-ui'
-import { Page, SampleCard } from '../components/gallery-components'
+import { type AppContext, LayoutGrid, UI } from '../../gallery-ui'
+import { Page, SampleCard } from '../../components/gallery-components'
 
-export function IconsPage(context: AppContext) {
+export function IconographyPage(context: AppContext) {
   const symbols = [
     { label: 'Home', value: Symbol.Home },
     { label: 'Find', value: Symbol.Find },
@@ -19,20 +19,19 @@ export function IconsPage(context: AppContext) {
 
   return (
     <Page
-      title="Icons and glyphs"
-      subtitle="Use enum-backed SymbolIcon values or explicit FontIcon glyph strings."
-      automationId="IconsPageHeading"
-      pageId="icons"
+      title="Iconography"
+      subtitle="Fluent icons communicate commands and concepts quickly."
+      automationId="IconographyPageHeading"
+      pageId="iconography"
       model={context.model}
     >
       <SampleCard
-        automationId="GalleryIconsSample"
-        title="SymbolIcon"
-        description="Symbol enum values provide readable access to the built-in Fluent icon set."
+        automationId="GalleryIconographySample"
+        title="SymbolIcon and FontIcon"
+        description="Enum-backed symbols and explicit glyph strings use the native Fluent icon font."
         code={`
 <UI.SymbolIcon symbol={Symbol.Home} />
-<UI.SymbolIcon symbol={Symbol.Find} />
-<UI.SymbolIcon symbol={Symbol.Setting} />
+<UI.FontIcon glyph={'\\uE8A5'} />
         `}
       >
         <LayoutGrid
@@ -54,13 +53,9 @@ export function IconsPage(context: AppContext) {
               padding={thickness(16)}
             >
               <UI.StackPanel spacing={8}>
-                <UI.SymbolIcon
-                  symbol={item.value}
-                />
+                <UI.SymbolIcon symbol={item.value} />
                 <UI.TextBlock
-                  horizontalAlignment={
-                    HorizontalAlignment.Center
-                  }
+                  horizontalAlignment={HorizontalAlignment.Center}
                   text={item.label}
                 />
               </UI.StackPanel>
@@ -69,33 +64,19 @@ export function IconsPage(context: AppContext) {
         </LayoutGrid>
       </SampleCard>
       <SampleCard
-        title="FontIcon"
-        description="Explicit glyph strings support icons that are not represented by the Symbol enum."
+        automationId="GalleryIconographyFontSample"
+        title="FontIcon glyphs"
+        description="Explicit Segoe Fluent glyph strings cover icons outside the Symbol enumeration."
         code={`
-<UI.FontIcon glyph={'\\uE8D4'} fontSize={32} />
 <UI.FontIcon glyph={'\\uE8A5'} fontSize={32} />
         `}
       >
-        <LayoutGrid
-          columnDefinitions={[
-            gridLength.star(),
-            gridLength.star(),
-            gridLength.star(),
-          ]}
-          columnSpacing={12}
-        >
-          <UI.FontIcon glyph={'\uE8D4'} fontSize={32} />
-          <UI.FontIcon
-            gridColumn={1}
-            glyph={'\uE8A5'}
-            fontSize={32}
-          />
-          <UI.FontIcon
-            gridColumn={2}
-            glyph={'\uE713'}
-            fontSize={32}
-          />
-        </LayoutGrid>
+        <UI.StackPanel spacing={12}>
+          <UI.FontIcon glyph={'\uE8A5'} fontSize={32} />
+          <UI.TextBlock text="Document glyph" />
+          <UI.FontIcon glyph={'\uE713'} fontSize={32} />
+          <UI.TextBlock text="Settings glyph" />
+        </UI.StackPanel>
       </SampleCard>
     </Page>
   )

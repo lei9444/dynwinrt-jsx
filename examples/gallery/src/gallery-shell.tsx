@@ -137,8 +137,13 @@ import { TemplatesPage } from './pages/fundamentals/templates'
 import { CustomUserControlsPage } from './pages/fundamentals/custom-user-controls'
 import { XamlConditionsPage } from './pages/fundamentals/xaml-conditions'
 import { ScratchPadPage } from './pages/fundamentals/scratch-pad'
+import { DesignCategoryPage } from './pages/design'
+import { ColorPage } from './pages/design/color'
+import { GeometryPage } from './pages/design/geometry'
+import { IconographyPage } from './pages/design/iconography'
+import { SpacingPage } from './pages/design/spacing'
+import { TypographyPage } from './pages/design/typography'
 import { ResourcesPage } from './pages/resources'
-import { IconsPage } from './pages/icons'
 import { DiagnosticsPage } from './pages/diagnostics'
 import { SettingsPage } from './pages/settings'
 
@@ -305,8 +310,16 @@ function renderSamplePage(
       return <ScratchPadPage {...context} />
     case 'resources':
       return <ResourcesPage {...context} />
-    case 'icons':
-      return <IconsPage {...context} />
+    case 'color':
+      return <ColorPage {...context} />
+    case 'geometry':
+      return <GeometryPage {...context} />
+    case 'iconography':
+      return <IconographyPage {...context} />
+    case 'spacing':
+      return <SpacingPage {...context} />
+    case 'typography':
+      return <TypographyPage {...context} />
   }
 }
 
@@ -341,6 +354,8 @@ function renderRoute(
       return <TextCategoryPage {...context} />
     case 'category-fundamentals':
       return <FundamentalsCategoryPage {...context} />
+    case 'category-design':
+      return <DesignCategoryPage {...context} />
     case 'diagnostics':
       return <DiagnosticsPage {...context} />
     case 'settings':
@@ -603,16 +618,24 @@ export function Shell(context: AppContext) {
     Symbol.Document,
     ['signals', 'selection'],
   )
+  const designItem = createNavigationGroup(
+    'Design',
+    'Design',
+    Symbol.Highlight,
+    [
+      'color',
+      'geometry',
+      'iconography',
+      'spacing',
+      'typography',
+    ],
+    'category-design',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
     fundamentalsItem,
-    createNavigationGroup(
-      'Design',
-      'Design',
-      Symbol.Highlight,
-      ['icons'],
-    ),
+    designItem,
     createNavigationGroup(
       'Accessibility',
       'Accessibility',
@@ -671,6 +694,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-scrolling', scrollingItem)
   routeItems.set('category-text', textItem)
   routeItems.set('category-fundamentals', fundamentalsItem)
+  routeItems.set('category-design', designItem)
   const selectedItem = computed(() => {
     if (context.model.route.value === 'settings') {
       return navigation.current?.settingsItem ?? null
@@ -758,6 +782,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-fundamentals')
               return
             }
+            if (currentPage?.category === 'Design') {
+              context.model.navigate('category-design')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -821,6 +849,7 @@ export function Shell(context: AppContext) {
               route === 'category-scrolling' ||
               route === 'category-text' ||
               route === 'category-fundamentals' ||
+              route === 'category-design' ||
               findGalleryPage(route)
             ) {
               context.model.navigate(route)
