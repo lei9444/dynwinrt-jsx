@@ -122,11 +122,22 @@
           ]
         },
         {
+          "namespace": "Microsoft.UI.Composition",
+          "classes": [
+            "Compositor",
+            "ExpressionAnimation",
+            "SpringVector3NaturalMotionAnimation"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml",
           "classes": [
             "Application",
+            "BrushTransition",
             "ElementSoundPlayer",
             "ResourceDictionary",
+            "ScalarTransition",
+            "Vector3Transition",
             "Window"
           ]
         },
@@ -174,6 +185,7 @@
             "Flyout",
             "FontIcon",
             "FlipView",
+            "Frame",
             "Grid",
             "GridView",
             "GridViewItem",
@@ -204,6 +216,7 @@
             "NavigationViewItemHeader",
             "NavigationViewItemSeparator",
             "NumberBox",
+            "ParallaxView",
             "PasswordBox",
             "PathIcon",
             "PersonPicture",
@@ -304,6 +317,7 @@
           "namespace": "Microsoft.UI.Xaml.Media",
           "classes": [
             "AcrylicBrush",
+            "CompositionTarget",
             "DesktopAcrylicBackdrop",
             "EllipseGeometry",
             "FontFamily",
@@ -316,7 +330,43 @@
             "RectangleGeometry",
             "ScaleTransform",
             "SolidColorBrush",
-            "ThemeShadow"
+            "ThemeShadow",
+            "TranslateTransform"
+          ]
+        },
+        {
+          "namespace": "Microsoft.UI.Xaml.Media.Animation",
+          "classes": [
+            "AddDeleteThemeTransition",
+            "BackEase",
+            "BasicConnectedAnimationConfiguration",
+            "BounceEase",
+            "CircleEase",
+            "CommonNavigationTransitionInfo",
+            "ConnectedAnimationService",
+            "ContentThemeTransition",
+            "ContinuumNavigationTransitionInfo",
+            "CubicEase",
+            "DirectConnectedAnimationConfiguration",
+            "DoubleAnimation",
+            "DrillInNavigationTransitionInfo",
+            "ElasticEase",
+            "EntranceNavigationTransitionInfo",
+            "EntranceThemeTransition",
+            "ExponentialEase",
+            "GravityConnectedAnimationConfiguration",
+            "NavigationThemeTransition",
+            "PopupThemeTransition",
+            "PowerEase",
+            "QuadraticEase",
+            "QuarticEase",
+            "QuinticEase",
+            "RepositionThemeTransition",
+            "SineEase",
+            "SlideNavigationTransitionInfo",
+            "Storyboard",
+            "SuppressNavigationTransitionInfo",
+            "TransitionCollection"
           ]
         },
         {
@@ -340,7 +390,8 @@
         {
           "namespace": "Windows.UI.ViewManagement",
           "classes": [
-            "AccessibilitySettings"
+            "AccessibilitySettings",
+            "UISettings"
           ]
         }
       ]

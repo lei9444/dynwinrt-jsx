@@ -492,6 +492,83 @@ export const galleryPages = [
     image: 'ControlImages/Sound.png',
   },
   {
+    id: 'animation-interop',
+    category: 'Motion',
+    title: 'Animation interop',
+    subtitle:
+      'XAML and Composition interop allows you to animate elements using expressions, natural animations, and more.',
+    description:
+      'Use natural motion and expression animations to connect XAML layout values with the Composition visual layer.',
+    tags: ['composition', 'visual layer', 'expression animation', 'interop'],
+    image: 'ControlImages/AnimationInterop.png',
+  },
+  {
+    id: 'connected-animation',
+    category: 'Motion',
+    title: 'Connected Animation',
+    subtitle:
+      'Connected animations continue elements during page navigation and help the user maintain their context between views.',
+    description:
+      'Prepare and start connected animations with Default, Gravity, Direct, and Basic configurations.',
+    tags: ['connected animation', 'continuity', 'page transition'],
+    image: 'ControlImages/ConnectedAnimation.png',
+  },
+  {
+    id: 'easing-functions',
+    category: 'Motion',
+    title: 'Easing Functions',
+    subtitle:
+      'Easing is a way to manipulate the velocity of an object as it animates.',
+    description:
+      'Compare standard, accelerate, decelerate, and other native XAML easing curves.',
+    tags: ['animation curve', 'velocity', 'storyboard', 'doubleanimation'],
+    image: 'ControlImages/EasingFunction.png',
+  },
+  {
+    id: 'implicit-transitions',
+    category: 'Motion',
+    title: 'Implicit Transitions',
+    subtitle:
+      'Use Implicit Transitions to automatically animate changes to properties.',
+    description:
+      'Apply ScalarTransition, Vector3Transition, and BrushTransition to property and theme changes.',
+    tags: ['implicit animation', 'transition', 'property animation'],
+    image: 'ControlImages/ImplicitTransition.png',
+  },
+  {
+    id: 'page-transitions',
+    category: 'Motion',
+    title: 'Page Transitions',
+    subtitle:
+      'Page transitions provide visual feedback about the relationship between pages.',
+    description:
+      'Navigate a native Frame with the standard NavigationTransitionInfo variants.',
+    tags: ['page transition', 'navigation transition', 'navigationtransitioninfo'],
+    image: 'ControlImages/PageTransition.png',
+  },
+  {
+    id: 'theme-transitions',
+    category: 'Motion',
+    title: 'Theme Transitions',
+    subtitle:
+      'Theme transitions are pre-packaged, easy-to-apply animations.',
+    description:
+      'Use Entrance, Reposition, Content, AddDelete, and Popup theme transitions.',
+    tags: ['theme transition', 'entrance animation', 'reposition', 'popup'],
+    image: 'ControlImages/ThemeTransition.png',
+  },
+  {
+    id: 'parallax-view',
+    category: 'Motion',
+    title: 'ParallaxView',
+    subtitle:
+      'A container control that provides the parallax effect when scrolling.',
+    description:
+      'Connect a background image to ListView and ScrollView sources at a different scrolling rate.',
+    tags: ['parallaxview', 'scrolling effect', 'depth', 'scrollview'],
+    image: 'ControlImages/ParallaxView.png',
+  },
+  {
     id: 'app-bar-button',
     category: 'Menus & toolbars',
     title: 'AppBarButton',
@@ -1137,6 +1214,7 @@ export type GalleryRoute =
   | 'category-status-info'
   | 'category-layout'
   | 'category-media'
+  | 'category-motion'
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
@@ -1175,6 +1253,10 @@ export const layoutPages = galleryPages.filter(
 
 export const mediaPages = galleryPages.filter(
   (page) => page.category === 'Media',
+)
+
+export const motionPages = galleryPages.filter(
+  (page) => page.category === 'Motion',
 )
 
 export const menusToolbarsPages = galleryPages.filter(

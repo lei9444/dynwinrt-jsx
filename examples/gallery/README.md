@@ -39,6 +39,9 @@ The pages cover:
   RadialGradientBrush, System Backdrops, SystemBackdropElement, and
   ThemeShadow style samples with the original multi-example option sets and
   material guidance;
+- the complete Motion category: Animation interop, Connected Animation,
+  Easing Functions, Implicit Transitions, Page Transitions, Theme Transitions,
+  and ParallaxView, with Windows reduced-motion handling;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

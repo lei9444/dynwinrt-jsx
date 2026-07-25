@@ -107,6 +107,14 @@ import { MapControlPage } from './pages/media/map-control'
 import { MediaPlayerElementPage } from './pages/media/media-player-element'
 import { PersonPicturePage } from './pages/media/person-picture'
 import { SoundPage } from './pages/media/sound'
+import { MotionCategoryPage } from './pages/motion'
+import { AnimationInteropPage } from './pages/motion/animation-interop'
+import { ConnectedAnimationPage } from './pages/motion/connected-animation'
+import { EasingFunctionsPage } from './pages/motion/easing-functions'
+import { ImplicitTransitionsPage } from './pages/motion/implicit-transitions'
+import { PageTransitionsPage } from './pages/motion/page-transitions'
+import { ParallaxViewPage } from './pages/motion/parallax-view'
+import { ThemeTransitionsPage } from './pages/motion/theme-transitions'
 import { MenusToolbarsCategoryPage } from './pages/menus-toolbars'
 import { AppBarButtonPage } from './pages/menus-toolbars/app-bar-button'
 import { AppBarSeparatorPage } from './pages/menus-toolbars/app-bar-separator'
@@ -279,6 +287,20 @@ function renderSamplePage(
       return <PersonPicturePage {...context} />
     case 'sound':
       return <SoundPage {...context} />
+    case 'animation-interop':
+      return <AnimationInteropPage {...context} />
+    case 'connected-animation':
+      return <ConnectedAnimationPage {...context} />
+    case 'easing-functions':
+      return <EasingFunctionsPage {...context} />
+    case 'implicit-transitions':
+      return <ImplicitTransitionsPage {...context} />
+    case 'page-transitions':
+      return <PageTransitionsPage {...context} />
+    case 'theme-transitions':
+      return <ThemeTransitionsPage {...context} />
+    case 'parallax-view':
+      return <ParallaxViewPage {...context} />
     case 'app-bar-button':
       return <AppBarButtonPage {...context} />
     case 'app-bar-separator':
@@ -409,6 +431,8 @@ function renderRoute(
       return <LayoutCategoryPage {...context} />
     case 'category-media':
       return <MediaCategoryPage {...context} />
+    case 'category-motion':
+      return <MotionCategoryPage {...context} />
     case 'category-menus-toolbars':
       return <MenusToolbarsCategoryPage {...context} />
     case 'category-navigation':
@@ -744,6 +768,21 @@ export function Shell(context: AppContext) {
     ],
     'category-media',
   )
+  const motionItem = createNavigationGroup(
+    'Motion',
+    'Motion',
+    Symbol.Sync,
+    [
+      'animation-interop',
+      'connected-animation',
+      'easing-functions',
+      'implicit-transitions',
+      'page-transitions',
+      'theme-transitions',
+      'parallax-view',
+    ],
+    'category-motion',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
@@ -760,7 +799,7 @@ export function Shell(context: AppContext) {
     layoutItem,
     mediaItem,
     menusToolbarsItem,
-    createNavigationGroup('Motion', 'Motion', Symbol.Sync, []),
+    motionItem,
     navigationItem,
     scrollingItem,
     createNavigationGroup('Shell', 'Shell', Symbol.Repair, []),
@@ -796,6 +835,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-status-info', statusInfoItem)
   routeItems.set('category-layout', layoutItem)
   routeItems.set('category-media', mediaItem)
+  routeItems.set('category-motion', motionItem)
   routeItems.set(
     'category-menus-toolbars',
     menusToolbarsItem,
@@ -876,6 +916,10 @@ export function Shell(context: AppContext) {
             }
             if (currentPage?.category === 'Media') {
               context.model.navigate('category-media')
+              return
+            }
+            if (currentPage?.category === 'Motion') {
+              context.model.navigate('category-motion')
               return
             }
             if (currentPage?.category === 'Menus & toolbars') {
@@ -969,6 +1013,7 @@ export function Shell(context: AppContext) {
               route === 'category-status-info' ||
               route === 'category-layout' ||
               route === 'category-media' ||
+              route === 'category-motion' ||
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
               route === 'category-scrolling' ||

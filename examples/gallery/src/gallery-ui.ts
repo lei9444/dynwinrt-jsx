@@ -43,6 +43,7 @@ import {
   Flyout,
   FlipView,
   FontIcon,
+  Frame,
   Grid,
   GridView,
   GridViewItem,
@@ -70,6 +71,7 @@ import {
   NavigationView,
   NavigationViewItem,
   NumberBox,
+  ParallaxView,
   PasswordBox,
   PathIcon,
   PersonPicture,
@@ -79,6 +81,7 @@ import {
   ProgressBar,
   ProgressRing,
   PropertyValue,
+  Popup,
   RadioButton,
   RadioButtons,
   RadioMenuFlyoutItem,
@@ -155,6 +158,7 @@ export const UI = createControls({
   Flyout,
   FlipView,
   FontIcon,
+  Frame,
   Grid,
   GridView,
   GridViewItem,
@@ -173,6 +177,7 @@ export const UI = createControls({
   MenuFlyoutSeparator,
   MenuFlyoutSubItem,
   NumberBox,
+  ParallaxView,
   PasswordBox,
   PathIcon,
   PersonPicture,
@@ -180,6 +185,7 @@ export const UI = createControls({
   PivotItem,
   ProgressBar,
   ProgressRing,
+  Popup,
   RadioButton,
   RadioMenuFlyoutItem,
   RatingControl,
@@ -484,6 +490,9 @@ export type TextBoxInstance = InstanceType<typeof TextBox>
 export type ToggleButtonInstance = InstanceType<typeof ToggleButton>
 export type TeachingTipInstance = InstanceType<typeof TeachingTip>
 export type FlyoutInstance = InstanceType<typeof Flyout>
+export type FrameInstance = InstanceType<typeof Frame>
+export type ParallaxViewInstance = InstanceType<typeof ParallaxView>
+export type PopupInstance = InstanceType<typeof Popup>
 export type ToggleInstance = InstanceType<typeof ToggleSwitch>
 export type RefreshContainerInstance =
   InstanceType<typeof RefreshContainer>

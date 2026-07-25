@@ -112,6 +112,7 @@ $fundamentalsCategoryScreenshotPath = Join-Path $evidenceRoot "fundamentals-cate
 $designCategoryScreenshotPath = Join-Path $evidenceRoot "design-category.png"
 $accessibilityCategoryScreenshotPath = Join-Path $evidenceRoot "accessibility-category.png"
 $stylesCategoryScreenshotPath = Join-Path $evidenceRoot "styles-category.png"
+$motionCategoryScreenshotPath = Join-Path $evidenceRoot "motion-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -564,6 +565,31 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryMotionCategoryNavItem"
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryMotionCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "MotionCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open Animation interop",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open ParallaxView",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $motionCategoryScreenshotPath
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -617,6 +643,13 @@ try {
         [pscustomobject]@{ Name = "Open MediaPlayerElement"; Heading = "MediaPlayerElementPageHeading"; Probe = "GalleryMediaPlayerTransportSample"; Query = "mediaplayerelement video" },
         [pscustomobject]@{ Name = "Open PersonPicture"; Heading = "PersonPicturePageHeading"; Probe = "GalleryMediaPersonPictureSample"; Query = "personpicture avatar" },
         [pscustomobject]@{ Name = "Open Sound"; Heading = "SoundPageHeading"; Probe = "GalleryMediaSoundToggleSample"; Query = "elementsoundplayer audio" },
+        [pscustomobject]@{ Name = "Open Animation interop"; Heading = "AnimationInteropPageHeading"; Probe = "GalleryMotionAnimationInteropStatus"; Query = "composition expression interop" },
+        [pscustomobject]@{ Name = "Open Connected Animation"; Heading = "ConnectedAnimationPageHeading"; Probe = "GalleryMotionConnectedAnimationStatus"; Query = "connected animation continuity" },
+        [pscustomobject]@{ Name = "Open Easing Functions"; Heading = "EasingFunctionsPageHeading"; Probe = "GalleryMotionEasingStatus"; Query = "easing animation curve velocity" },
+        [pscustomobject]@{ Name = "Open Implicit Transitions"; Heading = "ImplicitTransitionsPageHeading"; Probe = "GalleryMotionImplicitTransitionsStatus"; Query = "implicit property transition" },
+        [pscustomobject]@{ Name = "Open Page Transitions"; Heading = "PageTransitionsPageHeading"; Probe = "GalleryMotionPageTransitionsStatus"; Query = "navigationtransitioninfo page transition" },
+        [pscustomobject]@{ Name = "Open Theme Transitions"; Heading = "ThemeTransitionsPageHeading"; Probe = "GalleryMotionThemeTransitionsStatus"; Query = "theme entrance popup transition" },
+        [pscustomobject]@{ Name = "Open ParallaxView"; Heading = "ParallaxViewPageHeading"; Probe = "GalleryMotionParallaxStatus"; Query = "parallaxview scrolling effect" },
         [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
         [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
         [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
@@ -714,6 +747,163 @@ try {
             )
         }
         Assert-Responsive $appProcess.Id $route.Name
+        if ($route.Heading -eq "AnimationInteropPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionAnimationInteropSpring",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionAnimationInteropSpring",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Spring scale target: 1.5",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ConnectedAnimationPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionConnectedNavigate",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionConnectedNavigate",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Connected destination: page 2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "EasingFunctionsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionEasingAnimate",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionEasingAnimate",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Standard easing target: 200",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ImplicitTransitionsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionImplicitTransitionsBackground",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionImplicitTransitionsBackground",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Background transition applied: yellow.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "PageTransitionsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionPageTransitionsForward",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionPageTransitionsForward",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Showing sample page 2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMotionPageTransitionSurface2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionPageTransitionsBackward",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMotionPageTransitionSurface1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionPageTransitionsForward",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMotionPageTransitionSurface2",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionPageTransitionsBackward",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Showing sample page 1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMotionPageTransitionSurface1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ThemeTransitionsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMotionThemeTransitionsAdd",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionThemeTransitionsAdd",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Entrance items: 6",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Entrance rectangle 6",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "ParallaxViewPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMotionParallaxApplyShift",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryMotionParallaxResult",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            $parallaxResultJson = Invoke-WinApp @(
+                "ui", "search", "Parallax vertical shift applied:",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $parallaxResult = @(
+                ($parallaxResultJson | ConvertFrom-Json).matches
+            ) | Where-Object {
+                $_.name -eq "Parallax vertical shift applied: 250" -or
+                $_.name -eq "Parallax vertical shift applied: 0"
+            } | Select-Object -First 1
+            if (-not $parallaxResult) {
+                throw "ParallaxView did not apply the expected enabled or reduced-motion shift."
+            }
+        }
         if ($route.Heading -eq "ButtonPageHeading") {
             Invoke-WinApp @(
                 "ui", "invoke", "GalleryBasicInputButtonControl",
