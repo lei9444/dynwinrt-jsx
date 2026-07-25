@@ -29,7 +29,9 @@ The pages cover:
 - WinUI Gallery-faithful Resources, Style, Binding, Templates, Custom & User
   Controls, XAML Conditions, and XamlReader-backed Scratch Pad fundamentals,
   adapted to typed TSX rather than copied XAML authoring;
-- Color, Geometry, Iconography, Spacing, and Typography design guidance;
+- WinUI Gallery-faithful Color resource sections, Geometry and Spacing
+  guidance, the complete searchable icon catalog, and the Windows Typography
+  type ramp;
 - Color Contrast, Keyboard Navigation, and Screen Reader accessibility
   guidance;
 - AcrylicBrush, AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
@@ -46,8 +48,9 @@ The pages cover:
 - reusable ScrollViewer boundary controllers.
 
 Each sample includes a live native preview and selectable TypeScript JSX source.
-The Home header reuses MIT-licensed WinUI Gallery tile artwork; its license is
-included at `Assets/WinUI-Gallery-LICENSE.txt`.
+The Home header and Design guidance pages reuse MIT-licensed WinUI Gallery
+artwork and icon data; its license is included at
+`Assets/WinUI-Gallery-LICENSE.txt`.
 
 ```powershell
 npm install

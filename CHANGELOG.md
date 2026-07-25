@@ -62,6 +62,9 @@
   the Scratch Pad markup workflow.
 - Added the complete WinUI Gallery Design category with Color, Geometry,
   Iconography, Spacing, and Typography.
+- Reworked Design to match the original WinUI Gallery resource sections,
+  corner and spacing scales, complete searchable icon catalog, guidance
+  artwork, and Segoe UI Variable type ramp.
 - Added the complete WinUI Gallery Accessibility category with Color Contrast,
   Keyboard Navigation, and Screen Reader guidance.
 - Added the complete WinUI Gallery Styles category with AcrylicBrush,

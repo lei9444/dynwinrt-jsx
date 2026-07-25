@@ -828,50 +828,68 @@ export const galleryPages = [
     id: 'color',
     category: 'Design',
     title: 'Color',
-    subtitle: 'Creates clarity, hierarchy, and theme-aware contrast.',
+    subtitle:
+      'Balanced color design creates clarity and aesthetic harmony.',
     description:
-      'Use typed colors, native brushes, theme resources, and purposeful accent roles.',
-    tags: ['color', 'palette', 'brush', 'accent', 'theme'],
+      'Browse the WinUI text, fill, stroke, background, signal, and High Contrast brush roles and apply them through theme resources.',
+    tags: ['palette', 'brush', 'accent color', 'theme color'],
     image: 'ControlImages/ColorPaletteResources.png',
   },
   {
     id: 'geometry',
     category: 'Design',
     title: 'Geometry',
-    subtitle: 'Creates visual structure with consistent shapes and corners.',
+    subtitle:
+      'Clear geometric design ensures visual coherence and structure.',
     description:
-      'Apply a shared corner-radius scale to native surfaces and controls.',
-    tags: ['geometry', 'corner radius', 'shape', 'rounded', 'surface'],
+      'Use the WinUI overlay, control, and straight-edge corner-radius roles consistently.',
+    tags: ['path', 'vector', 'figures'],
     image: 'ControlImages/Shape.png',
   },
   {
     id: 'iconography',
     category: 'Design',
     title: 'Iconography',
-    subtitle: 'Communicates commands and concepts with Fluent icons.',
+    subtitle:
+      'Icons are a visual design language that can be used to communicate information quickly and effectively.',
     description:
-      'Use enum-backed SymbolIcon values and explicit FontIcon glyph strings.',
-    tags: ['iconography', 'symbolicon', 'fonticon', 'glyph', 'fluent'],
+      'The icons use Segoe Fluent Icons on Windows 11 and Segoe MDL2 Assets on Windows 10.',
+    tags: [
+      'icons',
+      'glyph',
+      'segoe fluent icons',
+      'fonticon',
+      'symbolicon',
+      'icon font',
+    ],
     image: 'ControlImages/IconElement.png',
   },
   {
     id: 'spacing',
     category: 'Design',
     title: 'Spacing',
-    subtitle: 'Improves readability and visual flow.',
+    subtitle:
+      'Thoughtful spacing design enhances readability and flow.',
     description:
-      'Use consistent gaps and native Thickness values for padding and margins.',
-    tags: ['spacing', 'margin', 'padding', 'gap', 'layout'],
+      'Use a 4epx grid and the Windows spacing scale to group controls, cards, content sections, and pages.',
+    tags: ['margin', 'padding', 'layout spacing'],
     image: 'ControlImages/CompactSizing.png',
   },
   {
     id: 'typography',
     category: 'Design',
     title: 'Typography',
-    subtitle: 'Guides attention with a clear type hierarchy.',
+    subtitle:
+      'Typography design guides attention with intuitive fonts and hierarchy.',
     description:
-      'Combine native font sizes, weights, and typed heading recipes.',
-    tags: ['typography', 'font', 'text style', 'hierarchy', 'type scale'],
+      'Use the Segoe UI Variable type ramp and WinUI text styles for caption, body, subtitle, title, and display roles.',
+    tags: [
+      'font',
+      'text style',
+      'titletextblockstyle',
+      'bodytextblockstyle',
+      'font size',
+    ],
     image: 'ControlImages/TextBlock.png',
   },
   {

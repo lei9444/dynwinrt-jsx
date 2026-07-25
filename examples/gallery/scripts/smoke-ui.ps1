@@ -1990,26 +1990,33 @@ try {
         }
         if ($route.Heading -eq "ColorPageHeading") {
             Invoke-WinApp @(
-                "ui", "invoke", "GalleryDesignColorPurple",
+                "ui", "scroll-into-view", "GalleryDesignColorTextSecondary",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Selected color: Purple",
+                "ui", "invoke", "GalleryDesignColorTextSecondary",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Selected color: Text / Secondary",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Native brush applied for Purple.",
+                "ui", "wait-for", "Native brush applied: TextFillColorSecondaryBrush",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
         if ($route.Heading -eq "GeometryPageHeading") {
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryDesignGeometryRadius", "20",
+                "ui", "scroll-into-view", "GalleryDesignGeometryControl",
                 "-w", "$windowHandle"
             )
-            Start-Sleep -Milliseconds 200
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryDesignGeometryControl",
+                "-w", "$windowHandle"
+            )
             $geometryNativeJson = Invoke-WinApp @(
                 "ui", "inspect", "GalleryDesignGeometryNativeStatus",
                 "-w", "$windowHandle",
@@ -2018,24 +2025,50 @@ try {
             $geometryNative = $geometryNativeJson | ConvertFrom-Json
             if (
                 [string]$geometryNative.windows[0].elements[0].name -ne
-                "Native corner radius: 20"
+                "Native corner radius: 4"
             ) {
-                throw "Geometry native radius did not update."
+                throw "Geometry did not apply the native 4px control radius."
             }
         }
         if ($route.Heading -eq "IconographyPageHeading") {
+            $iconSearchJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryIconographySearch",
+                "-w", "$windowHandle",
+                "--depth", "4",
+                "--json"
+            ) -Capture
+            $iconSearch = $iconSearchJson | ConvertFrom-Json
+            $iconSearchEdit = Get-UiTreeElements @(
+                $iconSearch.windows[0].elements
+            ) | Where-Object {
+                $_.type -eq "Edit"
+            } | Select-Object -First 1
+            if (-not $iconSearchEdit) {
+                throw "The Iconography search TextBox was not found."
+            }
             Invoke-WinApp @(
-                "ui", "wait-for", "Document glyph",
+                "ui", "set-value", $iconSearchEdit.selector, "RotationLock",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryIconographySelectedName",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
+            $iconNameJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryIconographySelectedName",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $iconName = $iconNameJson | ConvertFrom-Json
+            if (
+                [string]$iconName.windows[0].elements[0].name -ne
+                "RotationLock"
+            ) {
+                throw "The iconography search did not select RotationLock."
+            }
         }
         if ($route.Heading -eq "SpacingPageHeading") {
-            Invoke-WinApp @(
-                "ui", "set-value", "GalleryDesignSpacingValue", "20",
-                "-w", "$windowHandle"
-            )
-            Start-Sleep -Milliseconds 200
             $spacingNativeJson = Invoke-WinApp @(
                 "ui", "inspect", "GalleryDesignSpacingNativeStatus",
                 "-w", "$windowHandle",
@@ -2044,17 +2077,20 @@ try {
             $spacingNative = $spacingNativeJson | ConvertFrom-Json
             if (
                 [string]$spacingNative.windows[0].elements[0].name -ne
-                "Native spacing: 20"
+                "Native 24epx sample width: 24"
             ) {
-                throw "Native spacing did not update."
+                throw "The 24epx spacing sample did not use a native width of 24."
             }
         }
         if ($route.Heading -eq "TypographyPageHeading") {
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryDesignTypographySize", "22",
+                "ui", "scroll-into-view", "GalleryDesignTypographyTitle",
                 "-w", "$windowHandle"
             )
-            Start-Sleep -Milliseconds 200
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryDesignTypographyTitle",
+                "-w", "$windowHandle"
+            )
             $typographyNativeJson = Invoke-WinApp @(
                 "ui", "inspect", "GalleryDesignTypographyNativeStatus",
                 "-w", "$windowHandle",
@@ -2063,9 +2099,9 @@ try {
             $typographyNative = $typographyNativeJson | ConvertFrom-Json
             if (
                 [string]$typographyNative.windows[0].elements[0].name -ne
-                "Native body font size: 22"
+                "Native title font size: 28"
             ) {
-                throw "Native typography size did not update."
+                throw "The Title type-ramp row did not use a native size of 28."
             }
         }
         if ($route.Heading -eq "ColorContrastPageHeading") {
