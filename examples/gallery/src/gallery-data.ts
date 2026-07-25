@@ -420,6 +420,78 @@ export const galleryPages = [
     image: 'ControlImages/Viewbox.png',
   },
   {
+    id: 'animated-visual-player',
+    category: 'Media',
+    title: 'AnimatedVisualPlayer',
+    subtitle:
+      'An element to render and control playback of motion graphics.',
+    description:
+      'Play, pause, stop, resume, and reverse a generated composition animation source.',
+    tags: ['lottie', 'animation', 'motion graphics', 'composition'],
+    image: 'ControlImages/AnimatedVisualPlayer.png',
+  },
+  {
+    id: 'capture-element-preview',
+    category: 'Media',
+    title: 'Capture Element / Camera Preview',
+    subtitle: 'A sample for doing a camera preview.',
+    description:
+      'Use MediaCapture and a MediaPlayerElement to preview a camera, mirror the preview, and capture photos.',
+    tags: ['camera', 'webcam', 'mediacapture', 'preview'],
+    image: 'ControlImages/CaptureElement.png',
+  },
+  {
+    id: 'image',
+    category: 'Media',
+    title: 'Image',
+    subtitle: 'A control to display image content.',
+    description:
+      'Show local images, decoded sizes, stretch modes, nine-grid images, SVG content, and animated GIF playback.',
+    tags: ['image', 'picture', 'bitmapimage', 'photo', 'svg', 'gif'],
+    image: 'ControlImages/Image.png',
+  },
+  {
+    id: 'map-control',
+    category: 'Media',
+    title: 'MapControl',
+    subtitle: 'Displays a symbolic map of the Earth.',
+    description:
+      'Display an Azure map with a service token and a geographic pin when package identity and network services are available.',
+    tags: ['mapcontrol', 'maps', 'geography', 'location', 'azure maps'],
+    image: 'ControlImages/MapControl.png',
+  },
+  {
+    id: 'media-player-element',
+    category: 'Media',
+    title: 'MediaPlayerElement',
+    subtitle: 'A control to display video and image content.',
+    description:
+      'Play bundled video with transport controls or autoplay, and replace the source through the native file picker.',
+    tags: ['video', 'media player', 'audio', 'playback'],
+    image: 'ControlImages/MediaPlayerElement.png',
+  },
+  {
+    id: 'person-picture',
+    category: 'Media',
+    title: 'PersonPicture',
+    subtitle: 'Displays the picture of a person/contact.',
+    description:
+      'Switch a PersonPicture between a profile image, generated display-name initials, and explicit initials.',
+    tags: ['personpicture', 'avatar', 'contact photo', 'initials'],
+    image: 'ControlImages/PersonPicture.png',
+  },
+  {
+    id: 'sound',
+    category: 'Media',
+    title: 'Sound',
+    subtitle:
+      'A code-behind API that enables 2D and 3D UI sounds on XAML controls.',
+    description:
+      'Toggle global UI sound and spatial audio, then play each built-in ElementSoundKind.',
+    tags: ['sound', 'audio', 'ui sound', 'elementsoundplayer'],
+    image: 'ControlImages/Sound.png',
+  },
+  {
     id: 'app-bar-button',
     category: 'Menus & toolbars',
     title: 'AppBarButton',
@@ -1064,6 +1136,7 @@ export type GalleryRoute =
   | 'category-dialogs-flyouts'
   | 'category-status-info'
   | 'category-layout'
+  | 'category-media'
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
@@ -1098,6 +1171,10 @@ export const statusInfoPages = galleryPages.filter(
 
 export const layoutPages = galleryPages.filter(
   (page) => page.category === 'Layout',
+)
+
+export const mediaPages = galleryPages.filter(
+  (page) => page.category === 'Media',
 )
 
 export const menusToolbarsPages = galleryPages.filter(

@@ -99,6 +99,14 @@ import { SplitViewPage } from './pages/layout/split-view'
 import { StackPanelPage } from './pages/layout/stack-panel'
 import { VariableSizedWrapGridPage } from './pages/layout/variable-sized-wrap-grid'
 import { ViewboxPage } from './pages/layout/viewbox'
+import { MediaCategoryPage } from './pages/media'
+import { AnimatedVisualPlayerPage } from './pages/media/animated-visual-player'
+import { CaptureElementPreviewPage } from './pages/media/capture-element-preview'
+import { ImagePage } from './pages/media/image'
+import { MapControlPage } from './pages/media/map-control'
+import { MediaPlayerElementPage } from './pages/media/media-player-element'
+import { PersonPicturePage } from './pages/media/person-picture'
+import { SoundPage } from './pages/media/sound'
 import { MenusToolbarsCategoryPage } from './pages/menus-toolbars'
 import { AppBarButtonPage } from './pages/menus-toolbars/app-bar-button'
 import { AppBarSeparatorPage } from './pages/menus-toolbars/app-bar-separator'
@@ -257,6 +265,20 @@ function renderSamplePage(
       return <VariableSizedWrapGridPage {...context} />
     case 'viewbox':
       return <ViewboxPage {...context} />
+    case 'animated-visual-player':
+      return <AnimatedVisualPlayerPage {...context} />
+    case 'capture-element-preview':
+      return <CaptureElementPreviewPage {...context} />
+    case 'image':
+      return <ImagePage {...context} />
+    case 'map-control':
+      return <MapControlPage {...context} />
+    case 'media-player-element':
+      return <MediaPlayerElementPage {...context} />
+    case 'person-picture':
+      return <PersonPicturePage {...context} />
+    case 'sound':
+      return <SoundPage {...context} />
     case 'app-bar-button':
       return <AppBarButtonPage {...context} />
     case 'app-bar-separator':
@@ -385,6 +407,8 @@ function renderRoute(
       return <StatusInfoCategoryPage {...context} />
     case 'category-layout':
       return <LayoutCategoryPage {...context} />
+    case 'category-media':
+      return <MediaCategoryPage {...context} />
     case 'category-menus-toolbars':
       return <MenusToolbarsCategoryPage {...context} />
     case 'category-navigation':
@@ -705,6 +729,21 @@ export function Shell(context: AppContext) {
     ],
     'category-styles',
   )
+  const mediaItem = createNavigationGroup(
+    'Media',
+    'Media',
+    Symbol.Play,
+    [
+      'animated-visual-player',
+      'capture-element-preview',
+      'image',
+      'map-control',
+      'media-player-element',
+      'person-picture',
+      'sound',
+    ],
+    'category-media',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
@@ -719,7 +758,7 @@ export function Shell(context: AppContext) {
     dateTimeItem,
     dialogsFlyoutsItem,
     layoutItem,
-    createNavigationGroup('Media', 'Media', Symbol.Play, []),
+    mediaItem,
     menusToolbarsItem,
     createNavigationGroup('Motion', 'Motion', Symbol.Sync, []),
     navigationItem,
@@ -756,6 +795,7 @@ export function Shell(context: AppContext) {
   )
   routeItems.set('category-status-info', statusInfoItem)
   routeItems.set('category-layout', layoutItem)
+  routeItems.set('category-media', mediaItem)
   routeItems.set(
     'category-menus-toolbars',
     menusToolbarsItem,
@@ -832,6 +872,10 @@ export function Shell(context: AppContext) {
             }
             if (currentPage?.category === 'Layout') {
               context.model.navigate('category-layout')
+              return
+            }
+            if (currentPage?.category === 'Media') {
+              context.model.navigate('category-media')
               return
             }
             if (currentPage?.category === 'Menus & toolbars') {
@@ -924,6 +968,7 @@ export function Shell(context: AppContext) {
               route === 'category-dialogs-flyouts' ||
               route === 'category-status-info' ||
               route === 'category-layout' ||
+              route === 'category-media' ||
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
               route === 'category-scrolling' ||

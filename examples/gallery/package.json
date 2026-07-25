@@ -41,6 +41,18 @@
     "jsBindings": {
       "additionalWinmds": [
         {
+          "namespace": "Microsoft.Windows.Storage.Pickers",
+          "classes": [
+            "FileOpenPicker"
+          ]
+        },
+        {
+          "namespace": "Windows.ApplicationModel",
+          "classes": [
+            "Package"
+          ]
+        },
+        {
           "namespace": "Windows.ApplicationModel.DataTransfer",
           "classes": [
             "Clipboard",
@@ -48,10 +60,59 @@
           ]
         },
         {
+          "namespace": "Windows.Devices.Geolocation",
+          "classes": [
+            "Geopoint"
+          ]
+        },
+        {
           "namespace": "Windows.Foundation",
           "classes": [
             "PropertyValue",
             "Uri"
+          ]
+        },
+        {
+          "namespace": "Windows.Media.Capture",
+          "classes": [
+            "MediaCapture",
+            "MediaCaptureInitializationSettings"
+          ]
+        },
+        {
+          "namespace": "Windows.Media.Capture.Frames",
+          "classes": [
+            "MediaFrameSourceGroup"
+          ]
+        },
+        {
+          "namespace": "Windows.Media.Core",
+          "classes": [
+            "MediaSource"
+          ]
+        },
+        {
+          "namespace": "Windows.Media.MediaProperties",
+          "classes": [
+            "ImageEncodingProperties"
+          ]
+        },
+        {
+          "namespace": "Windows.Storage",
+          "classes": [
+            "StorageFile"
+          ]
+        },
+        {
+          "namespace": "Windows.Storage.Streams",
+          "classes": [
+            "InMemoryRandomAccessStream"
+          ]
+        },
+        {
+          "namespace": "Windows.System",
+          "classes": [
+            "Launcher"
           ]
         },
         {
@@ -64,6 +125,7 @@
           "namespace": "Microsoft.UI.Xaml",
           "classes": [
             "Application",
+            "ElementSoundPlayer",
             "ResourceDictionary",
             "Window"
           ]
@@ -89,6 +151,7 @@
             "AnnotatedScrollBar",
             "AnnotatedScrollBarLabel",
             "AnimatedIcon",
+            "AnimatedVisualPlayer",
             "AutoSuggestBox",
             "Border",
             "BreadcrumbBar",
@@ -126,12 +189,16 @@
             "LinedFlowLayout",
             "ListView",
             "ListViewItem",
+            "MapControl",
+            "MapElementsLayer",
+            "MapIcon",
             "MenuBar",
             "MenuBarItem",
             "MenuFlyout",
             "MenuFlyoutItem",
             "MenuFlyoutSeparator",
             "MenuFlyoutSubItem",
+            "MediaPlayerElement",
             "NavigationView",
             "NavigationViewItem",
             "NavigationViewItemHeader",
@@ -139,6 +206,7 @@
             "NumberBox",
             "PasswordBox",
             "PathIcon",
+            "PersonPicture",
             "PipsPager",
             "Pivot",
             "PivotItem",
@@ -246,6 +314,7 @@
             "MicaBackdrop",
             "RadialGradientBrush",
             "RectangleGeometry",
+            "ScaleTransform",
             "SolidColorBrush",
             "ThemeShadow"
           ]
@@ -264,7 +333,8 @@
         {
           "namespace": "Microsoft.UI.Xaml.Media.Imaging",
           "classes": [
-            "BitmapImage"
+            "BitmapImage",
+            "SvgImageSource"
           ]
         },
         {

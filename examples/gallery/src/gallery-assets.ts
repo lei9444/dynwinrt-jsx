@@ -1,5 +1,9 @@
 import { createBitmapImage, createUri } from 'dynwinrt-jsx'
-import { BitmapImage, Uri } from '#winapp/bindings'
+import {
+  BitmapImage,
+  SvgImageSource,
+  Uri,
+} from '#winapp/bindings'
 
 declare const process: {
   cwd(): string
@@ -7,17 +11,31 @@ declare const process: {
 
 export type BitmapImageInstance = InstanceType<typeof BitmapImage>
 
+export function createGalleryAssetUri(
+  relativePath: string,
+): Uri {
+  const assetRoot = process.cwd().replaceAll('\\', '/')
+  return createUri(
+    Uri,
+    encodeURI(`file:///${assetRoot}/Assets/${relativePath}`),
+  )
+}
+
 export function loadGalleryBitmap(
   relativePath: string,
   decodePixelWidth: number,
 ): BitmapImageInstance {
-  const assetRoot = process.cwd().replaceAll('\\', '/')
   return createBitmapImage(
     BitmapImage,
-    createUri(
-      Uri,
-      encodeURI(`file:///${assetRoot}/Assets/${relativePath}`),
-    ),
+    createGalleryAssetUri(relativePath),
     { decodePixelWidth },
+  )
+}
+
+export function loadGallerySvg(
+  relativePath: string,
+): SvgImageSource {
+  return new SvgImageSource(
+    createGalleryAssetUri(relativePath),
   )
 }

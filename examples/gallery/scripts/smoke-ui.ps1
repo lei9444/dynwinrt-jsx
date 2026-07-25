@@ -544,6 +544,26 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryMediaCategoryNavItem"
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryMediaCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "MediaCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "Open AnimatedVisualPlayer",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "Open Sound",
+        "-w", "$windowHandle"
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -590,6 +610,13 @@ try {
         [pscustomobject]@{ Name = "Open StackPanel"; Heading = "StackPanelPageHeading"; Probe = "GalleryLayoutStackPanelSample"; Query = "stackpanel spacing" },
         [pscustomobject]@{ Name = "Open VariableSizedWrapGrid"; Heading = "VariableSizedWrapGridPageHeading"; Probe = "GalleryLayoutVariableSizedWrapGridSample"; Query = "variablesizedwrapgrid span" },
         [pscustomobject]@{ Name = "Open Viewbox"; Heading = "ViewboxPageHeading"; Probe = "GalleryLayoutViewboxSample"; Query = "viewbox stretch" },
+        [pscustomobject]@{ Name = "Open AnimatedVisualPlayer"; Heading = "AnimatedVisualPlayerPageHeading"; Probe = "GalleryMediaAnimatedVisualPlayerSample"; Query = "animatedvisualplayer motion graphics" },
+        [pscustomobject]@{ Name = "Open Capture Element / Camera Preview"; Heading = "CaptureElementPreviewPageHeading"; Probe = "GalleryMediaCameraSample"; Query = "camera preview" },
+        [pscustomobject]@{ Name = "Open Image"; Heading = "ImagePageHeading"; Probe = "GalleryMediaImageLocalSample"; Query = "image bitmap gif svg" },
+        [pscustomobject]@{ Name = "Open MapControl"; Heading = "MapControlPageHeading"; Probe = "GalleryMediaMapControlSample"; Query = "mapcontrol azure maps" },
+        [pscustomobject]@{ Name = "Open MediaPlayerElement"; Heading = "MediaPlayerElementPageHeading"; Probe = "GalleryMediaPlayerTransportSample"; Query = "mediaplayerelement video" },
+        [pscustomobject]@{ Name = "Open PersonPicture"; Heading = "PersonPicturePageHeading"; Probe = "GalleryMediaPersonPictureSample"; Query = "personpicture avatar" },
+        [pscustomobject]@{ Name = "Open Sound"; Heading = "SoundPageHeading"; Probe = "GalleryMediaSoundToggleSample"; Query = "elementsoundplayer audio" },
         [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
         [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
         [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
@@ -2179,6 +2206,112 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "LiveRegionChanged raised.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "AnimatedVisualPlayerPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaAnimatedVisualPlayerPlay",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Animation playing forward.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaAnimatedVisualPlayerStop",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Animation stopped.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "CaptureElementPreviewPageHeading") {
+            $cameraStatusJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryMediaCameraStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $cameraStatus = $cameraStatusJson | ConvertFrom-Json
+            if (
+                [string]$cameraStatus.windows[0].elements[0].name -ne
+                "Camera preview not started."
+            ) {
+                throw "The camera page did not expose its capability state."
+            }
+        }
+        if ($route.Heading -eq "ImagePageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view",
+                "GalleryMediaImageStretchUniformToFill",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaImageStretchUniformToFill",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Stretch: UniformToFill",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMediaImageGifSample",
+                "-w", "$windowHandle"
+            )
+        }
+        if ($route.Heading -eq "MapControlPageHeading") {
+            $mapStatusJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryMediaMapStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $mapStatusObject = $mapStatusJson | ConvertFrom-Json
+            $mapStatus = [string](
+                $mapStatusObject.windows[0].elements[0].name
+            )
+            if ($mapStatus -notmatch "unavailable") {
+                throw "Unexpected unpackaged MapControl state: $mapStatus"
+            }
+        }
+        if ($route.Heading -eq "MediaPlayerElementPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view",
+                "GalleryMediaPlayerAutoplaySample",
+                "-w", "$windowHandle"
+            )
+            Assert-Responsive $appProcess.Id "MediaPlayerElement playback"
+        }
+        if ($route.Heading -eq "PersonPicturePageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaPersonPictureMode1",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Profile type: Display Name",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "SoundPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaSoundToggle",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryMediaSoundFocus",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryMediaSoundFocus",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Played Focus sound.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
