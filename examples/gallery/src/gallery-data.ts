@@ -896,30 +896,44 @@ export const galleryPages = [
     id: 'color-contrast',
     category: 'Accessibility',
     title: 'Color Contrast',
-    subtitle: 'Supports readability with sufficient visual contrast.',
+    subtitle:
+      'High contrast design ensures accessibility for all users.',
     description:
-      'Compare accessible and insufficient foreground/background pairs with explicit contrast guidance.',
-    tags: ['color contrast', 'high contrast', 'wcag', 'accessibility'],
+      'Calculate text and background contrast ratios and compare regular text, large text, graphical object, and UI component results with WCAG thresholds.',
+    tags: ['high contrast', 'wcag', 'accessibility'],
     image: 'ControlImages/Accessibility.png',
   },
   {
     id: 'keyboard-navigation',
     category: 'Accessibility',
     title: 'Keyboard Navigation',
-    subtitle: 'Supports predictable focus and keyboard interaction.',
+    subtitle:
+      'Keyboard-friendly design enables seamless interactions.',
     description:
-      'Use logical tab order, access keys, visible focus, and explicit focus targets.',
-    tags: ['keyboard navigation', 'focus', 'tab order', 'access keys'],
+      'Use logical tab order, arrow-key groups, accelerators, access keys, visible focus, and explicit focus targets.',
+    tags: [
+      'keyboard',
+      'tab navigation',
+      'access keys',
+      'focus',
+      'accessibility',
+    ],
     image: 'ControlImages/Accessibility.png',
   },
   {
     id: 'screen-reader',
     category: 'Accessibility',
     title: 'Screen Reader',
-    subtitle: 'Exposes meaningful content to assistive technology.',
+    subtitle:
+      'Inclusive design ensures meaningful content for assistive technologies.',
     description:
-      'Apply automation names, help text, heading levels, and live-region settings.',
-    tags: ['screen reader', 'narrator', 'automation', 'live region'],
+      'Expose accessible names, labels, descriptions, set position, headings, UIA tree views, and live-region events to screen readers.',
+    tags: [
+      'narrator',
+      'automationproperties',
+      'assistive technology',
+      'accessibility',
+    ],
     image: 'ControlImages/Accessibility.png',
   },
   {

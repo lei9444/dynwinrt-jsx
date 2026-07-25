@@ -52,6 +52,15 @@ test('WinUI renderer applies automation relationship metadata', () => {
     setHelpText(target, value) {
       calls.push(['help', target, value])
     },
+    setAcceleratorKey(target, value) {
+      calls.push(['accelerator', target, value])
+    },
+    setFullDescription(target, value) {
+      calls.push(['description', target, value])
+    },
+    setAccessibilityView(target, value) {
+      calls.push(['view', target, value])
+    },
     setLabeledBy(target, value) {
       calls.push(['label', target, value])
     },
@@ -87,6 +96,9 @@ test('WinUI renderer applies automation relationship metadata', () => {
       automationId: 'Target',
       automationName: 'Target name',
       automationHelpText: 'Target help',
+      automationAcceleratorKey: 'Ctrl+T',
+      automationFullDescription: 'Target full description',
+      automationAccessibilityView: 2,
       automationLabeledBy: label,
       automationHeadingLevel: 2,
       automationPositionInSet: 1,
@@ -108,6 +120,9 @@ test('WinUI renderer applies automation relationship metadata', () => {
       ['id', true, 'Target'],
       ['name', true, 'Target name'],
       ['help', true, 'Target help'],
+      ['accelerator', true, 'Ctrl+T'],
+      ['description', true, 'Target full description'],
+      ['view', true, 2],
       ['label', true, label],
       ['heading', true, 2],
       ['position', true, 1],

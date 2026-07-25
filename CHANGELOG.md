@@ -67,6 +67,11 @@
   artwork, and Segoe UI Variable type ramp.
 - Added the complete WinUI Gallery Accessibility category with Color Contrast,
   Keyboard Navigation, and Screen Reader guidance.
+- Added AutomationProperties JSX metadata for accelerator keys, full
+  descriptions, and UIA accessibility views.
+- Reworked Accessibility to match the original contrast checker, tab and arrow
+  navigation, accelerators and access keys, accessible-name guidance, UIA tree
+  views, set position, headings, and live-region examples.
 - Added the complete WinUI Gallery Styles category with AcrylicBrush,
   AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
   RadialGradientBrush, System Backdrops, SystemBackdropElement, and

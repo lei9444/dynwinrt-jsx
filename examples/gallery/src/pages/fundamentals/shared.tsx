@@ -5,6 +5,7 @@ import {
   type Child,
 } from 'dynwinrt-jsx'
 import {
+  AutomationHeadingLevel,
   TextWrapping,
   XamlReader,
 } from '#winapp/bindings'
@@ -48,6 +49,7 @@ export function GuidanceSection(props: {
       {props.title ? (
         <UI.TextBlock
           {...styles.heading({ level: 'subtitle' })}
+          automationHeadingLevel={AutomationHeadingLevel.Level2}
           text={props.title}
         />
       ) : null}

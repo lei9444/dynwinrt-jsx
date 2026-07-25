@@ -611,8 +611,9 @@ Common automation metadata is available directly on native JSX controls:
 />
 ```
 
-Supported metadata includes name, help text, labeled-by, heading level,
-position/size in set, live setting, dialog state, and automation control type.
+Supported metadata includes name, help text, accelerator key, full description,
+accessibility view, labeled-by, heading level, position/size in set, live
+setting, dialog state, and automation control type.
 
 Create a reusable renderer preset from the complete generated binding
 namespace:

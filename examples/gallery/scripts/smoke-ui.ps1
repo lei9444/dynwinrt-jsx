@@ -2106,12 +2106,33 @@ try {
         }
         if ($route.Heading -eq "ColorContrastPageHeading") {
             Invoke-WinApp @(
-                "ui", "invoke", "GalleryAccessibilityContrastToggle",
+                "ui", "wait-for",
+                "Contrast ratio: 21.00:1",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
+        if ($route.Heading -eq "KeyboardNavigationPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAccessibilityKeyboardMoveFocus",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Second button received focus.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryAccessibilityAcceleratorRed",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryAccessibilityAcceleratorRed",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
                 "ui", "wait-for",
-                "Contrast ratio: 2.3:1 (needs improvement).",
+                "Red selected; native accelerator: Ctrl+R.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -2129,7 +2150,7 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Target button received focus.",
+                "ui", "wait-for", "Second button received focus.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

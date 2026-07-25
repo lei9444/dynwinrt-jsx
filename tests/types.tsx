@@ -800,6 +800,9 @@ export const typeCheckedTree = (
         CustomFontSize: themeResource<number>('BodyFontSize', 14),
       }}
       automationHeadingLevel={1}
+      automationAcceleratorKey="Ctrl+S"
+      automationFullDescription="Saves the current document."
+      automationAccessibilityView={2}
       automationPositionInSet={1}
       automationSizeOfSet={3}
     />

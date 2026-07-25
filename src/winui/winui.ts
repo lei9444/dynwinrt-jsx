@@ -174,6 +174,9 @@ function createCapabilities(
         'setAutomationId',
         'setName',
         'setHelpText',
+        'setAcceleratorKey',
+        'setFullDescription',
+        'setAccessibilityView',
         'setLabeledBy',
         'setHeadingLevel',
         'setPositionInSet',
@@ -400,6 +403,21 @@ export function createWinUIAttachedPropertyRegistrations(
     automationHelpText: {
       owner: bindings.AutomationProperties,
       method: 'setHelpText',
+      optional: true,
+    },
+    automationAcceleratorKey: {
+      owner: bindings.AutomationProperties,
+      method: 'setAcceleratorKey',
+      optional: true,
+    },
+    automationFullDescription: {
+      owner: bindings.AutomationProperties,
+      method: 'setFullDescription',
+      optional: true,
+    },
+    automationAccessibilityView: {
+      owner: bindings.AutomationProperties,
+      method: 'setAccessibilityView',
       optional: true,
     },
     automationLabeledBy: {

@@ -107,6 +107,9 @@ export interface NativeCommonProps<Value> {
   automationId?: MaybeSignal<string>
   automationName?: MaybeSignal<string>
   automationHelpText?: MaybeSignal<string>
+  automationAcceleratorKey?: MaybeSignal<string>
+  automationFullDescription?: MaybeSignal<string>
+  automationAccessibilityView?: MaybeSignal<number>
   automationLabeledBy?: MaybeSignal<object | null>
   automationHeadingLevel?: MaybeSignal<number>
   automationPositionInSet?: MaybeSignal<number>

@@ -32,8 +32,9 @@ The pages cover:
 - WinUI Gallery-faithful Color resource sections, Geometry and Spacing
   guidance, the complete searchable icon catalog, and the Windows Typography
   type ramp;
-- Color Contrast, Keyboard Navigation, and Screen Reader accessibility
-  guidance;
+- WinUI Gallery-faithful Color Contrast checker, keyboard tab/arrow/shortcut
+  guidance, and Screen Reader accessible-name, relationship, UIA-tree,
+  heading, and live-region examples;
 - AcrylicBrush, AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
   RadialGradientBrush, System Backdrops, SystemBackdropElement, and
   ThemeShadow style samples;
