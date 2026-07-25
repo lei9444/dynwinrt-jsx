@@ -3,6 +3,7 @@ import {
   cornerRadius,
   createUri,
   gridLength,
+  onMount,
   signal,
   theme,
   thickness,
@@ -12,7 +13,9 @@ import {
   DatePicker,
   HorizontalAlignment,
   InfoBarSeverity,
+  ListViewItem,
   ListViewSelectionMode,
+  SelectorItem,
   TextWrapping,
   Uri,
   Visibility,
@@ -55,6 +58,49 @@ const detailItems = [
     text: 'Duis facilisis, quam ut laoreet commodo, elit ex aliquet massa, non varius tellus lectus et nunc.',
   },
 ] as const
+
+function DetailListItem(props: {
+  readonly item: typeof detailItems[number]
+  readonly index: number
+  readonly onSelected: () => void
+}) {
+  const itemRef: RefObject<ListViewItem> = { current: null }
+  onMount(() => {
+    const item = itemRef.current
+    if (!item) {
+      throw new Error('Binding detail item did not mount.')
+    }
+    const property = SelectorItem.isSelectedProperty
+    const token = item.registerPropertyChangedCallback(
+      property,
+      () => {
+        if (item.isSelected) {
+          props.onSelected()
+        }
+      },
+    )
+    return () => {
+      item.unregisterPropertyChangedCallback(property, token)
+    }
+  })
+  return (
+    <UI.ListViewItem
+      ref={itemRef}
+      automationId={`GalleryBindingDetailItem${props.index}`}
+    >
+      <UI.StackPanel padding={thickness(4)} spacing={2}>
+        <UI.TextBlock
+          fontWeight={{ weight: 600 }}
+          text={props.item.title}
+        />
+        <UI.TextBlock
+          foreground={theme.secondaryText}
+          text={props.item.date}
+        />
+      </UI.StackPanel>
+    </UI.ListViewItem>
+  )
+}
 
 export function BindingPage(context: AppContext) {
   const oneWayText = signal('')
@@ -347,24 +393,19 @@ const displayName = sourceName ?? 'Anonymous User'
             cornerRadius={cornerRadius(4)}
             selectedIndex={selectedDetailIndex}
             selectionMode={ListViewSelectionMode.Single}
-            onSelectedIndexChange={(index) => {
-              selectedDetailIndex.value = index
-              context.model.recordInteraction()
-            }}
           >
-            {detailItems.map((item) => (
-              <UI.ListViewItem key={item.title}>
-                <UI.StackPanel padding={thickness(4)} spacing={2}>
-                  <UI.TextBlock
-                    fontWeight={{ weight: 600 }}
-                    text={item.title}
-                  />
-                  <UI.TextBlock
-                    foreground={theme.secondaryText}
-                    text={item.date}
-                  />
-                </UI.StackPanel>
-              </UI.ListViewItem>
+            {detailItems.map((item, index) => (
+              <DetailListItem
+                key={item.title}
+                item={item}
+                index={index}
+                onSelected={() => {
+                  if (index !== selectedDetailIndex.value) {
+                    selectedDetailIndex.value = index
+                    context.model.recordInteraction()
+                  }
+                }}
+              />
             ))}
           </GalleryListView>
 

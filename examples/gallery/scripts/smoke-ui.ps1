@@ -1891,6 +1891,38 @@ try {
             ) {
                 throw "TwoWay binding did not update the second TextBox."
             }
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryBindingDetailItem1",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryBindingDetailItem1",
+                "-w", "$windowHandle"
+            )
+            $detailTitleName = ""
+            $detailDeadline = [DateTime]::UtcNow.AddMilliseconds(
+                $TimeoutMilliseconds
+            )
+            while (
+                $detailTitleName -ne "Item 2" -and
+                [DateTime]::UtcNow -lt $detailDeadline
+            ) {
+                $detailTitleJson = Invoke-WinApp @(
+                    "ui", "inspect", "GalleryBindingDetailTitle",
+                    "-w", "$windowHandle",
+                    "--json"
+                ) -Capture
+                $detailTitle = $detailTitleJson | ConvertFrom-Json
+                $detailTitleName = [string](
+                    $detailTitle.windows[0].elements[0].name
+                )
+                if ($detailTitleName -ne "Item 2") {
+                    Start-Sleep -Milliseconds 50
+                }
+            }
+            if ($detailTitleName -ne "Item 2") {
+                throw "Binding ListView selection did not update the detail pane."
+            }
         }
         if ($route.Heading -eq "TemplatesPageHeading") {
             Invoke-WinApp @(
