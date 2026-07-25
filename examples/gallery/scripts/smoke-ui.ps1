@@ -633,13 +633,13 @@ try {
         [pscustomobject]@{ Name = "Open Keyboard Navigation"; Heading = "KeyboardNavigationPageHeading"; Probe = "GalleryAccessibilityKeyboardTarget"; Query = "keyboard navigation focus" },
         [pscustomobject]@{ Name = "Open Screen Reader"; Heading = "ScreenReaderPageHeading"; Probe = "GalleryAccessibilityScreenReaderAction"; Query = "screen reader automation" },
         [pscustomobject]@{ Name = "Open AcrylicBrush"; Heading = "AcrylicBrushPageHeading"; Probe = "GalleryStylesAcrylicSample"; Query = "acrylicbrush material" },
-        [pscustomobject]@{ Name = "Open AnimatedIcon"; Heading = "AnimatedIconPageHeading"; Probe = "GalleryStylesAnimatedIconSample"; Query = "animatedicon state" },
+        [pscustomobject]@{ Name = "Open AnimatedIcon"; Heading = "AnimatedIconPageHeading"; Probe = "GalleryStylesAnimatedIconSample"; Query = "animatedicon lottie" },
         [pscustomobject]@{ Name = "Open Compact Sizing"; Heading = "CompactSizingPageHeading"; Probe = "GalleryStylesCompactSizingSample"; Query = "compact sizing density" },
         [pscustomobject]@{ Name = "Open IconElement"; Heading = "IconElementPageHeading"; Probe = "GalleryStylesIconElementSample"; Query = "iconelement fonticon" },
         [pscustomobject]@{ Name = "Open Line"; Heading = "LinePageHeading"; Probe = "GalleryStylesLineSample"; Query = "line stroke" },
         [pscustomobject]@{ Name = "Open Shape"; Heading = "ShapePageHeading"; Probe = "GalleryStylesShapeSample"; Query = "shape ellipse rectangle" },
         [pscustomobject]@{ Name = "Open RadialGradientBrush"; Heading = "RadialGradientBrushPageHeading"; Probe = "GalleryStylesRadialGradientSample"; Query = "radialgradientbrush" },
-        [pscustomobject]@{ Name = "Open System Backdrops"; Heading = "SystemBackdropsPageHeading"; Probe = "GalleryStylesSystemBackdropsSample"; Query = "system backdrops mica" },
+        [pscustomobject]@{ Name = "Open System Backdrops (Mica/Acrylic)"; Heading = "SystemBackdropsPageHeading"; Probe = "GalleryStylesSystemBackdropsSample"; Query = "system backdrops mica" },
         [pscustomobject]@{ Name = "Open SystemBackdropElement"; Heading = "SystemBackdropElementPageHeading"; Probe = "GalleryStylesSystemBackdropElementSample"; Query = "systembackdropelement" },
         [pscustomobject]@{ Name = "Open ThemeShadow"; Heading = "ThemeShadowPageHeading"; Probe = "GalleryStylesThemeShadowSample"; Query = "themeshadow elevation" }
     )
@@ -2228,39 +2228,41 @@ try {
         }
         if ($route.Heading -eq "IconElementPageHeading") {
             Invoke-WinApp @(
-                "ui", "wait-for", "Native icon elements loaded: 2",
+                "ui", "wait-for", "GalleryStylesPathIconSample",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
         if ($route.Heading -eq "LinePageHeading") {
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryStylesLineThickness", "8",
+                "ui", "invoke", "GalleryStylesLineThicknessPreset",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Stroke thickness: 8",
+                "ui", "wait-for", "GalleryStylesLineNativeStatus",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Native stroke thickness: 8",
+            $lineStatusJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryStylesLineNativeStatus",
                 "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
+                "--json"
+            ) -Capture
+            $lineStatus = $lineStatusJson | ConvertFrom-Json
+            if (
+                [string]$lineStatus.windows[0].elements[0].name -notlike
+                "*stroke 8"
+            ) {
+                throw "The native Line stroke thickness did not update."
+            }
         }
         if ($route.Heading -eq "RadialGradientBrushPageHeading") {
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryStylesRadialGradientRadius", "0.8",
+                "ui", "invoke", "GalleryStylesRadialGradientRadiusPreset",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Gradient radius: 0.80",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Native gradient radius: 0.80",
+                "ui", "wait-for", "radius 0.80,0.80",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -2292,7 +2294,7 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Native element backdrop assigned.",
+                "ui", "wait-for", "Native element backdrop assigned; radius 8.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )

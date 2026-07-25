@@ -2,10 +2,14 @@ import {
   styles,
   thickness,
   tokens,
+  onCleanup,
   type Child,
+  type RefObject,
 } from 'dynwinrt-jsx'
 import {
   AutomationHeadingLevel,
+  ContentControl,
+  HorizontalAlignment,
   TextWrapping,
   XamlReader,
 } from '#winapp/bindings'
@@ -37,6 +41,50 @@ export function loadNativeContent(
     (value): value is DynWinRtValue =>
       value instanceof DynWinRtValue,
     validateTemplates,
+  )
+}
+
+export function NativeXamlPreview(props: {
+  readonly xaml: string
+  readonly automationId?: string
+}) {
+  const host: RefObject<ContentControl> = { current: null }
+  let mountedHost: ContentControl | null = null
+  const content = loadNativeContent(props.xaml, true)
+  onCleanup(() => {
+    let firstError: unknown
+    try {
+      if (mountedHost) {
+        mountedHost.content = null
+      }
+    }
+    catch (error: unknown) {
+      firstError = error
+    }
+    try {
+      content.release()
+    }
+    catch (error: unknown) {
+      firstError ??= error
+    }
+    if (firstError !== undefined) {
+      throw firstError
+    }
+  })
+  return (
+    <UI.ContentControl
+      ref={(value) => {
+        host.current = value
+        if (value) {
+          mountedHost = value
+        }
+      }}
+      {...(props.automationId
+        ? { automationId: props.automationId }
+        : {})}
+      content={content}
+      horizontalContentAlignment={HorizontalAlignment.Stretch}
+    />
   )
 }
 

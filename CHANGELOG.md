@@ -76,6 +76,9 @@
   AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
   RadialGradientBrush, System Backdrops, SystemBackdropElement, and
   ThemeShadow.
+- Reworked all ten Styles pages to match the original multi-sample controls,
+  option sets, material guidance, shape and line variants, icon types,
+  backdrop choices, and deterministic native cleanup.
 
 ## 1.0.0
 

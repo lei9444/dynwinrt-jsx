@@ -18,6 +18,7 @@ export function ThemeShadowPage(context: AppContext) {
   const surface: RefObject<Border> = { current: null }
   const elevation = signal(32)
   const nativeElevation = signal(32)
+  const receiverCount = signal(0)
   const shadow = new ThemeShadow()
   let connected = false
   const connect = () => {
@@ -25,17 +26,19 @@ export function ThemeShadowPage(context: AppContext) {
     if (target && !connected) {
       shadow.receivers.append(target)
       connected = true
+      receiverCount.value = shadow.receivers.size
     }
   }
   onCleanup(() => {
     shadow.receivers.clear()
     connected = false
+    receiverCount.value = 0
   })
 
   return (
     <Page
       title="ThemeShadow"
-      subtitle="Adds depth-aware system shadow based on element elevation."
+      subtitle="Adds a depth-aware shadow to UI elements using system lighting."
       automationId="ThemeShadowPageHeading"
       pageId="theme-shadow"
       model={context.model}
@@ -62,7 +65,7 @@ shadow.receivers.append(receiver)
               automationId="GalleryStylesThemeShadowNativeStatus"
               text={computed(
                 () =>
-                  `Native elevation: ${nativeElevation.value}; receivers: ${shadow.receivers.size}`,
+                `Native elevation: ${nativeElevation.value}; receivers: ${receiverCount.value}`,
               )}
             />
           </UI.StackPanel>

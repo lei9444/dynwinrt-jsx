@@ -116,6 +116,7 @@
             "GridViewItem",
             "HyperlinkButton",
             "Image",
+            "ImageIcon",
             "ImageIconSource",
             "InfoBadge",
             "InfoBar",
@@ -137,6 +138,7 @@
             "NavigationViewItemSeparator",
             "NumberBox",
             "PasswordBox",
+            "PathIcon",
             "PipsPager",
             "Pivot",
             "PivotItem",
@@ -199,7 +201,13 @@
         {
           "namespace": "Microsoft.UI.Xaml.Controls.AnimatedVisuals",
           "classes": [
-            "AnimatedFindVisualSource"
+            "AnimatedBackVisualSource",
+            "AnimatedChevronDownSmallVisualSource",
+            "AnimatedChevronRightDownSmallVisualSource",
+            "AnimatedChevronUpDownSmallVisualSource",
+            "AnimatedFindVisualSource",
+            "AnimatedGlobalNavigationButtonVisualSource",
+            "AnimatedSettingsVisualSource"
           ]
         },
         {
@@ -229,11 +237,15 @@
           "classes": [
             "AcrylicBrush",
             "DesktopAcrylicBackdrop",
+            "EllipseGeometry",
             "FontFamily",
+            "GeometryGroup",
             "GradientStop",
             "GradientStopCollection",
+            "LineGeometry",
             "MicaBackdrop",
             "RadialGradientBrush",
+            "RectangleGeometry",
             "SolidColorBrush",
             "ThemeShadow"
           ]
@@ -243,6 +255,9 @@
           "classes": [
             "Ellipse",
             "Line",
+            "Path",
+            "Polygon",
+            "Polyline",
             "Rectangle"
           ]
         },

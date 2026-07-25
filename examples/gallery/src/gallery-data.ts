@@ -940,40 +940,51 @@ export const galleryPages = [
     id: 'acrylic-brush',
     category: 'Styles',
     title: 'AcrylicBrush',
-    subtitle: 'A translucent material for panel backgrounds.',
+    subtitle:
+      'A translucent material recommended for panel backgrounds.',
     description:
-      'Configure native acrylic tint, opacity, fallback color, and forced fallback behavior.',
-    tags: ['acrylicbrush', 'acrylic', 'material', 'blur', 'translucent'],
+      'A translucent material recommended for panel backgrounds.',
+    tags: ['acrylic', 'material', 'translucent', 'blur', 'acrylicbrush'],
     image: 'ControlImages/Acrylic.png',
   },
   {
     id: 'animated-icon',
     category: 'Styles',
     title: 'AnimatedIcon',
-    subtitle: 'Displays an icon that transitions between named states.',
+    subtitle:
+      'An element that displays and controls an icon that animates when the user interacts with the control.',
     description:
-      'Combine a built-in animated visual source with a static fallback icon.',
-    tags: ['animatedicon', 'animated icon', 'lottie', 'state', 'icon'],
+      'An element that displays and controls an icon that animates when the user interacts with the control.',
+    tags: ['animated icon', 'icon animation', 'lottie icon'],
     image: 'ControlImages/AnimatedIcon.png',
   },
   {
     id: 'compact-sizing',
     category: 'Styles',
     title: 'Compact Sizing',
-    subtitle: 'Reduces control density for compact interfaces.',
+    subtitle:
+      'How to use a Resource Dictionary to enable compact sizing.',
     description:
-      'Adjust native heights, padding, and spacing as a scoped compact sizing treatment.',
-    tags: ['compact sizing', 'density', 'padding', 'control height'],
+      'Enables compact, smaller apps by adding a style resource at the app, page, or control level.',
+    tags: ['density', 'compact sizing'],
     image: 'ControlImages/CompactSizing.png',
   },
   {
     id: 'icon-element',
     category: 'Styles',
     title: 'IconElement',
-    subtitle: 'Represents native symbol and font icon controls.',
+    subtitle:
+      'Represents icon controls that use different image types as their content.',
     description:
-      'Use IconElement-derived SymbolIcon and FontIcon controls in visual trees.',
-    tags: ['iconelement', 'symbolicon', 'fonticon', 'glyph'],
+      'Represents icon controls that use different image types as their content.',
+    tags: [
+      'bitmapicon',
+      'fonticon',
+      'pathicon',
+      'symbolicon',
+      'imageicon',
+      'animatedicon',
+    ],
     image: 'ControlImages/IconElement.png',
   },
   {
@@ -982,58 +993,61 @@ export const galleryPages = [
     title: 'Line',
     subtitle: 'Draws a straight line between two points.',
     description:
-      'Configure native coordinates, brush, and stroke thickness.',
-    tags: ['line', 'stroke', 'shape', 'draw'],
+      'Draws a straight line between two points.',
+    tags: ['stroke', 'draw line'],
     image: 'ControlImages/Line.png',
   },
   {
     id: 'shape',
     category: 'Styles',
     title: 'Shape',
-    subtitle: 'Draws decorative rectangles and ellipses.',
+    subtitle:
+      'How to draw shapes, such as ellipses, rectangles, and polygons.',
     description:
-      'Use native Shape-derived elements with fill, stroke, and sizing.',
-    tags: ['shape', 'rectangle', 'ellipse', 'fill', 'circle'],
+      'Basic shapes are intended for decorative rendering or for compositing non-interactive parts of controls.',
+    tags: ['shapes', 'ellipse', 'rectangle', 'polygon', 'path', 'circle'],
     image: 'ControlImages/Shape.png',
   },
   {
     id: 'radial-gradient-brush',
     category: 'Styles',
     title: 'RadialGradientBrush',
-    subtitle: 'Paints an area with radial color transitions.',
+    subtitle: 'A brush to show radial gradients.',
     description:
-      'Configure center, origin, radii, and a projected GradientStop collection.',
-    tags: ['radialgradientbrush', 'gradient', 'brush', 'gradient stop'],
-    image: 'ControlImages/RadialGradientBrush.png',
+      'Paints an area with a radial gradient. A center point defines the beginning and a radius defines the end.',
+    tags: ['gradient', 'radial gradient', 'brush'],
+    image: 'ControlImages/Canvas.png',
   },
   {
     id: 'system-backdrops',
     category: 'Styles',
-    title: 'System Backdrops',
-    subtitle: 'Applies Mica or Desktop Acrylic to a Window.',
+    title: 'System Backdrops (Mica/Acrylic)',
+    subtitle:
+      'System backdrops, like Mica and Acrylic, for app windows.',
     description:
-      'Switch system backdrop materials and restore the original backdrop on cleanup.',
-    tags: ['system backdrops', 'mica', 'desktop acrylic', 'window material'],
+      'System backdrops apply Mica or Desktop Acrylic to the window background using built-in backdrop types or customizable controllers.',
+    tags: ['mica', 'acrylic', 'window material'],
     image: 'ControlImages/Acrylic.png',
   },
   {
     id: 'system-backdrop-element',
     category: 'Styles',
     title: 'SystemBackdropElement',
-    subtitle: 'Hosts a system backdrop inside the UI tree.',
+    subtitle: 'An element to host system backdrop materials.',
     description:
-      'Apply Acrylic or Mica to a rounded content region.',
-    tags: ['systembackdropelement', 'mica', 'acrylic', 'material'],
+      'Applies Mica and Acrylic to specific areas inside the UI tree for flexible and immersive designs.',
+    tags: ['mica', 'acrylic', 'material'],
     image: 'ControlImages/Acrylic.png',
   },
   {
     id: 'theme-shadow',
     category: 'Styles',
     title: 'ThemeShadow',
-    subtitle: 'Adds depth-aware system shadow to native elements.',
+    subtitle:
+      'Adds a depth-aware shadow to UI elements using system lighting.',
     description:
-      'Connect shadow receivers and drive elevation through Z translation.',
-    tags: ['themeshadow', 'shadow', 'depth', 'elevation'],
+      'Adds a realistic shadow using system lighting and depth to enhance visual hierarchy.',
+    tags: ['depth', 'elevation'],
     image: 'ControlImages/ThemeShadow.png',
   },
 ] as const satisfies readonly GalleryPageInfo[]

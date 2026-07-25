@@ -1,71 +1,122 @@
 import {
-  computed,
-  gridLength,
+  createUri,
   signal,
-  thickness,
 } from 'dynwinrt-jsx'
-import { Symbol } from '#winapp/bindings'
-import { type AppContext, LayoutGrid, UI } from '../../gallery-ui'
+import {
+  RectangleGeometry,
+  Symbol,
+  Uri,
+} from '#winapp/bindings'
+import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
+import { loadGalleryBitmap } from '../../gallery-assets'
+
+declare const process: {
+  cwd(): string
+}
 
 export function IconElementPage(context: AppContext) {
-  const loaded = signal(0)
+  const monochrome = signal(false)
+  const slicesUri = createUri(
+    Uri,
+    encodeURI(
+      `file:///${process.cwd().replaceAll('\\', '/')}/Assets/SampleMedia/Slices.png`,
+    ),
+  )
+  const slicesImage = loadGalleryBitmap('SampleMedia/Slices.png', 256)
+  const pathGeometry = new RectangleGeometry()
+  pathGeometry.rect = { x: 1, y: 2, width: 19, height: 14 }
+
   return (
     <Page
       title="IconElement"
-      subtitle="Represents native icon controls backed by symbols and glyphs."
+      subtitle="Represents icon controls that use different image types as their content."
       automationId="IconElementPageHeading"
       pageId="icon-element"
       model={context.model}
     >
       <SampleCard
         automationId="GalleryStylesIconElementSample"
-        title="SymbolIcon and FontIcon"
-        description="IconElement-derived controls can be placed directly or used as control icon properties."
+        title="BitmapIcon"
+        description="ShowAsMonochrome is true by default; turn it off to preserve a multicolor bitmap."
         code={`
-<UI.SymbolIcon symbol={Symbol.Home} />
-<UI.FontIcon glyph={'\\uE8A5'} />
+<UI.BitmapIcon
+  uriSource={slicesUri}
+  showAsMonochrome={false}
+/>
         `}
-        output={
-          <UI.TextBlock
-            automationId="GalleryStylesIconElementStatus"
-            text={computed(
-              () => `Native icon elements loaded: ${loaded.value}`,
-            )}
-          />
+        options={
+          <UI.CheckBox
+            automationId="GalleryStylesBitmapIconMonochrome"
+            isChecked={monochrome}
+            onChecked={() => {
+              monochrome.value = true
+              context.model.recordInteraction()
+            }}
+            onUnchecked={() => {
+              monochrome.value = false
+            }}
+          >
+            Monochrome
+          </UI.CheckBox>
         }
       >
-        <LayoutGrid
-          columnDefinitions={[
-            gridLength.star(),
-            gridLength.star(),
-          ]}
-          columnSpacing={18}
-        >
-          <UI.Border padding={thickness(24)}>
-            <UI.StackPanel spacing={8}>
-              <UI.SymbolIcon
-                symbol={Symbol.Home}
-                onLoaded={() => {
-                  loaded.value += 1
-                }}
-              />
-              <UI.TextBlock text="SymbolIcon" />
-            </UI.StackPanel>
-          </UI.Border>
-          <UI.Border gridColumn={1} padding={thickness(24)}>
-            <UI.StackPanel spacing={8}>
-              <UI.FontIcon
-                glyph={'\uE8A5'}
-                fontSize={32}
-                onLoaded={() => {
-                  loaded.value += 1
-                }}
-              />
-              <UI.TextBlock text="FontIcon" />
-            </UI.StackPanel>
-          </UI.Border>
-        </LayoutGrid>
+        <UI.BitmapIcon
+          automationId="GalleryStylesBitmapIcon"
+          width={50}
+          uriSource={slicesUri}
+          showAsMonochrome={monochrome}
+        />
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryStylesFontIconSample"
+        title="FontIcon"
+        description="FontIcon displays a glyph from an icon font."
+        code={`<UI.FontIcon glyph={'\\uE790'} />`}
+      >
+        <UI.Button automationName="FontIcon example">
+          <UI.FontIcon glyph={'\uE790'} fontSize={32} />
+        </UI.Button>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryStylesImageIconSample"
+        title="ImageIcon"
+        description="ImageIcon accepts the same projected image sources as Image."
+        code={`<UI.ImageIcon source={slicesImage} />`}
+      >
+        <UI.Button automationName="ImageIcon example">
+          <UI.ImageIcon
+            width={50}
+            source={slicesImage}
+          />
+        </UI.Button>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryStylesPathIconSample"
+        title="PathIcon"
+        description="PathIcon renders connected line and curve geometry."
+        code={`<UI.PathIcon data={pathGeometry} />`}
+      >
+        <UI.Button automationName="PathIcon example">
+          <UI.PathIcon data={pathGeometry} />
+        </UI.Button>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryStylesSymbolIconSample"
+        title="SymbolIcon"
+        description="SymbolIcon selects a glyph by enum value."
+        code={`<UI.SymbolIcon symbol={Symbol.Accept} />`}
+      >
+        <UI.Button automationName="Accept">
+          <UI.StackPanel spacing={4}>
+            <UI.SymbolIcon symbol={Symbol.Accept} />
+            <UI.TextBlock text="Accept" />
+          </UI.StackPanel>
+        </UI.Button>
       </SampleCard>
     </Page>
   )

@@ -37,7 +37,8 @@ The pages cover:
   heading, and live-region examples;
 - AcrylicBrush, AnimatedIcon, Compact Sizing, IconElement, Line, Shape,
   RadialGradientBrush, System Backdrops, SystemBackdropElement, and
-  ThemeShadow style samples;
+  ThemeShadow style samples with the original multi-example option sets and
+  material guidance;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;
