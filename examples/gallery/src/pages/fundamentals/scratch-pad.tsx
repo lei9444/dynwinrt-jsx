@@ -17,15 +17,14 @@ import {
   ContentControl,
   FontFamily,
   HorizontalAlignment,
+  releaseProjected,
   ScrollBarVisibility,
   ScrollMode,
   TextBlock,
   TextWrapping,
+  UIElement,
   VerticalAlignment,
 } from '#winapp/bindings'
-import {
-  DynWinRtValue,
-} from '@microsoft/dynwinrt'
 import {
   type AppContext,
   LayoutGrid,
@@ -69,7 +68,7 @@ export function ScratchPadPage(context: AppContext) {
   const markup = signal(defaultScratchXaml)
   const status = signal('')
   const dialogOpen = signal(false)
-  let loadedContent: DynWinRtValue | null = null
+  let loadedContent: UIElement | null = null
   const codeFont = createFontFamily(
     FontFamily,
     'Cascadia Code, Consolas',
@@ -94,18 +93,22 @@ export function ScratchPadPage(context: AppContext) {
   }
   const replacePreview = (
     content: unknown,
-    ownedContent: DynWinRtValue | null,
+    ownedContent: UIElement | null,
   ) => {
     try {
       requirePreviewHost().content = content
     }
     catch (error: unknown) {
-      ownedContent?.release()
+      if (ownedContent) {
+        releaseProjected(ownedContent)
+      }
       throw error
     }
     const previous = loadedContent
     loadedContent = ownedContent
-    previous?.release()
+    if (previous) {
+      releaseProjected(previous)
+    }
   }
   const loadMarkup = () => {
     try {
@@ -174,7 +177,9 @@ export function ScratchPadPage(context: AppContext) {
       firstError = error
     }
     try {
-      loadedContent?.release()
+      if (loadedContent) {
+        releaseProjected(loadedContent)
+      }
       loadedContent = null
     }
     catch (error: unknown) {

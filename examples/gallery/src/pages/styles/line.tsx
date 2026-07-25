@@ -6,7 +6,13 @@ import {
   type Signal,
 } from 'dynwinrt-jsx'
 import {
+  EllipseGeometry,
+  FillRule,
+  GeometryGroup,
   Line,
+  LineGeometry,
+  PointCollection,
+  RectangleGeometry,
   SolidColorBrush,
 } from '#winapp/bindings'
 import {
@@ -15,13 +21,39 @@ import {
   UI,
 } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
-import { NativeXamlPreview } from '../fundamentals/shared'
 
 export function LinePage(context: AppContext) {
   const stroke = createSolidColorBrush(
     SolidColorBrush,
     color(70, 130, 180),
   )
+  const blackStroke = createSolidColorBrush(
+    SolidColorBrush,
+    color(0, 0, 0),
+  )
+  const geometryFill = createSolidColorBrush(
+    SolidColorBrush,
+    color(204, 204, 255),
+  )
+  const polylinePoints = new PointCollection()
+  polylinePoints.append({ x: 10, y: 100 })
+  polylinePoints.append({ x: 60, y: 40 })
+  polylinePoints.append({ x: 200, y: 40 })
+  polylinePoints.append({ x: 250, y: 100 })
+  const geometryGroup = new GeometryGroup()
+  geometryGroup.fillRule = FillRule.EvenOdd
+  const lineGeometry = new LineGeometry()
+  lineGeometry.startPoint = { x: 10, y: 10 }
+  lineGeometry.endPoint = { x: 50, y: 30 }
+  const ellipseGeometry = new EllipseGeometry()
+  ellipseGeometry.center = { x: 80, y: 70 }
+  ellipseGeometry.radiusX = 35
+  ellipseGeometry.radiusY = 40
+  const rectangleGeometry = new RectangleGeometry()
+  rectangleGeometry.rect = { x: 70, y: 55, width: 100, height: 30 }
+  geometryGroup.children.append(lineGeometry)
+  geometryGroup.children.append(ellipseGeometry)
+  geometryGroup.children.append(rectangleGeometry)
   const x1 = signal(10)
   const y1 = signal(100)
   const x2 = signal(250)
@@ -152,56 +184,50 @@ export function LinePage(context: AppContext) {
         automationId="GalleryStylesPolylineSample"
         title="Polyline"
         description="The native Polyline closes no area and renders an open PointCollection with joined segments."
-        code={`<NativeXamlPreview xaml={polylineXaml} />`}
+        code={`const points = new PointCollection()
+points.replaceAll([
+  { x: 10, y: 100 },
+  { x: 60, y: 40 },
+  { x: 200, y: 40 },
+  { x: 250, y: 100 },
+])
+
+<UI.Polyline points={points} stroke={blackStroke} strokeThickness={4} />`}
       >
-        <NativeXamlPreview
-          automationId="GalleryStylesNativePolyline"
-          xaml={`
-<Canvas
-  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  Width="320" Height="170">
-  <TextBlock Text="Draws a series of connected straight lines." />
-  <Polyline
-    Canvas.Top="24"
-    Points="10,100 60,40 200,40 250,100"
-    Stroke="Black"
-    StrokeThickness="4" />
-</Canvas>
-          `}
-        />
+        <UI.Canvas width={320} height={170}>
+          <UI.TextBlock text="Draws a series of connected straight lines." />
+          <UI.Polyline
+            automationId="GalleryStylesNativePolyline"
+            canvasTop={24}
+            points={polylinePoints}
+            stroke={blackStroke}
+            strokeThickness={4}
+          />
+        </UI.Canvas>
       </SampleCard>
 
       <SampleCard
         automationId="GalleryStylesGeometryGroupSample"
         title="Path with GeometryGroup"
         description="A native Path fills and strokes a composite GeometryGroup containing line, ellipse, and rectangle geometry."
-        code={`<NativeXamlPreview xaml={geometryGroupXaml} />`}
+        code={`const group = new GeometryGroup()
+group.children.append(lineGeometry)
+group.children.append(ellipseGeometry)
+group.children.append(rectangleGeometry)
+
+<UI.Path data={group} fill={fill} stroke={blackStroke} />`}
       >
-        <NativeXamlPreview
-          automationId="GalleryStylesNativeGeometryGroup"
-          xaml={`
-<Canvas
-  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  Width="320" Height="170">
-  <TextBlock Text="Composite GeometryGroup" />
-  <Path
-    Canvas.Top="32"
-    Fill="#CCCCFF"
-    Stroke="Black"
-    StrokeThickness="4">
-    <Path.Data>
-      <GeometryGroup FillRule="EvenOdd">
-        <LineGeometry StartPoint="10,10" EndPoint="50,30" />
-        <EllipseGeometry Center="80,70" RadiusX="35" RadiusY="40" />
-        <RectangleGeometry Rect="70,55,100,30" />
-      </GeometryGroup>
-    </Path.Data>
-  </Path>
-</Canvas>
-          `}
-        />
+        <UI.Canvas width={320} height={170}>
+          <UI.TextBlock text="Composite GeometryGroup" />
+          <UI.Path
+            automationId="GalleryStylesNativeGeometryGroup"
+            canvasTop={32}
+            data={geometryGroup}
+            fill={geometryFill}
+            stroke={blackStroke}
+            strokeThickness={4}
+          />
+        </UI.Canvas>
       </SampleCard>
     </Page>
   )

@@ -10,38 +10,22 @@ import {
   AutomationHeadingLevel,
   ContentControl,
   HorizontalAlignment,
+  projectAs,
+  releaseProjected,
   TextWrapping,
+  UIElement,
   XamlReader,
 } from '#winapp/bindings'
-import { DynWinRtValue } from '@microsoft/dynwinrt'
 import { UI } from '../../gallery-ui'
-
-function loadExpected<T>(
-  xaml: string,
-  label: string,
-  predicate: (value: unknown) => value is T,
-  validateTemplates = false,
-): T {
-  const value = validateTemplates
-    ? XamlReader.loadWithInitialTemplateValidation(xaml)
-    : XamlReader.load(xaml)
-  if (!predicate(value)) {
-    throw new TypeError(`XamlReader did not return a ${label}.`)
-  }
-  return value
-}
 
 export function loadNativeContent(
   xaml: string,
   validateTemplates = false,
-): DynWinRtValue {
-  return loadExpected(
-    xaml,
-    'DynWinRtValue object tree',
-    (value): value is DynWinRtValue =>
-      value instanceof DynWinRtValue,
-    validateTemplates,
-  )
+): UIElement {
+  const value = validateTemplates
+    ? XamlReader.loadWithInitialTemplateValidation(xaml)
+    : XamlReader.load(xaml)
+  return projectAs(value, UIElement)
 }
 
 export function NativeXamlPreview(props: {
@@ -62,7 +46,7 @@ export function NativeXamlPreview(props: {
       firstError = error
     }
     try {
-      content.release()
+      releaseProjected(content)
     }
     catch (error: unknown) {
       firstError ??= error
