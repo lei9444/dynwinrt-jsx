@@ -56,6 +56,10 @@
 - Added the complete WinUI Gallery Fundamentals category with Resources,
   Style, Binding, Templates, Custom & User Controls, XAML Conditions, and
   Scratch Pad.
+- Reworked the Fundamentals pages to match the original WinUI Gallery guidance
+  and sample structure while keeping Style, Binding, templates, and custom
+  controls idiomatic to dynwinrt-jsx TSX and using native XamlReader only for
+  the Scratch Pad markup workflow.
 - Added the complete WinUI Gallery Design category with Color, Geometry,
   Iconography, Spacing, and Typography.
 - Added the complete WinUI Gallery Accessibility category with Color Contrast,

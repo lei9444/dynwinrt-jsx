@@ -3,7 +3,8 @@
 [CmdletBinding()]
 param(
     [string]$WinAppPath,
-    [int]$TimeoutMilliseconds = 10000
+    [int]$TimeoutMilliseconds = 10000,
+    [switch]$SkipKeyboardInput
 )
 
 Set-StrictMode -Version Latest
@@ -70,6 +71,25 @@ function Get-UiTreeElements([object[]]$Nodes) {
             Get-UiTreeElements @($node.children)
         }
     }
+}
+
+function Ensure-NavigationItem(
+    [int64]$WindowHandle,
+    [string]$Selector
+) {
+    & $WinAppPath ui wait-for $Selector -w "$WindowHandle" --timeout 100 *> $null
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
+    Invoke-WinApp @(
+        "ui", "invoke", "PART_PaneToggleButton",
+        "-w", "$WindowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", $Selector,
+        "-w", "$WindowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
 }
 
 $evidenceRoot = Join-Path $galleryRoot ".winapp\smoke"
@@ -165,6 +185,7 @@ try {
         throw "Legacy Gallery page IDs were not migrated."
     }
 
+    Ensure-NavigationItem $windowHandle "GalleryBasicInputCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryBasicInputCategoryNavItem",
         "-w", "$windowHandle"
@@ -198,6 +219,7 @@ try {
         "--timeout", "$TimeoutMilliseconds"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryCollectionsCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryCollectionsCategoryNavItem",
         "-w", "$windowHandle"
@@ -222,6 +244,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryDateTimeCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryDateTimeCategoryNavItem",
         "-w", "$windowHandle"
@@ -246,6 +269,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryDialogsFlyoutsCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryDialogsFlyoutsCategoryNavItem",
         "-w", "$windowHandle"
@@ -270,6 +294,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryStatusInfoCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryStatusInfoCategoryNavItem",
         "-w", "$windowHandle"
@@ -294,6 +319,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryLayoutCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryLayoutCategoryNavItem",
         "-w", "$windowHandle"
@@ -318,6 +344,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryMenusToolbarsCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryMenusToolbarsCategoryNavItem",
         "-w", "$windowHandle"
@@ -342,6 +369,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryNavigationCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryNavigationCategoryNavItem",
         "-w", "$windowHandle"
@@ -366,6 +394,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryScrollingCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryScrollingCategoryNavItem",
         "-w", "$windowHandle"
@@ -390,6 +419,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryTextCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryTextCategoryNavItem",
         "-w", "$windowHandle"
@@ -414,6 +444,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryFundamentalsCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryFundamentalsCategoryNavItem",
         "-w", "$windowHandle"
@@ -438,6 +469,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryDesignCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryDesignCategoryNavItem",
         "-w", "$windowHandle"
@@ -462,6 +494,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryAccessibilityCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryAccessibilityCategoryNavItem",
         "-w", "$windowHandle"
@@ -486,6 +519,7 @@ try {
         "-w", "$windowHandle"
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryStylesCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryStylesCategoryNavItem",
         "-w", "$windowHandle"
@@ -583,10 +617,10 @@ try {
         [pscustomobject]@{ Name = "Open RichTextBlock"; Heading = "RichTextBlockPageHeading"; Probe = "GalleryRichTextBlockSample"; Query = "richtextblock paragraph" },
         [pscustomobject]@{ Name = "Open TextBlock"; Heading = "TextBlockPageHeading"; Probe = "GalleryTextBlockControl"; Query = "textblock wrapping" },
         [pscustomobject]@{ Name = "Open TextBox"; Heading = "TextBoxPageHeading"; Probe = "GalleryTextBoxInput"; Query = "textbox multiline" },
-        [pscustomobject]@{ Name = "Open Resources"; Heading = "ResourcesPageHeading"; Probe = "GalleryResourcesSample"; Query = "theme resource" },
-        [pscustomobject]@{ Name = "Open Style"; Heading = "StylePageHeading"; Probe = "GalleryStyleSample"; Query = "style recipe" },
-        [pscustomobject]@{ Name = "Open Binding"; Heading = "BindingPageHeading"; Probe = "GalleryBindingInput"; Query = "binding two way" },
-        [pscustomobject]@{ Name = "Open Templates"; Heading = "TemplatesPageHeading"; Probe = "GalleryTemplatesSample"; Query = "templates datatemplate" },
+        [pscustomobject]@{ Name = "Open Resources"; Heading = "ResourcesPageHeading"; Probe = "GalleryResourcesSample"; Query = "resourcedictionary themeresource" },
+        [pscustomobject]@{ Name = "Open Style"; Heading = "StylePageHeading"; Probe = "GalleryStyleSample"; Query = "style setter implicit" },
+        [pscustomobject]@{ Name = "Open Binding"; Heading = "BindingPageHeading"; Probe = "GalleryBindingInput"; Query = "binding twoway source" },
+        [pscustomobject]@{ Name = "Open Templates"; Heading = "TemplatesPageHeading"; Probe = "GalleryTemplatesSample"; Query = "templates controltemplate" },
         [pscustomobject]@{ Name = "Open Custom & User Controls"; Heading = "CustomUserControlsPageHeading"; Probe = "GalleryCustomControlsSample"; Query = "custom user controls" },
         [pscustomobject]@{ Name = "Open XAML Conditions"; Heading = "XamlConditionsPageHeading"; Probe = "GalleryXamlConditionsSample"; Query = "xaml conditions" },
         [pscustomobject]@{ Name = "Open Scratch Pad"; Heading = "ScratchPadPageHeading"; Probe = "GalleryScratchPadSample"; Query = "scratch pad playground" },
@@ -611,6 +645,7 @@ try {
     )
 
     foreach ($route in $routes) {
+        Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
         Invoke-WinApp @(
             "ui", "invoke", "GalleryHomeNavItem",
             "-w", "$windowHandle"
@@ -784,7 +819,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "SplitButtonPageHeading") {
+        if (
+            $route.Heading -eq "SplitButtonPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             Invoke-WinApp @(
                 "ui", "focus", "GalleryBasicInputSplitButtonControl",
                 "-w", "$windowHandle"
@@ -809,7 +847,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "ToggleSplitButtonPageHeading") {
+        if (
+            $route.Heading -eq "ToggleSplitButtonPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             Invoke-WinApp @(
                 "ui", "focus", "GalleryBasicInputToggleSplitButtonControl",
                 "-w", "$windowHandle"
@@ -896,7 +937,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "ComboBoxPageHeading") {
+        if (
+            $route.Heading -eq "ComboBoxPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             $comboBoxTreeJson = Invoke-WinApp @(
                 "ui", "inspect",
                 "-w", "$windowHandle",
@@ -1714,80 +1758,133 @@ try {
             )
         }
         if ($route.Heading -eq "ResourcesPageHeading") {
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryResourcesAccent",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Accent resource button invoked.",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-        }
-        if ($route.Heading -eq "StylePageHeading") {
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryStyleAccent",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Selected style: Accent",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-        }
-        if ($route.Heading -eq "BindingPageHeading") {
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryBindingProgrammatic",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Bound name: Programmatic",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            $bindingInputJson = Invoke-WinApp @(
-                "ui", "inspect", "GalleryBindingInput",
+            $themeBeforeJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryResourcesThemeName",
                 "-w", "$windowHandle",
                 "--json"
             ) -Capture
-            $bindingInput = $bindingInputJson | ConvertFrom-Json
+            $themeBefore = $themeBeforeJson | ConvertFrom-Json
+            $themeBeforeName = [string]$themeBefore.windows[0].elements[0].name
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryThemeButton-resources",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 250
+            $themeAfterJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryResourcesThemeName",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $themeAfter = $themeAfterJson | ConvertFrom-Json
+            $themeAfterName = [string]$themeAfter.windows[0].elements[0].name
+            if ($themeBeforeName -eq $themeAfterName) {
+                throw "The scoped theme ResourceDictionary did not refresh."
+            }
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryResourcesVerifyNative",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryResourcesVerifyNative",
+                "-w", "$windowHandle"
+            )
+            $nativeThemeJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryResourcesNativeStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $nativeTheme = $nativeThemeJson | ConvertFrom-Json
             if (
-                [string]$bindingInput.windows[0].elements[0].value -ne
-                "Programmatic"
+                [string]$nativeTheme.windows[0].elements[0].name -ne
+                "Native background opacity: 0.73"
             ) {
-                throw "Programmatic binding did not update the TextBox."
+                throw "The dark native theme resource brush was not resolved."
+            }
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryThemeButton-resources",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 250
+        }
+        if ($route.Heading -eq "StylePageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryStyleNativeStyledButton",
+                "-w", "$windowHandle"
+            )
+            $styledButtonJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryStyleNativeStyledButton",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $styledButton = $styledButtonJson | ConvertFrom-Json
+            if ([double]$styledButton.windows[0].elements[0].width -lt 200) {
+                throw "The explicit TSX style recipe did not apply MinWidth."
+            }
+        }
+        if ($route.Heading -eq "BindingPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryBindingOneWaySource", "OneWay",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "OneWay",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            $oneWayTargetJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryBindingOneWayTarget",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $oneWayTarget = $oneWayTargetJson | ConvertFrom-Json
+            if (
+                [string]$oneWayTarget.windows[0].elements[0].value -ne
+                "OneWay"
+            ) {
+                throw "OneWay binding did not update its target."
             }
             Invoke-WinApp @(
                 "ui", "set-value", "GalleryBindingInput", "Grace",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Bound name: Grace",
+                "ui", "wait-for", "TwoWay value: Grace",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
+            $bindingMirrorJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryBindingTwoWayMirror",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $bindingMirror = $bindingMirrorJson | ConvertFrom-Json
+            if (
+                [string]$bindingMirror.windows[0].elements[0].value -ne
+                "Grace"
+            ) {
+                throw "TwoWay binding did not update the second TextBox."
+            }
         }
         if ($route.Heading -eq "TemplatesPageHeading") {
             Invoke-WinApp @(
-                "ui", "invoke", "GalleryTemplatesAdd",
+                "ui", "invoke", "GalleryTemplatesStackPanel",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Template items: 4",
+                "ui", "wait-for", "Items panel: StackPanel",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Page 4",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryTemplatesReorder",
+                "ui", "wait-for", "GalleryTemplatesStackLayout",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Keyed identity preserved.",
+                "ui", "invoke", "GalleryTemplatesWrapGrid",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Items panel: WrapGrid",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -1798,28 +1895,49 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Custom control count: 1",
+                "ui", "wait-for", "Increment count: 1",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Custom value: 1",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-        }
-        if ($route.Heading -eq "XamlConditionsPageHeading") {
-            Invoke-WinApp @(
-                "ui", "wait-for", "GalleryXamlConditionsDisabled",
+                "ui", "set-value", "GalleryCustomPasswordInput", "Password1",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
             Invoke-WinApp @(
-                "ui", "invoke", "GalleryXamlConditionsToggle",
+                "ui", "wait-for", "Password is valid",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "set-value", "GalleryCustomTemperatureInput", "100",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Enabled branch active.",
+                "ui", "invoke", "GalleryCustomTemperatureConvert",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryCustomTemperatureStatus",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            $temperatureJson = Invoke-WinApp @(
+                "ui", "inspect", "GalleryCustomTemperatureStatus",
+                "-w", "$windowHandle",
+                "--json"
+            ) -Capture
+            $temperature = $temperatureJson | ConvertFrom-Json
+            if (
+                [string]$temperature.windows[0].elements[0].name -notlike
+                "Fahrenheit: 212.00*"
+            ) {
+                throw "The temperature UserControl did not convert 100 Celsius."
+            }
+        }
+        if ($route.Heading -eq "XamlConditionsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryXamlConditionsNewExperience",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -1833,42 +1951,41 @@ try {
             $staleDisabled = Get-UiTreeElements @(
                 $conditionsTree.windows[0].elements
             ) | Where-Object {
-                $_.automationId -eq "GalleryXamlConditionsDisabled"
+                $_.automationId -eq "GalleryXamlConditionsLegacyMode"
             } | Select-Object -First 1
             if ($staleDisabled) {
-                throw "The disabled Show branch remained mounted."
+                throw "The false startup XAML condition was mounted."
             }
         }
         if ($route.Heading -eq "ScratchPadPageHeading") {
+            $scratchMarkup = '<TextBlock Text="Scratch loaded" />'
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryScratchPadText", "Scratch",
+                "ui", "set-value", "GalleryScratchPadEditor", $scratchMarkup,
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryScratchPadFontSize", "30",
+                "ui", "invoke", "GalleryScratchPadLoad",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Preview font size: 30",
+                "ui", "wait-for", "Load successful.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Scratch",
+            $scratchTreeJson = Invoke-WinApp @(
+                "ui", "inspect",
                 "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            $scratchPreviewJson = Invoke-WinApp @(
-                "ui", "inspect", "GalleryScratchPadPreview",
-                "-w", "$windowHandle",
+                "--depth", "12",
                 "--json"
             ) -Capture
-            $scratchPreview = $scratchPreviewJson | ConvertFrom-Json
-            if (
-                [string]$scratchPreview.windows[0].elements[0].name -ne
-                "Scratch"
-            ) {
-                throw "The Scratch Pad preview did not update."
+            $scratchTree = $scratchTreeJson | ConvertFrom-Json
+            $scratchLoaded = Get-UiTreeElements @(
+                $scratchTree.windows[0].elements
+            ) | Where-Object {
+                $_.name -eq "Scratch loaded"
+            } | Select-Object -First 1
+            if (-not $scratchLoaded) {
+                throw "The Scratch Pad did not load the entered XAML."
             }
         }
         if ($route.Heading -eq "ColorPageHeading") {
@@ -1963,7 +2080,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "KeyboardNavigationPageHeading") {
+        if (
+            $route.Heading -eq "KeyboardNavigationPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             Invoke-WinApp @(
                 "ui", "focus", "GalleryAccessibilityKeyboardFirst",
                 "-w", "$windowHandle"
@@ -2156,6 +2276,7 @@ try {
                 "ui", "invoke", "GalleryFavoriteButton-signals",
                 "-w", "$windowHandle"
             )
+            Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
             Invoke-WinApp @(
                 "ui", "invoke", "GalleryHomeNavItem",
                 "-w", "$windowHandle"
@@ -2173,6 +2294,7 @@ try {
         }
     }
 
+    Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryHomeNavItem",
         "-w", "$windowHandle"

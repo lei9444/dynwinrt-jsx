@@ -210,6 +210,12 @@
           ]
         },
         {
+          "namespace": "Microsoft.UI.Xaml.Markup",
+          "classes": [
+            "XamlReader"
+          ]
+        },
+        {
           "namespace": "Microsoft.UI.Xaml.Controls.Primitives",
           "classes": [
             "Popup",

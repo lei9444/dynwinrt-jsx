@@ -733,70 +733,95 @@ export const galleryPages = [
     id: 'resources',
     category: 'Fundamentals',
     title: 'Resources',
-    subtitle: 'Reusable native values for consistent UI.',
+    subtitle:
+      'Reusable definitions for shared values to ensure consistency and maintainability.',
     description:
-      'Reuse theme resources, design tokens, brushes, and spacing values without CSS or DOM styling concepts.',
-    tags: ['theme', 'resource', 'resourcedictionary', 'token', 'fundamentals'],
-    image: 'ControlImages/ColorPaletteResources.png',
+      'In WinUI 3, XAML resources are reusable objects like colors, brushes, or strings, defined once and used throughout your app to maintain consistency and simplify updates. These resources are typically stored in a ResourceDictionary for better organization and scalability. Special theme resources adapt automatically to light or dark modes, ensuring a seamless look across themes.',
+    tags: [
+      'resourcedictionary',
+      'staticresource',
+      'themeresource',
+      'resources',
+      'lightweight styling',
+    ],
+    image: 'ControlImages/CodeTagIcon.png',
   },
   {
     id: 'style',
     category: 'Fundamentals',
     title: 'Style',
-    subtitle: 'Reusable native property recipes.',
+    subtitle:
+      'A style is a reusable collection of property settings for consistent UI design.',
     description:
-      'Apply typed card, heading, and button recipes to keep native control visuals consistent.',
-    tags: ['style', 'recipe', 'setter', 'basedon', 'fundamentals'],
+      'Styles in WinUI 3 are reusable sets of property values that you can apply to multiple controls. They help maintain a consistent look and feel across your app. Instead of setting the same properties on every control, you define a style once and then reuse it wherever needed.',
+    tags: ['setter', 'basedon', 'implicit style', 'default style'],
     image: 'ControlImages/CodeTagIcon.png',
   },
   {
     id: 'binding',
     category: 'Fundamentals',
     title: 'Binding',
-    subtitle: 'Connects signals to native properties and events.',
+    subtitle:
+      'Connecting UI elements to data for automatic synchronization and updates.',
     description:
-      'Use one-way and feedback-safe two-way binding props for automatic native synchronization.',
-    tags: ['binding', 'two way', 'one way', 'signal', 'data'],
+      'Binding in WinUI 3 connects a control property to a source such as another property, a data object, or a view model. It keeps source and target data synchronized and enables dynamic updates.',
+    tags: [
+      'x:bind',
+      'data binding',
+      'inotifypropertychanged',
+      'observablecollection',
+      'twoway',
+      'oneway',
+      'datacontext',
+    ],
     image: 'ControlImages/CodeTagIcon.png',
   },
   {
     id: 'templates',
     category: 'Fundamentals',
     title: 'Templates',
-    subtitle: 'Reusable native visual structure.',
+    subtitle:
+      "Customize controls' visuals, item layouts, and data presentation.",
     description:
-      'Compose function components and keyed lists as typed TSX equivalents for item templates.',
-    tags: ['templates', 'datatemplate', 'controltemplate', 'component', 'for'],
+      'A template defines the structure and appearance of a control. Unlike styles, which set properties, templates can redefine the visual tree while maintaining control functionality.',
+    tags: [
+      'controltemplate',
+      'datatemplate',
+      'itemtemplate',
+      'datatemplateselector',
+    ],
     image: 'ControlImages/CodeTagIcon.png',
   },
   {
     id: 'custom-user-controls',
     category: 'Fundamentals',
     title: 'Custom & User Controls',
-    subtitle: 'Reusable components with custom behavior.',
+    subtitle:
+      'Create reusable UI components with custom functionality and appearance.',
     description:
-      'Encapsulate native layouts, signals, events, and lifecycle in function components.',
-    tags: ['custom control', 'usercontrol', 'component', 'reusable'],
+      'Custom controls and user controls create reusable UI components with unique behavior and styling. User controls encapsulate a composed layout, while custom controls provide full styling and templating flexibility.',
+    tags: ['usercontrol', 'custom control', 'reusable control'],
     image: 'ControlImages/CustomControls.png',
   },
   {
     id: 'xaml-conditions',
     category: 'Fundamentals',
     title: 'XAML Conditions',
-    subtitle: 'Conditionally owns native branches.',
+    subtitle:
+      'Define custom XAML conditions evaluated at parse time using IXamlCondition.',
     description:
-      'Use reactive Show branches for feature flags and application-specific runtime conditions.',
-    tags: ['xaml conditions', 'conditional', 'show', 'feature flag'],
+      'XAML conditions conditionally include markup based on application-specific state such as feature flags, device capabilities, or configuration. The XAML parser evaluates each condition and caches the result for the process lifetime.',
+    tags: ['ixamlcondition', 'conditional xaml', 'markup extension'],
     image: 'ControlImages/CodeTagIcon.png',
   },
   {
     id: 'scratch-pad',
     category: 'Fundamentals',
     title: 'Scratch Pad',
-    subtitle: 'Experiments with simple native TSX.',
+    subtitle: 'Scratch pad for testing simple XAML markup',
     description:
-      'Adjust text and properties live in a small signal-driven native playground.',
-    tags: ['scratch pad', 'playground', 'sandbox', 'tsx'],
+      'Provides an edit box where you can type in some markup and load it to see how it looks and behaves.',
+    tags: ['playground', 'sandbox', 'test markup'],
     image: 'ControlImages/ScratchPad.png',
   },
   {

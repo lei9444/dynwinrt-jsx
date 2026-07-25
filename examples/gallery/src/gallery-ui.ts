@@ -137,6 +137,7 @@ export const UI = createControls({
   Canvas,
   CheckBox,
   ColorPicker,
+  ContentControl,
   DatePicker,
   Expander,
   Flyout,

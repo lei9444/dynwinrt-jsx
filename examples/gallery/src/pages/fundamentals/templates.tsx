@@ -1,132 +1,286 @@
 import {
-  For,
+  Show,
   computed,
+  cornerRadius,
   signal,
+  styles,
+  theme,
   thickness,
+  type RefObject,
 } from 'dynwinrt-jsx'
-import { type AppContext, UI } from '../../gallery-ui'
+import {
+  HorizontalAlignment,
+  Orientation,
+  Symbol,
+  TextWrapping,
+} from '#winapp/bindings'
+import {
+  type AppContext,
+  GalleryComboBox,
+  type TextBoxInstance,
+  UI,
+} from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
+import {
+  BulletList,
+  GuidanceSection,
+  GuidanceText,
+} from './shared'
 
-interface TemplateItem {
-  readonly id: number
-  readonly title: string
-  readonly detail: string
+const options = ['Option 1', 'Option 2', 'Option 3'] as const
+const layoutItems = Array.from(
+  { length: 20 },
+  (_, index) => `Item ${String(index + 1).padStart(2, '0')}`,
+)
+
+function CustomTextBox(props: {
+  readonly input: RefObject<TextBoxInstance>
+}) {
+  return (
+    <UI.StackPanel spacing={8}>
+      <UI.TextBlock text="Enter text here" />
+      <UI.Border
+        minWidth={200}
+        background={theme.cardBackground}
+        borderBrush={theme.accent}
+        borderThickness={thickness(2)}
+        cornerRadius={cornerRadius(4)}
+      >
+        <UI.StackPanel
+          margin={thickness(4)}
+          orientation={Orientation.Horizontal}
+          spacing={4}
+        >
+          <UI.SymbolIcon symbol={Symbol.Edit} />
+          <UI.TextBox
+            ref={props.input}
+            automationId="GalleryTemplatesCustomTextBox"
+            padding={thickness(8)}
+            minWidth={240}
+            placeholderText="Type here"
+          />
+        </UI.StackPanel>
+      </UI.Border>
+    </UI.StackPanel>
+  )
 }
 
-function ItemTemplate(
-  props: TemplateItem & {
-    readonly onRef: (value: object | null) => void
-  },
-) {
+function ComboOption(props: {
+  readonly text: string
+}) {
+  return (
+    <UI.StackPanel
+      orientation={Orientation.Horizontal}
+      spacing={8}
+    >
+      <UI.Ellipse
+        width={8}
+        height={8}
+        fill={theme.accent}
+      />
+      <UI.TextBlock text={props.text} />
+    </UI.StackPanel>
+  )
+}
+
+function LayoutItem(props: {
+  readonly text: string
+}) {
   return (
     <UI.Border
-      ref={(value) => props.onRef(value)}
-      padding={thickness(16)}
+      {...styles.card({ surface: 'layer' })}
+      width={96}
+      height={44}
+      margin={thickness(4)}
     >
-      <UI.StackPanel spacing={4}>
-        <UI.TextBlock fontSize={20} text={props.title} />
-        <UI.TextBlock text={props.detail} />
-      </UI.StackPanel>
+      <UI.TextBlock
+        text={props.text}
+        horizontalAlignment={HorizontalAlignment.Center}
+      />
     </UI.Border>
   )
 }
 
 export function TemplatesPage(context: AppContext) {
-  let nextId = 4
-  const identities = new Map<number, object>()
-  const identityStatus = signal('Keyed identities are stable.')
-  const items = signal<readonly TemplateItem[]>([
-    { id: 1, title: 'Home', detail: 'Overview content' },
-    { id: 2, title: 'Files', detail: 'Recent documents' },
-    { id: 3, title: 'Settings', detail: 'App preferences' },
-  ])
+  const customTextInput: RefObject<TextBoxInstance> = {
+    current: null,
+  }
+  const selectedOption = signal(0)
+  const wrapLayout = signal(true)
 
   return (
     <Page
       title="Templates"
-      subtitle="Reusable function components define repeatable native visual structure."
+      subtitle="Customize controls' visuals, item layouts, and data presentation."
       automationId="TemplatesPageHeading"
       pageId="templates"
       model={context.model}
     >
+      <GuidanceSection>
+        <GuidanceText text="Templates can be defined at application, page, or control scope. Their placement depends on how broadly the visual structure should be reused." />
+        <BulletList
+          items={[
+            'ControlTemplate customizes the visual structure of one control.',
+            'DataTemplate changes how individual data items are displayed.',
+            'ItemsPanelTemplate defines how a collection of items is arranged.',
+          ]}
+        />
+        <GuidanceText text="dynwinrt-jsx expresses these structures as typed components and child composition, keeping the native controls and behavior explicit in TSX." />
+      </GuidanceSection>
+
       <SampleCard
         automationId="GalleryTemplatesSample"
-        title="A keyed item template"
-        description="Function components replace XAML DataTemplate markup while For preserves keyed native identity."
+        title="Customize a TextBox visual structure"
+        description="A reusable TSX component composes the header, border, edit icon, and native TextBox while retaining normal text input behavior."
         code={`
-<For each={items} key={(item) => item.id}>
-  {(item) => <ItemTemplate {...item} />}
-</For>
+function CustomTextBox() {
+  return (
+    <UI.StackPanel>
+      <UI.TextBlock text="Enter text here" />
+      <UI.Border>
+        <UI.StackPanel orientation={Orientation.Horizontal}>
+          <UI.SymbolIcon symbol={Symbol.Edit} />
+          <UI.TextBox />
+        </UI.StackPanel>
+      </UI.Border>
+    </UI.StackPanel>
+  )
+}
+        `}
+      >
+        <CustomTextBox input={customTextInput} />
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryTemplatesDataTemplateSample"
+        title="Customize ComboBox items with a data template component"
+        description="Each data value is mapped to the same dot-and-label component before being added to the native ComboBox items collection."
+        code={`
+function ComboOption({ text }) {
+  return (
+    <UI.StackPanel orientation={Orientation.Horizontal}>
+      <UI.Ellipse fill={theme.accent} />
+      <UI.TextBlock text={text} />
+    </UI.StackPanel>
+  )
+}
+
+<GalleryComboBox>
+  {options.map((text) => <ComboOption text={text} />)}
+</GalleryComboBox>
         `}
         output={
-          <UI.StackPanel spacing={4}>
-            <UI.TextBlock
-              automationId="GalleryTemplatesStatus"
-              text={computed(() => `Template items: ${items.value.length}`)}
-            />
-            <UI.TextBlock
-              automationId="GalleryTemplatesIdentity"
-              text={identityStatus}
-            />
-          </UI.StackPanel>
+          <UI.TextBlock
+            automationId="GalleryTemplatesSelectedOption"
+            text={computed(
+              () => `Selected: ${options[selectedOption.value] ?? options[0]}`,
+            )}
+          />
+        }
+      >
+        <GalleryComboBox
+          automationId="GalleryTemplatesComboBox"
+          header="Options"
+          selectedIndex={selectedOption}
+          onSelectedIndexChange={(index) => {
+            selectedOption.value = index
+            context.model.recordInteraction()
+          }}
+        >
+          {options.map((text) => (
+            <ComboOption key={text} text={text} />
+          ))}
+        </GalleryComboBox>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryTemplatesItemsPanelSample"
+        title="Switch the collection items panel"
+        description="The same 20 item components are arranged by either a wrapping panel or a vertical StackPanel."
+        code={`
+<Show when={wrapLayout} fallback={
+  <UI.StackPanel>{items.map(renderItem)}</UI.StackPanel>
+}>
+  <UI.VariableSizedWrapGrid>{items.map(renderItem)}</UI.VariableSizedWrapGrid>
+</Show>
+        `}
+        output={
+          <UI.TextBlock
+            automationId="GalleryTemplatesLayoutStatus"
+            text={computed(() =>
+              wrapLayout.value
+                ? 'Items panel: WrapGrid'
+                : 'Items panel: StackPanel',
+            )}
+          />
         }
         options={
-          <UI.StackPanel spacing={10}>
-            <UI.Button
-              automationId="GalleryTemplatesAdd"
-              onClick={() => {
-                const id = nextId
-                nextId += 1
-                items.value = [
-                  ...items.value,
-                  {
-                    id,
-                    title: `Page ${id}`,
-                    detail: 'Dynamically templated content',
-                  },
-                ]
-                context.model.recordInteraction()
+          <UI.StackPanel spacing={8}>
+            <UI.RadioButton
+              automationId="GalleryTemplatesWrapGrid"
+              groupName="templates-items-panel"
+              isChecked={wrapLayout}
+              onChecked={() => {
+                if (!wrapLayout.value) {
+                  wrapLayout.value = true
+                  context.model.recordInteraction()
+                }
               }}
             >
-              Add item
-            </UI.Button>
-            <UI.Button
-              automationId="GalleryTemplatesReorder"
-              onClick={() => {
-                const previous = new Map(identities)
-                items.value = [...items.value].reverse()
-                identityStatus.value =
-                  items.peek().every(
-                    (item) =>
-                      identities.get(item.id) ===
-                      previous.get(item.id),
-                  )
-                    ? 'Keyed identity preserved.'
-                    : 'Keyed identity changed.'
-                context.model.recordInteraction()
+              WrapGrid
+            </UI.RadioButton>
+            <UI.RadioButton
+              automationId="GalleryTemplatesStackPanel"
+              groupName="templates-items-panel"
+              isChecked={computed(() => !wrapLayout.value)}
+              onChecked={() => {
+                if (wrapLayout.value) {
+                  wrapLayout.value = false
+                  context.model.recordInteraction()
+                }
               }}
             >
-              Reverse items
-            </UI.Button>
+              StackPanel
+            </UI.RadioButton>
           </UI.StackPanel>
         }
       >
         <UI.StackPanel spacing={8}>
-          <For each={items} key={(item) => item.id}>
-            {(item) => (
-              <ItemTemplate
-                {...item}
-                onRef={(value) => {
-                  if (value) {
-                    identities.set(item.id, value)
-                  }
-                  else {
-                    identities.delete(item.id)
-                  }
-                }}
-              />
-            )}
-          </For>
+          <UI.ScrollView
+            height={260}
+            horizontalContentAlignment={HorizontalAlignment.Stretch}
+          >
+            <Show
+              when={wrapLayout}
+              fallback={
+                <UI.StackPanel
+                  automationId="GalleryTemplatesStackLayout"
+                  spacing={4}
+                >
+                  {layoutItems.map((item) => (
+                    <LayoutItem key={item} text={item} />
+                  ))}
+                </UI.StackPanel>
+              }
+            >
+              <UI.VariableSizedWrapGrid
+                automationId="GalleryTemplatesWrapLayout"
+                itemWidth={104}
+                itemHeight={52}
+                maximumRowsOrColumns={4}
+                orientation={Orientation.Horizontal}
+              >
+                {layoutItems.map((item) => (
+                  <LayoutItem key={item} text={item} />
+                ))}
+              </UI.VariableSizedWrapGrid>
+            </Show>
+          </UI.ScrollView>
+          <UI.TextBlock
+            foreground={theme.secondaryText}
+            text="The panel choice changes layout, not the item component."
+            textWrapping={TextWrapping.Wrap}
+          />
         </UI.StackPanel>
       </SampleCard>
     </Page>

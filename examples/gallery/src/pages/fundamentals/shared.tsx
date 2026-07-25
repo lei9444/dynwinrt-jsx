@@ -1,0 +1,85 @@
+import {
+  styles,
+  thickness,
+  tokens,
+  type Child,
+} from 'dynwinrt-jsx'
+import {
+  TextWrapping,
+  XamlReader,
+} from '#winapp/bindings'
+import { DynWinRtValue } from '@microsoft/dynwinrt'
+import { UI } from '../../gallery-ui'
+
+function loadExpected<T>(
+  xaml: string,
+  label: string,
+  predicate: (value: unknown) => value is T,
+  validateTemplates = false,
+): T {
+  const value = validateTemplates
+    ? XamlReader.loadWithInitialTemplateValidation(xaml)
+    : XamlReader.load(xaml)
+  if (!predicate(value)) {
+    throw new TypeError(`XamlReader did not return a ${label}.`)
+  }
+  return value
+}
+
+export function loadNativeContent(
+  xaml: string,
+  validateTemplates = false,
+): DynWinRtValue {
+  return loadExpected(
+    xaml,
+    'DynWinRtValue object tree',
+    (value): value is DynWinRtValue =>
+      value instanceof DynWinRtValue,
+    validateTemplates,
+  )
+}
+
+export function GuidanceSection(props: {
+  readonly title?: string
+  readonly children: Child
+}) {
+  return (
+    <UI.StackPanel spacing={tokens.spacing.md}>
+      {props.title ? (
+        <UI.TextBlock
+          {...styles.heading({ level: 'subtitle' })}
+          text={props.title}
+        />
+      ) : null}
+      {props.children}
+    </UI.StackPanel>
+  )
+}
+
+export function GuidanceText(props: {
+  readonly text: string
+}) {
+  return (
+    <UI.TextBlock
+      text={props.text}
+      textWrapping={TextWrapping.Wrap}
+    />
+  )
+}
+
+export function BulletList(props: {
+  readonly items: readonly string[]
+}) {
+  return (
+    <UI.StackPanel spacing={tokens.spacing.sm}>
+      {props.items.map((item) => (
+        <UI.TextBlock
+          key={item}
+          margin={thickness(8, 0, 0, 0)}
+          text={`• ${item}`}
+          textWrapping={TextWrapping.Wrap}
+        />
+      ))}
+    </UI.StackPanel>
+  )
+}

@@ -26,8 +26,9 @@ The pages cover:
   samples with native scrolling and view-change interaction;
 - AutoSuggestBox, NumberBox, PasswordBox, RichEditBox, RichTextBlock,
   TextBlock, and TextBox samples;
-- Resources, Style, Binding, Templates, Custom & User Controls,
-  XAML Conditions, and Scratch Pad fundamentals;
+- WinUI Gallery-faithful Resources, Style, Binding, Templates, Custom & User
+  Controls, XAML Conditions, and XamlReader-backed Scratch Pad fundamentals,
+  adapted to typed TSX rather than copied XAML authoring;
 - Color, Geometry, Iconography, Spacing, and Typography design guidance;
 - Color Contrast, Keyboard Navigation, and Screen Reader accessibility
   guidance;
