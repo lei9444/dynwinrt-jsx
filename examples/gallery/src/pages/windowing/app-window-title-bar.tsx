@@ -28,8 +28,8 @@ import {
   SampleCard,
 } from '../../components/gallery-components'
 import {
-  createSecondaryWindowManager,
   formatNativeError,
+  useSecondaryWindowScope,
 } from './shared'
 
 type NativeColor = ReturnType<typeof color>
@@ -92,7 +92,7 @@ function TitleBarWindowContent(props: {
 }
 
 export function AppWindowTitleBarPage(context: AppContext) {
-  const windows = createSecondaryWindowManager(context.renderer)
+  const windows = useSecondaryWindowScope(context)
   const customizationSupported =
     AppWindowTitleBar.isCustomizationSupported()
   const status = signal(

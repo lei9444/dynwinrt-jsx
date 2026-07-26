@@ -29,6 +29,7 @@ import {
   createReferenceBoxing,
   createRelativeUri,
   createScrollViewerController,
+  createSecondaryWindowManager,
   createSelectorBarControl,
   createSolidColorBrush,
   createStyleRecipe,
@@ -111,6 +112,37 @@ class TypeNavigationItem {
   focus(_state: number): boolean {
     return true
   }
+}
+
+class TypeSecondaryAppWindow {
+  title = ''
+  onClosing(
+    _callback: (
+      sender: unknown,
+      args: { cancel: boolean },
+    ) => void,
+  ): () => void {
+    return () => {}
+  }
+  onDestroying(_callback: () => void): () => void {
+    return () => {}
+  }
+  resizeClient(_size: {
+    width: number
+    height: number
+  }): void {}
+  show(): void {}
+  destroy(): void {}
+}
+
+class TypeSecondaryWindow {
+  title = ''
+  readonly appWindow = new TypeSecondaryAppWindow()
+  onClosed(_callback: () => void): () => void {
+    return () => {}
+  }
+  activate(): void {}
+  close(): void {}
 }
 
 class TypeListView {
@@ -699,6 +731,38 @@ boxNullable(
 )
 declare const typeRenderer: Renderer
 declare const overlayTarget: TypePanel
+const secondaryWindows = createSecondaryWindowManager<
+  TypeSecondaryWindow,
+  TypeSecondaryAppWindow
+>({
+  renderer: typeRenderer,
+  createWindow: () => new TypeSecondaryWindow(),
+})
+const secondaryWindowScope = secondaryWindows.createScope()
+const secondaryXamlHandle =
+  secondaryWindowScope.openXamlWindow({
+    title: 'Child',
+    content: () => <UI.TextBlock text="Child" />,
+    onClosing(_window, args) {
+      args.cancel = false
+    },
+  })
+secondaryXamlHandle.close()
+const secondaryAppHandle =
+  secondaryWindowScope.openAppWindow({
+    create: () => new TypeSecondaryAppWindow(),
+    title: 'AppWindow',
+    width: 320,
+    height: 200,
+  })
+secondaryAppHandle.close()
+secondaryWindowScope.closeAll()
+secondaryWindowScope.dispose()
+secondaryWindows.disposeAsync((callback) => {
+  callback()
+  return true
+})
+secondaryWindows.dispose()
 showFlyout(
   typeRenderer,
   new TypeFlyout(),

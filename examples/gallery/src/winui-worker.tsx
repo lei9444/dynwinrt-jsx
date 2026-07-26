@@ -22,6 +22,7 @@ import {
   Application,
   ApplicationTheme,
   AppNotificationManager,
+  DispatcherQueuePriority,
   MicaBackdrop,
   StackPanel,
   TextBlock,
@@ -36,6 +37,9 @@ import {
   type AppState,
 } from './app-model'
 import { createAppNotificationOwner } from './app-notification-owner'
+import {
+  createGallerySecondaryWindowManager,
+} from './secondary-window-manager'
 import type { AppContext } from './app'
 
 interface ParentPort {
@@ -159,6 +163,8 @@ const exitCode = runWinUIWorkerApp({
     const appNotifications = createAppNotificationOwner({
       getManager: () => AppNotificationManager.default_,
     })
+    const secondaryWindows =
+      createGallerySecondaryWindowManager(renderer)
     const model = createAppModel(
       bridge,
       workerData.initialState,
@@ -229,6 +235,7 @@ const exitCode = runWinUIWorkerApp({
       renderer,
       window,
       appNotifications,
+      secondaryWindows,
       shellCapabilities: workerData.shellCapabilities,
       refreshDiagnostics() {
         model.updateInspection(
@@ -264,10 +271,87 @@ const exitCode = runWinUIWorkerApp({
         bridge.set(model.snapshot('closed'))
       },
       disposeAfterRender() {
-        model.dispose()
+        let firstError: unknown
+        try {
+          secondaryWindows.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        try {
+          model.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        if (firstError !== undefined) {
+          throw firstError
+        }
       },
       beforeCloseAsync() {
-        return appNotifications.dispose()
+        const disposeWindows = () =>
+          secondaryWindows.disposeAsync(
+            (callback) =>
+              window.dispatcherQueue.tryEnqueue(
+                DispatcherQueuePriority.Low,
+                callback,
+              ),
+          )
+        let notificationCleanup: void | Promise<void>
+        try {
+          notificationCleanup = appNotifications.dispose()
+        }
+        catch (notificationError) {
+          return {
+            then(onFulfilled, onRejected) {
+              disposeWindows().then(
+                () => onRejected(notificationError),
+                (cleanupError) => onRejected(
+                  new AggregateError(
+                    [notificationError, cleanupError],
+                    'Application notification and secondary window cleanup failed.',
+                  ),
+                ),
+              )
+            },
+          }
+        }
+        if (!notificationCleanup) {
+          return disposeWindows()
+        }
+        return {
+          then(onFulfilled, onRejected) {
+            const finish = (notificationError?: unknown) => {
+              disposeWindows().then(
+                () => {
+                  if (notificationError === undefined) {
+                    onFulfilled()
+                  }
+                  else {
+                    onRejected(notificationError)
+                  }
+                },
+                (cleanupError) => onRejected(
+                  notificationError === undefined
+                    ? cleanupError
+                    : new AggregateError(
+                        [notificationError, cleanupError],
+                        'Application notification and secondary window cleanup failed.',
+                      ),
+                ),
+              )
+            }
+            try {
+              void notificationCleanup.then(
+                () => finish(),
+                (error) => finish(error),
+              )
+            }
+            catch (error) {
+              finish(error)
+            }
+          },
+        }
       },
       afterRender({ renderHandle }) {
         const hotReloadController =

@@ -9,6 +9,7 @@ import {
   type Signal,
 } from 'dynwinrt-jsx'
 import {
+  AppWindow,
   CompactOverlayPresenter,
   CompactOverlaySize,
   DisplayArea,
@@ -41,8 +42,8 @@ import {
   SampleCard,
 } from '../../components/gallery-components'
 import {
-  createSecondaryWindowManager,
   formatNativeError,
+  useSecondaryWindowScope,
 } from './shared'
 
 function WindowCloseButton(props: {
@@ -144,7 +145,7 @@ function BooleanOption(props: {
 }
 
 export function AppWindowPage(context: AppContext) {
-  const windows = createSecondaryWindowManager(context.renderer)
+  const windows = useSecondaryWindowScope(context)
   const status = signal('No secondary window is open.')
   const windowTitle = signal('This is a title')
   const windowWidth = signal(800)
@@ -601,10 +602,12 @@ modal.show()`}
             const presenter = OverlappedPresenter.createForDialog()
             presenter.isModal = true
             windows.openAppWindow({
+              create: () => AppWindow.create(
+                presenter,
+                context.window.appWindow.id,
+                context.window.dispatcherQueue,
+              ),
               title: 'Modal AppWindow sample — close to continue',
-              presenter,
-              ownerWindowId: context.window.appWindow.id,
-              dispatcherQueue: context.window.dispatcherQueue,
               width: 420,
               height: 260,
               onClosed() {

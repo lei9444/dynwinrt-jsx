@@ -17,12 +17,12 @@ import {
   SampleCard,
 } from '../../components/gallery-components'
 import {
-  createSecondaryWindowManager,
   formatNativeError,
+  useSecondaryWindowScope,
 } from './shared'
 
 export function MultipleWindowsPage(context: AppContext) {
-  const windows = createSecondaryWindowManager(context.renderer)
+  const windows = useSecondaryWindowScope(context)
   const openCount = signal(0)
   const status = signal('No child windows are open.')
 
@@ -39,11 +39,11 @@ export function MultipleWindowsPage(context: AppContext) {
           window.appWindow.setIcon(
             'Assets/Tiles/GalleryIcon.ico',
           )
+        },
+        onClosing(_window, args) {
           if (cancelClose) {
-            return window.appWindow.onClosing((_sender, args) => {
-              args.cancel = true
-              status.value = 'The child Closing handler canceled the close.'
-            })
+            args.cancel = true
+            status.value = 'The child Closing handler canceled the close.'
           }
         },
         content: (window) => (
@@ -107,14 +107,20 @@ export function MultipleWindowsPage(context: AppContext) {
         automationId="GalleryWindowingMultipleWindowsSample"
         title="Create single-threaded multiple windows"
         description="Windows App SDK supports multiple top-level XAML Windows on one UI thread. Each child Window, AppWindow, render handle, native root, and close subscription is retained until Closed and is forcibly closed during page or application teardown."
-        code={`const childWindow = new Window()
-childWindow.extendsContentIntoTitleBar = true
-childWindow.systemBackdrop = new MicaBackdrop()
-const handle = renderer.render(<ChildContent />, childWindow)
-const unsubscribeClosing = childWindow.appWindow.onClosing(...)
-const unsubscribeClosed = childWindow.onClosed(...)
-childWindow.appWindow.resizeClient({ width: 500, height: 500 })
-childWindow.activate()`}
+        code={`const pageWindows = secondaryWindows.createScope()
+onCleanup(pageWindows.dispose)
+
+pageWindows.openXamlWindow({
+  title: "Child window",
+  configure(window) {
+    window.extendsContentIntoTitleBar = true
+    window.appWindow.resizeClient({ width: 500, height: 500 })
+  },
+  content: (window) => <ChildContent window={window} />,
+  onClosing(_window, args) {
+    args.cancel = hasUnsavedWork
+  },
+})`}
         output={
           <UI.TextBlock
             automationId="GalleryWindowingMultipleWindowsStatus"

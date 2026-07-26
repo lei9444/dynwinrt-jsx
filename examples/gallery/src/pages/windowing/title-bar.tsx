@@ -41,8 +41,8 @@ import {
 } from '../../components/gallery-components'
 import { loadGalleryBitmap } from '../../gallery-assets'
 import {
-  createSecondaryWindowManager,
   formatNativeError,
+  useSecondaryWindowScope,
 } from './shared'
 
 function createTitleBarIcon() {
@@ -52,7 +52,7 @@ function createTitleBarIcon() {
 }
 
 export function TitleBarPage(context: AppContext) {
-  const windows = createSecondaryWindowManager(context.renderer)
+  const windows = useSecondaryWindowScope(context)
   const title = signal('WinUI Gallery')
   const subtitle = signal('Preview')
   const showBack = signal(false)

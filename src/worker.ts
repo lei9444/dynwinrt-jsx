@@ -95,6 +95,13 @@ export interface WinUIWorkerRenderedHooks {
   readonly disposeBeforeRender?: () => void
 }
 
+export interface WinUIAsyncCloseOperation {
+  then(
+    onFulfilled: () => void,
+    onRejected: (error: unknown) => void,
+  ): unknown
+}
+
 export interface WinUIWorkerMountedApp<
   Window extends WinUIWorkerWindow,
   AppWindow extends WinUIWorkerAppWindow,
@@ -102,7 +109,8 @@ export interface WinUIWorkerMountedApp<
 > {
   readonly child: Child
   readonly beforeClose?: () => void
-  readonly beforeCloseAsync?: () => void | Promise<void>
+  readonly beforeCloseAsync?: (
+  ) => void | WinUIAsyncCloseOperation
   readonly disposeAfterRender?: () => void
   readonly onProjectionDisposed?: () => void
   readonly afterRender?: (
@@ -427,7 +435,8 @@ export interface WinUIWindowLifecycleOptions {
   readonly appWindow: WinUIWorkerAppWindow
   readonly renderer: Pick<Renderer, 'diagnostics'>
   readonly beforeClose?: () => void
-  readonly beforeCloseAsync?: () => void | Promise<void>
+  readonly beforeCloseAsync?: (
+  ) => void | WinUIAsyncCloseOperation
   readonly disposeBeforeRender?: () => void
   readonly disposeRender: () => void
   readonly disposeAfterRender?: () => void

@@ -542,6 +542,60 @@ the single owned route outlet and deactivates the host before the current page
 is disposed during whole-shell teardown. Keep `onCleanup(navigationHost.dispose)`
 as an idempotent fallback if mounting fails before the outlet is attached.
 
+Use one application-scoped `createSecondaryWindowManager()` when pages create
+additional XAML `Window` or raw `AppWindow` instances. Each page owns a scope,
+so route replacement closes only that page's windows while application shutdown
+can close every remaining scope before renderer and projection teardown:
+
+```tsx
+const secondaryWindows = createSecondaryWindowManager<
+  bindings.Window,
+  bindings.AppWindow
+>({
+  renderer,
+  createWindow() {
+    const window = new bindings.Window()
+    window.systemBackdrop = new bindings.MicaBackdrop()
+    return window
+  },
+})
+
+const pageWindows = secondaryWindows.createScope()
+onCleanup(pageWindows.dispose)
+
+pageWindows.openXamlWindow({
+  title: 'Child window',
+  content: (window) => (
+    <UI.Button onClick={() => window.close()}>
+      Close
+    </UI.Button>
+  ),
+  onClosing(_window, args) {
+    args.cancel = hasUnsavedWork.value
+  },
+})
+
+pageWindows.openAppWindow({
+  create: () => bindings.AppWindow.create(
+    presenter,
+    ownerWindowId,
+    dispatcherQueue,
+  ),
+  title: 'Modal tool',
+  width: 420,
+  height: 260,
+})
+```
+
+Scopes override application close cancellation only during forced teardown,
+dispose XAML render handles before native destruction, retry failed render or
+subscription cleanup, and fall back to `AppWindow.destroy()` when a later
+handler cancels a forced XAML close. Call `secondaryWindows.dispose()` from
+`disposeAsync()` from `beforeCloseAsync()` with a DispatcherQueue enqueue
+function so forced child teardown runs after the main window's active Closing
+callback. The call is idempotent after successful shutdown and remains
+retryable after failure.
+
 Use `createListViewControl()` when JSX children should populate native
 `items`, with owned `header` and `footer` slots:
 

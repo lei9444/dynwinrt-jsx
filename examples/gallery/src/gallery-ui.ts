@@ -135,6 +135,9 @@ import {
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
 import type { AppNotificationOwner } from './app-notification-owner'
+import type {
+  GallerySecondaryWindowManager,
+} from './secondary-window-manager'
 import { commandBarCollection } from './command-bar-collection'
 
 export const UI = createControls({
@@ -519,6 +522,7 @@ export interface AppContext {
   readonly renderer: Renderer
   readonly window: Window
   readonly appNotifications: AppNotificationOwner
+  readonly secondaryWindows: GallerySecondaryWindowManager
   readonly shellCapabilities: {
     readonly appNotifications: {
       readonly available: boolean

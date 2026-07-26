@@ -75,6 +75,22 @@ export {
 } from './winui/navigation'
 
 export {
+  createSecondaryWindowManager,
+  type OpenSecondaryAppWindowOptions,
+  type OpenSecondaryXamlWindowOptions,
+  type SecondaryAppWindowHandle,
+  type SecondaryAppWindowInstance,
+  type SecondaryWindowAsyncDisposal,
+  type SecondaryWindowClosingArgs,
+  type SecondaryWindowManager,
+  type SecondaryWindowManagerOptions,
+  type SecondaryWindowScope,
+  type SecondaryWindowSize,
+  type SecondaryXamlWindowHandle,
+  type SecondaryXamlWindowInstance,
+} from './winui/windowing'
+
+export {
   createListViewControl,
   createListViewScrollTarget,
   type ListViewControlBindings,
