@@ -612,6 +612,39 @@ export const galleryPages = [
     image: 'ControlImages/TitleBar.png',
   },
   {
+    id: 'clipboard',
+    category: 'System',
+    title: 'Clipboard',
+    subtitle:
+      'Copy and paste text, images, and files to and from the system Clipboard.',
+    description:
+      'Use the Clipboard API to copy and paste data, configure history and roaming options, monitor content changes, and inspect available formats.',
+    tags: ['clipboard', 'copy', 'paste', 'cut', 'history', 'roaming'],
+    image: 'ControlImages/Clipboard.png',
+  },
+  {
+    id: 'content-island',
+    category: 'System',
+    title: 'ContentIsland',
+    subtitle:
+      'Create ContentIslands to host other frameworks in your app.',
+    description:
+      'Connect an owned composition tree to the XAML ContentIsland through ChildSiteLink while preserving dispatcher, layout, automation, and lifetime requirements.',
+    tags: ['content island', 'hosting', 'interop', 'composition', 'childsitelink'],
+    image: 'ControlImages/ContentIsland.png',
+  },
+  {
+    id: 'storage-pickers',
+    category: 'System',
+    title: 'Storage pickers',
+    subtitle:
+      'Select files and folders with modern system pickers.',
+    description:
+      'Use FileOpenPicker, FileSavePicker, and FolderPicker with the main window ID and truthful selection, cancellation, and capability results.',
+    tags: ['file picker', 'fileopenpicker', 'filesavepicker', 'folderpicker', 'file dialog'],
+    image: 'ControlImages/StoragePickers.png',
+  },
+  {
     id: 'app-bar-button',
     category: 'Menus & toolbars',
     title: 'AppBarButton',
@@ -1259,6 +1292,7 @@ export type GalleryRoute =
   | 'category-media'
   | 'category-motion'
   | 'category-windowing'
+  | 'category-system'
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
@@ -1305,6 +1339,10 @@ export const motionPages = galleryPages.filter(
 
 export const windowingPages = galleryPages.filter(
   (page) => page.category === 'Windowing',
+)
+
+export const systemPages = galleryPages.filter(
+  (page) => page.category === 'System',
 )
 
 export const menusToolbarsPages = galleryPages.filter(

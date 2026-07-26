@@ -45,6 +45,11 @@ The pages cover:
 - the complete Windowing category: AppWindow, AppWindowTitleBar, Multiple
   windows, and TitleBar, with native presenter APIs, owned same-STA secondary
   windows, capability reporting, custom drag regions, and teardown cleanup;
+- the complete System category: real Windows Clipboard text, history, roaming,
+  format, clear, and change-notification operations; an owned ContentIsland and
+  ChildSiteLink composition host with truthful capability reporting; and
+  FileOpenPicker, FileSavePicker, and FolderPicker initialized from the main
+  window ID with explicit cancellation and failure states;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

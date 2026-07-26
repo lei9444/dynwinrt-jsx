@@ -120,6 +120,10 @@ import { AppWindowPage } from './pages/windowing/app-window'
 import { AppWindowTitleBarPage } from './pages/windowing/app-window-title-bar'
 import { MultipleWindowsPage } from './pages/windowing/multiple-windows'
 import { TitleBarPage } from './pages/windowing/title-bar'
+import { SystemCategoryPage } from './pages/system'
+import { ClipboardPage } from './pages/system/clipboard'
+import { ContentIslandPage } from './pages/system/content-island'
+import { StoragePickersPage } from './pages/system/storage-pickers'
 import { MenusToolbarsCategoryPage } from './pages/menus-toolbars'
 import { AppBarButtonPage } from './pages/menus-toolbars/app-bar-button'
 import { AppBarSeparatorPage } from './pages/menus-toolbars/app-bar-separator'
@@ -314,6 +318,12 @@ function renderSamplePage(
       return <MultipleWindowsPage {...context} />
     case 'title-bar':
       return <TitleBarPage {...context} />
+    case 'clipboard':
+      return <ClipboardPage {...context} />
+    case 'content-island':
+      return <ContentIslandPage {...context} />
+    case 'storage-pickers':
+      return <StoragePickersPage {...context} />
     case 'app-bar-button':
       return <AppBarButtonPage {...context} />
     case 'app-bar-separator':
@@ -448,6 +458,8 @@ function renderRoute(
       return <MotionCategoryPage {...context} />
     case 'category-windowing':
       return <WindowingCategoryPage {...context} />
+    case 'category-system':
+      return <SystemCategoryPage {...context} />
     case 'category-menus-toolbars':
       return <MenusToolbarsCategoryPage {...context} />
     case 'category-navigation':
@@ -810,6 +822,17 @@ export function Shell(context: AppContext) {
     ],
     'category-windowing',
   )
+  const systemItem = createNavigationGroup(
+    'System',
+    'System',
+    Symbol.Setting,
+    [
+      'clipboard',
+      'content-island',
+      'storage-pickers',
+    ],
+    'category-system',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
@@ -828,6 +851,7 @@ export function Shell(context: AppContext) {
     menusToolbarsItem,
     motionItem,
     windowingItem,
+    systemItem,
     navigationItem,
     scrollingItem,
     createNavigationGroup('Shell', 'Shell', Symbol.Repair, []),
@@ -865,6 +889,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-media', mediaItem)
   routeItems.set('category-motion', motionItem)
   routeItems.set('category-windowing', windowingItem)
+  routeItems.set('category-system', systemItem)
   routeItems.set(
     'category-menus-toolbars',
     menusToolbarsItem,
@@ -987,6 +1012,10 @@ export function Shell(context: AppContext) {
               context.model.navigate('category-styles')
               return
             }
+            if (currentPage?.category === 'System') {
+              context.model.navigate('category-system')
+              return
+            }
             context.model.navigate('home')
           }}
           onPaneToggleRequested={() => {
@@ -1048,6 +1077,7 @@ export function Shell(context: AppContext) {
               route === 'category-media' ||
               route === 'category-motion' ||
               route === 'category-windowing' ||
+              route === 'category-system' ||
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
               route === 'category-scrolling' ||

@@ -5,6 +5,8 @@ param(
     [string]$WinAppPath,
     [int]$TimeoutMilliseconds = 10000,
     [switch]$SkipKeyboardInput,
+    [switch]$ClipboardOnly,
+    [switch]$SystemOnly,
     [switch]$WindowingOnly,
     [switch]$WindowingTeardownOnly
 )
@@ -168,6 +170,7 @@ $accessibilityCategoryScreenshotPath = Join-Path $evidenceRoot "accessibility-ca
 $stylesCategoryScreenshotPath = Join-Path $evidenceRoot "styles-category.png"
 $motionCategoryScreenshotPath = Join-Path $evidenceRoot "motion-category.png"
 $windowingCategoryScreenshotPath = Join-Path $evidenceRoot "windowing-category.png"
+$systemCategoryScreenshotPath = Join-Path $evidenceRoot "system-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -183,7 +186,7 @@ $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
 $env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
 
-& npm.cmd run build
+& npm.cmd --prefix $galleryRoot run build
 if ($LASTEXITCODE -ne 0) {
     throw "Gallery build failed."
 }
@@ -241,6 +244,7 @@ try {
         throw "Legacy Gallery page IDs were not migrated."
     }
 
+    if (-not ($ClipboardOnly -or $SystemOnly)) {
     Ensure-NavigationItem $windowHandle "GalleryBasicInputCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryBasicInputCategoryNavItem",
@@ -669,6 +673,36 @@ try {
         "-w", "$windowHandle",
         "--output", $windowingCategoryScreenshotPath
     )
+    }
+
+    Ensure-NavigationItem $windowHandle "GallerySystemCategoryNavItem"
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "GallerySystemCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "GallerySystemCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "SystemCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GalleryOpenPage-clipboard",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "GalleryOpenPage-storage-pickers",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $systemCategoryScreenshotPath
+    )
 
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
@@ -734,6 +768,9 @@ try {
         [pscustomobject]@{ Name = "Open AppWindowTitleBar"; Heading = "AppWindowTitleBarPageHeading"; Probe = "GalleryWindowingAppWindowTitleBarColorsSample"; Query = "appwindowtitlebar caption" },
         [pscustomobject]@{ Name = "Open Multiple windows"; Heading = "MultipleWindowsPageHeading"; Probe = "GalleryWindowingMultipleWindowsSample"; Query = "multiple windows xaml" },
         [pscustomobject]@{ Name = "Open TitleBar"; Heading = "TitleBarPageHeading"; Probe = "GalleryWindowingTitleBarConfigurationSample"; Query = "titlebar drag region" },
+        [pscustomobject]@{ Name = "Open ContentIsland"; Heading = "ContentIslandPageHeading"; Probe = "GallerySystemContentIslandSample"; Query = "content island hosting" },
+        [pscustomobject]@{ Name = "Open Storage pickers"; Heading = "StoragePickersPageHeading"; Probe = "GallerySystemStoragePickerCapabilitySample"; Query = "file picker folderpicker" },
+        [pscustomobject]@{ Name = "Open Clipboard"; Heading = "ClipboardPageHeading"; Probe = "GallerySystemClipboardTextSample"; Query = "clipboard copy paste" },
         [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
         [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
         [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
@@ -787,7 +824,21 @@ try {
         [pscustomobject]@{ Name = "Open SystemBackdropElement"; Heading = "SystemBackdropElementPageHeading"; Probe = "GalleryStylesSystemBackdropElementSample"; Query = "systembackdropelement" },
         [pscustomobject]@{ Name = "Open ThemeShadow"; Heading = "ThemeShadowPageHeading"; Probe = "GalleryStylesThemeShadowSample"; Query = "themeshadow elevation" }
     )
-    if ($WindowingOnly -or $WindowingTeardownOnly) {
+    if ($ClipboardOnly) {
+        $routes = @($routes | Where-Object {
+            $_.Heading -eq "ClipboardPageHeading"
+        })
+    }
+    elseif ($SystemOnly) {
+        $routes = @($routes | Where-Object {
+            $_.Heading -in @(
+                "ClipboardPageHeading",
+                "ContentIslandPageHeading",
+                "StoragePickersPageHeading"
+            )
+        })
+    }
+    elseif ($WindowingOnly -or $WindowingTeardownOnly) {
         $windowingHeadings = if ($WindowingTeardownOnly) {
             @("MultipleWindowsPageHeading")
         }
@@ -1195,6 +1246,122 @@ try {
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
+        }
+        if ($route.Heading -eq "ClipboardPageHeading") {
+            Invoke-WinApp @(
+                "ui", "set-value",
+                "GallerySystemClipboardInput",
+                "System clipboard smoke",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySystemClipboardCopy",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for",
+                "Text durably copied to the system Clipboard.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySystemClipboardPaste",
+                "-w", "$windowHandle"
+            )
+            try {
+                Invoke-WinApp @(
+                    "ui", "wait-for",
+                    "Clipboard text: System clipboard smoke",
+                    "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
+                )
+            }
+            catch {
+                $clipboardStatus = & $WinAppPath ui get-property `
+                    "GallerySystemClipboardCopyStatus" `
+                    -w "$windowHandle" --json 2>$null
+                $clipboardText = & $WinAppPath ui get-property `
+                    "GallerySystemClipboardPastedText" `
+                    -w "$windowHandle" --json 2>$null
+                throw "Clipboard paste did not settle to the expected text within $TimeoutMilliseconds ms. Status: $($clipboardStatus -join ' ') Text: $($clipboardText -join ' ')"
+            }
+        }
+        if ($route.Heading -eq "ContentIslandPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySystemContentIslandCreate",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 300
+            $contentIslandConnected = & $WinAppPath ui search `
+                "ContentIsland connected" -w "$windowHandle" --json 2>$null
+            $contentIslandUnavailable = & $WinAppPath ui search `
+                "ContentIsland unavailable" -w "$windowHandle" --json 2>$null
+            $connectedMatches = if ($contentIslandConnected) {
+                @((($contentIslandConnected -join "`n") | ConvertFrom-Json).matches)
+            }
+            else {
+                @()
+            }
+            $unavailableMatches = if ($contentIslandUnavailable) {
+                @((($contentIslandUnavailable -join "`n") | ConvertFrom-Json).matches)
+            }
+            else {
+                @()
+            }
+            if (
+                @($connectedMatches).Count -eq 0 -and
+                @($unavailableMatches).Count -eq 0
+            ) {
+                throw "ContentIsland did not report a truthful connected or unavailable state."
+            }
+            if (@($connectedMatches).Count -gt 0) {
+                Invoke-WinApp @(
+                    "ui", "invoke", "GallerySystemContentIslandRelease",
+                    "-w", "$windowHandle"
+                )
+                try {
+                    Invoke-WinApp @(
+                        "ui", "wait-for", "ContentIsland resources released.",
+                        "-w", "$windowHandle",
+                        "--timeout", "$TimeoutMilliseconds"
+                    )
+                }
+                catch {
+                    $contentIslandStatus = & $WinAppPath ui get-property `
+                        "GallerySystemContentIslandStatus" `
+                        -w "$windowHandle" --json 2>$null
+                    throw "ContentIsland release failed. Status: $($contentIslandStatus -join ' ')"
+                }
+            }
+        }
+        if ($route.Heading -eq "StoragePickersPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerySystemStoragePickerCheck",
+                "-w", "$windowHandle"
+            )
+            Start-Sleep -Milliseconds 200
+            $pickerAvailable = & $WinAppPath ui search `
+                "Native storage pickers are available" -w "$windowHandle" --json 2>$null
+            $pickerUnavailable = & $WinAppPath ui search `
+                "Native storage pickers are unavailable" -w "$windowHandle" --json 2>$null
+            $availableMatches = if ($pickerAvailable) {
+                @((($pickerAvailable -join "`n") | ConvertFrom-Json).matches)
+            }
+            else {
+                @()
+            }
+            $pickerUnavailableMatches = if ($pickerUnavailable) {
+                @((($pickerUnavailable -join "`n") | ConvertFrom-Json).matches)
+            }
+            else {
+                @()
+            }
+            if (
+                @($availableMatches).Count -eq 0 -and
+                @($pickerUnavailableMatches).Count -eq 0
+            ) {
+                throw "Storage pickers did not report a truthful available or unavailable state."
+            }
         }
         if ($route.Heading -eq "ButtonPageHeading") {
             Invoke-WinApp @(
@@ -2998,6 +3165,20 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
+    }
+
+    if ($ClipboardOnly -or $SystemOnly) {
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$windowHandle"
+        )
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after the System smoke."
+        }
+        $windowHandle = 0
+        $scope = if ($ClipboardOnly) { "Clipboard" } else { "System" }
+        Write-Host "Gallery $scope UI smoke passed. Evidence: $evidenceRoot"
+        return
     }
 
     if ($WindowingOnly -or $WindowingTeardownOnly) {
