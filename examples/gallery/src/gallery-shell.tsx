@@ -115,6 +115,11 @@ import { ImplicitTransitionsPage } from './pages/motion/implicit-transitions'
 import { PageTransitionsPage } from './pages/motion/page-transitions'
 import { ParallaxViewPage } from './pages/motion/parallax-view'
 import { ThemeTransitionsPage } from './pages/motion/theme-transitions'
+import { WindowingCategoryPage } from './pages/windowing'
+import { AppWindowPage } from './pages/windowing/app-window'
+import { AppWindowTitleBarPage } from './pages/windowing/app-window-title-bar'
+import { MultipleWindowsPage } from './pages/windowing/multiple-windows'
+import { TitleBarPage } from './pages/windowing/title-bar'
 import { MenusToolbarsCategoryPage } from './pages/menus-toolbars'
 import { AppBarButtonPage } from './pages/menus-toolbars/app-bar-button'
 import { AppBarSeparatorPage } from './pages/menus-toolbars/app-bar-separator'
@@ -301,6 +306,14 @@ function renderSamplePage(
       return <ThemeTransitionsPage {...context} />
     case 'parallax-view':
       return <ParallaxViewPage {...context} />
+    case 'app-window':
+      return <AppWindowPage {...context} />
+    case 'app-window-title-bar':
+      return <AppWindowTitleBarPage {...context} />
+    case 'multiple-windows':
+      return <MultipleWindowsPage {...context} />
+    case 'title-bar':
+      return <TitleBarPage {...context} />
     case 'app-bar-button':
       return <AppBarButtonPage {...context} />
     case 'app-bar-separator':
@@ -433,6 +446,8 @@ function renderRoute(
       return <MediaCategoryPage {...context} />
     case 'category-motion':
       return <MotionCategoryPage {...context} />
+    case 'category-windowing':
+      return <WindowingCategoryPage {...context} />
     case 'category-menus-toolbars':
       return <MenusToolbarsCategoryPage {...context} />
     case 'category-navigation':
@@ -783,6 +798,18 @@ export function Shell(context: AppContext) {
     ],
     'category-motion',
   )
+  const windowingItem = createNavigationGroup(
+    'Windowing',
+    'Windowing',
+    Symbol.NewWindow,
+    [
+      'app-window',
+      'app-window-title-bar',
+      'multiple-windows',
+      'title-bar',
+    ],
+    'category-windowing',
+  )
   const navigationItems = [
     homeItem,
     frameworkItem,
@@ -800,6 +827,7 @@ export function Shell(context: AppContext) {
     mediaItem,
     menusToolbarsItem,
     motionItem,
+    windowingItem,
     navigationItem,
     scrollingItem,
     createNavigationGroup('Shell', 'Shell', Symbol.Repair, []),
@@ -836,6 +864,7 @@ export function Shell(context: AppContext) {
   routeItems.set('category-layout', layoutItem)
   routeItems.set('category-media', mediaItem)
   routeItems.set('category-motion', motionItem)
+  routeItems.set('category-windowing', windowingItem)
   routeItems.set(
     'category-menus-toolbars',
     menusToolbarsItem,
@@ -920,6 +949,10 @@ export function Shell(context: AppContext) {
             }
             if (currentPage?.category === 'Motion') {
               context.model.navigate('category-motion')
+              return
+            }
+            if (currentPage?.category === 'Windowing') {
+              context.model.navigate('category-windowing')
               return
             }
             if (currentPage?.category === 'Menus & toolbars') {
@@ -1014,6 +1047,7 @@ export function Shell(context: AppContext) {
               route === 'category-layout' ||
               route === 'category-media' ||
               route === 'category-motion' ||
+              route === 'category-windowing' ||
               route === 'category-menus-toolbars' ||
               route === 'category-navigation' ||
               route === 'category-scrolling' ||

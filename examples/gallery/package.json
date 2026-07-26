@@ -118,7 +118,10 @@
         {
           "namespace": "Microsoft.UI.Windowing",
           "classes": [
-            "AppWindow"
+            "AppWindow",
+            "CompactOverlayPresenter",
+            "FullScreenPresenter",
+            "OverlappedPresenter"
           ]
         },
         {

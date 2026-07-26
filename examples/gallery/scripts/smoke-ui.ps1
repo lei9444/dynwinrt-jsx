@@ -4,7 +4,9 @@
 param(
     [string]$WinAppPath,
     [int]$TimeoutMilliseconds = 10000,
-    [switch]$SkipKeyboardInput
+    [switch]$SkipKeyboardInput,
+    [switch]$WindowingOnly,
+    [switch]$WindowingTeardownOnly
 )
 
 Set-StrictMode -Version Latest
@@ -52,6 +54,58 @@ function Wait-ForGalleryWindow([int]$ProcessId) {
         Start-Sleep -Milliseconds 100
     }
     throw "The Gallery window did not appear within $TimeoutMilliseconds ms."
+}
+
+function Wait-ForProcessWindow(
+    [int]$ProcessId,
+    [string]$Title,
+    [int64]$ExcludeHandle = 0
+) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $json = Invoke-WinApp @(
+            "ui", "list-windows",
+            "-a", $Title,
+            "--json"
+        ) -Capture
+        $window = @($json | ConvertFrom-Json) |
+            Where-Object {
+                $_.processId -eq $ProcessId -and
+                [int64]$_.hwnd -ne $ExcludeHandle
+            } |
+            Select-Object -First 1
+        if ($window) {
+            return $window
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "The '$Title' window did not appear within $TimeoutMilliseconds ms."
+}
+
+function Assert-NoProcessWindow(
+    [int]$ProcessId,
+    [string]$Title,
+    [int64]$ExcludeHandle = 0
+) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $json = Invoke-WinApp @(
+            "ui", "list-windows",
+            "-a", $Title,
+            "--json"
+        ) -Capture
+        $window = @($json | ConvertFrom-Json) |
+            Where-Object {
+                $_.processId -eq $ProcessId -and
+                [int64]$_.hwnd -ne $ExcludeHandle
+            } |
+            Select-Object -First 1
+        if (-not $window) {
+            return
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "The '$Title' secondary window remained open after cleanup."
 }
 
 function Assert-Responsive([int]$ProcessId, [string]$Page) {
@@ -113,6 +167,7 @@ $designCategoryScreenshotPath = Join-Path $evidenceRoot "design-category.png"
 $accessibilityCategoryScreenshotPath = Join-Path $evidenceRoot "accessibility-category.png"
 $stylesCategoryScreenshotPath = Join-Path $evidenceRoot "styles-category.png"
 $motionCategoryScreenshotPath = Join-Path $evidenceRoot "motion-category.png"
+$windowingCategoryScreenshotPath = Join-Path $evidenceRoot "windowing-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -590,6 +645,31 @@ try {
         "--output", $motionCategoryScreenshotPath
     )
 
+    Ensure-NavigationItem $windowHandle "GalleryWindowingCategoryNavItem"
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryWindowingCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "WindowingCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GalleryOpenPage-app-window",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "GalleryOpenPage-title-bar",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $windowingCategoryScreenshotPath
+    )
+
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
         [pscustomobject]@{ Name = "Open Button"; Heading = "ButtonPageHeading"; Probe = $null; Query = "click command" },
@@ -650,6 +730,10 @@ try {
         [pscustomobject]@{ Name = "Open Page Transitions"; Heading = "PageTransitionsPageHeading"; Probe = "GalleryMotionPageTransitionsStatus"; Query = "navigationtransitioninfo page transition" },
         [pscustomobject]@{ Name = "Open Theme Transitions"; Heading = "ThemeTransitionsPageHeading"; Probe = "GalleryMotionThemeTransitionsStatus"; Query = "theme entrance popup transition" },
         [pscustomobject]@{ Name = "Open ParallaxView"; Heading = "ParallaxViewPageHeading"; Probe = "GalleryMotionParallaxStatus"; Query = "parallaxview scrolling effect" },
+        [pscustomobject]@{ Name = "Open AppWindow"; Heading = "AppWindowPageHeading"; Probe = "GalleryWindowingAppWindowGeneralSample"; Query = "appwindow presenter" },
+        [pscustomobject]@{ Name = "Open AppWindowTitleBar"; Heading = "AppWindowTitleBarPageHeading"; Probe = "GalleryWindowingAppWindowTitleBarColorsSample"; Query = "appwindowtitlebar caption" },
+        [pscustomobject]@{ Name = "Open Multiple windows"; Heading = "MultipleWindowsPageHeading"; Probe = "GalleryWindowingMultipleWindowsSample"; Query = "multiple windows xaml" },
+        [pscustomobject]@{ Name = "Open TitleBar"; Heading = "TitleBarPageHeading"; Probe = "GalleryWindowingTitleBarConfigurationSample"; Query = "titlebar drag region" },
         [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
         [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
         [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
@@ -703,6 +787,22 @@ try {
         [pscustomobject]@{ Name = "Open SystemBackdropElement"; Heading = "SystemBackdropElementPageHeading"; Probe = "GalleryStylesSystemBackdropElementSample"; Query = "systembackdropelement" },
         [pscustomobject]@{ Name = "Open ThemeShadow"; Heading = "ThemeShadowPageHeading"; Probe = "GalleryStylesThemeShadowSample"; Query = "themeshadow elevation" }
     )
+    if ($WindowingOnly -or $WindowingTeardownOnly) {
+        $windowingHeadings = if ($WindowingTeardownOnly) {
+            @("MultipleWindowsPageHeading")
+        }
+        else {
+            @(
+                "AppWindowPageHeading",
+                "AppWindowTitleBarPageHeading",
+                "MultipleWindowsPageHeading",
+                "TitleBarPageHeading"
+            )
+        }
+        $routes = @($routes | Where-Object {
+            $_.Heading -in $windowingHeadings
+        })
+    }
 
     foreach ($route in $routes) {
         Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
@@ -903,6 +1003,198 @@ try {
             if (-not $parallaxResult) {
                 throw "ParallaxView did not apply the expected enabled or reduced-motion shift."
             }
+        }
+        if ($route.Heading -eq "AppWindowPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryWindowingAppWindowShowOverlapped",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingAppWindowShowOverlapped",
+                "-w", "$windowHandle"
+            )
+            $presenterWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "OverlappedPresenter sample" `
+                $windowHandle
+            $presenterWindowHandle = [int64]$presenterWindow.hwnd
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryWindowingOverlappedChildClose",
+                "-w", "$presenterWindowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingOverlappedChildClose",
+                "-w", "$presenterWindowHandle"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "OverlappedPresenter sample" `
+                $windowHandle
+
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingAppWindowShowOverlapped",
+                "-w", "$windowHandle"
+            )
+            $presenterCleanupWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "OverlappedPresenter sample" `
+                $windowHandle
+            Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryHomeNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryHomeHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "OverlappedPresenter sample" `
+                $windowHandle
+        }
+        if ($route.Heading -eq "AppWindowTitleBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "wait-for", "AppWindowTitleBar customization is supported.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryWindowingAppWindowTitleBarShowColors",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingAppWindowTitleBarShowColors",
+                "-w", "$windowHandle"
+            )
+            $titleBarWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "AppWindowTitleBar color customization" `
+                $windowHandle
+            $titleBarWindowHandle = [int64]$titleBarWindow.hwnd
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryWindowingTitleBarColorsChildClose",
+                "-w", "$titleBarWindowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingTitleBarColorsChildClose",
+                "-w", "$titleBarWindowHandle"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "AppWindowTitleBar color customization" `
+                $windowHandle
+        }
+        if ($route.Heading -eq "MultipleWindowsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingCreateNewWindow",
+                "-w", "$windowHandle"
+            )
+            $childWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "dynwinrt-jsx Gallery — child window" `
+                $windowHandle
+            $childWindowHandle = [int64]$childWindow.hwnd
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryWindowingMultipleChildHeading",
+                "-w", "$childWindowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingMultipleChildClose",
+                "-w", "$childWindowHandle"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "dynwinrt-jsx Gallery — child window" `
+                $windowHandle
+            Invoke-WinApp @(
+                "ui", "wait-for", "All child windows are closed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingCreateCancelingWindow",
+                "-w", "$windowHandle"
+            )
+            $cleanupWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "dynwinrt-jsx Gallery — child window" `
+                $windowHandle
+            $cleanupWindowHandle = [int64]$cleanupWindow.hwnd
+            Invoke-WinApp @(
+                "ui", "invoke", "Close",
+                "-w", "$cleanupWindowHandle"
+            )
+            Start-Sleep -Milliseconds 500
+            $stillOpenWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "dynwinrt-jsx Gallery — child window" `
+                $windowHandle
+            Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryHomeNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryHomeHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "dynwinrt-jsx Gallery — child window" `
+                $windowHandle
+        }
+        if ($route.Heading -eq "TitleBarPageHeading") {
+            Invoke-WinApp @(
+                "ui", "scroll-into-view", "GalleryWindowingTitleBarShowDragRegions",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingTitleBarShowDragRegions",
+                "-w", "$windowHandle"
+            )
+            $controlTitleBarWindow = Wait-ForProcessWindow `
+                $appProcess.Id `
+                "Drag regions" `
+                $windowHandle
+            $controlTitleBarWindowHandle = [int64]$controlTitleBarWindow.hwnd
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingToggleExtraTitleBarButton",
+                "-w", "$controlTitleBarWindowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "Added a Button to TitleBar.Content.",
+                "-w", "$controlTitleBarWindowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingRecomputeDragRegions",
+                "-w", "$controlTitleBarWindowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "RecomputeDragRegions() called.",
+                "-w", "$controlTitleBarWindowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryWindowingDragRegionsChildClose",
+                "-w", "$controlTitleBarWindowHandle"
+            )
+            Assert-NoProcessWindow `
+                $appProcess.Id `
+                "Drag regions" `
+                $windowHandle
+            Invoke-WinApp @(
+                "ui", "wait-for", "TitleBar drag-regions sample closed.",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
         }
         if ($route.Heading -eq "ButtonPageHeading") {
             Invoke-WinApp @(
@@ -2708,6 +3000,69 @@ try {
         }
     }
 
+    if ($WindowingOnly -or $WindowingTeardownOnly) {
+        Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryHomeNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryHomeHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "set-value", "TextBox", "multiple windows xaml",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GallerySearchHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "Open Multiple windows",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "MultipleWindowsPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryWindowingCreateCancelingWindow",
+            "-w", "$windowHandle"
+        )
+        $normalCloseChild = Wait-ForProcessWindow `
+            $appProcess.Id `
+            "dynwinrt-jsx Gallery — child window" `
+            $windowHandle
+        $normalCloseChildHandle = [int64]$normalCloseChild.hwnd
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$normalCloseChildHandle"
+        )
+        Start-Sleep -Milliseconds 500
+        $stillOpenWindow = Wait-ForProcessWindow `
+            $appProcess.Id `
+            "dynwinrt-jsx Gallery — child window" `
+            $windowHandle
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$windowHandle"
+        )
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after normal close with a child window open."
+        }
+        Assert-NoProcessWindow `
+            $appProcess.Id `
+            "dynwinrt-jsx Gallery — child window" `
+            $windowHandle
+        $windowHandle = 0
+        Write-Host "Gallery Windowing UI smoke passed. Evidence: $evidenceRoot"
+        return
+    }
+
     Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryHomeNavItem",
@@ -2909,6 +3264,65 @@ try {
         "-w", "$windowHandle",
         "--output", $screenshotPath
     )
+
+    Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryHomeNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GalleryHomeHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "set-value", "TextBox", "multiple windows xaml",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GallerySearchHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "Open Multiple windows",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "MultipleWindowsPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryWindowingCreateCancelingWindow",
+        "-w", "$windowHandle"
+    )
+    $normalCloseChild = Wait-ForProcessWindow `
+        $appProcess.Id `
+        "dynwinrt-jsx Gallery — child window" `
+        $windowHandle
+    $normalCloseChildHandle = [int64]$normalCloseChild.hwnd
+    Invoke-WinApp @(
+        "ui", "invoke", "Close",
+        "-w", "$normalCloseChildHandle"
+    )
+    Start-Sleep -Milliseconds 500
+    $stillOpenWindow = Wait-ForProcessWindow `
+        $appProcess.Id `
+        "dynwinrt-jsx Gallery — child window" `
+        $windowHandle
+    Invoke-WinApp @(
+        "ui", "invoke", "Close",
+        "-w", "$windowHandle"
+    )
+    if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+        throw "The Gallery did not exit after normal close with a child window open."
+    }
+    Assert-NoProcessWindow `
+        $appProcess.Id `
+        "dynwinrt-jsx Gallery — child window" `
+        $windowHandle
+    $windowHandle = 0
     Write-Host "Gallery UI smoke passed. Evidence: $evidenceRoot"
 }
 finally {

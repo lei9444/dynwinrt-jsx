@@ -569,6 +569,49 @@ export const galleryPages = [
     image: 'ControlImages/ParallaxView.png',
   },
   {
+    id: 'app-window',
+    category: 'Windowing',
+    title: 'AppWindow',
+    subtitle:
+      'A flexible, customizable window management system for app development.',
+    description:
+      'AppWindow provides advanced window management, including size, position, presenters, modality, and display-area placement.',
+    tags: ['appwindow', 'window management', 'windowing', 'presenter'],
+    image: 'ControlImages/AppWindow.png',
+  },
+  {
+    id: 'app-window-title-bar',
+    category: 'Windowing',
+    title: 'AppWindowTitleBar',
+    subtitle: 'Provides control over the app window title bar.',
+    description:
+      'Customize system caption colors, active and inactive states, content extension, height, and preferred title-bar theme.',
+    tags: ['appwindowtitlebar', 'title bar', 'caption', 'custom title bar'],
+    image: 'ControlImages/TitleBar.png',
+  },
+  {
+    id: 'multiple-windows',
+    category: 'Windowing',
+    title: 'Multiple windows',
+    subtitle:
+      'An example showing the creation of single-threaded top-level XAML windows.',
+    description:
+      'Create and explicitly own multiple native XAML Windows on the existing WinUI STA.',
+    tags: ['multiple windows', 'new window', 'multi window', 'xaml window'],
+    image: 'ControlImages/CreateMultipleWindows.png',
+  },
+  {
+    id: 'title-bar',
+    category: 'Windowing',
+    title: 'TitleBar',
+    subtitle:
+      'An example showing how to use the default TitleBar control.',
+    description:
+      'Use the TitleBar control for modern title-bar UX, interactive content, navigation requests, and custom drag regions.',
+    tags: ['titlebar', 'title bar', 'caption bar', 'custom title bar', 'drag region'],
+    image: 'ControlImages/TitleBar.png',
+  },
+  {
     id: 'app-bar-button',
     category: 'Menus & toolbars',
     title: 'AppBarButton',
@@ -1215,6 +1258,7 @@ export type GalleryRoute =
   | 'category-layout'
   | 'category-media'
   | 'category-motion'
+  | 'category-windowing'
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
@@ -1257,6 +1301,10 @@ export const mediaPages = galleryPages.filter(
 
 export const motionPages = galleryPages.filter(
   (page) => page.category === 'Motion',
+)
+
+export const windowingPages = galleryPages.filter(
+  (page) => page.category === 'Windowing',
 )
 
 export const menusToolbarsPages = galleryPages.filter(

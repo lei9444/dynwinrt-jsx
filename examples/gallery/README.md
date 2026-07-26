@@ -42,6 +42,9 @@ The pages cover:
 - the complete Motion category: Animation interop, Connected Animation,
   Easing Functions, Implicit Transitions, Page Transitions, Theme Transitions,
   and ParallaxView, with Windows reduced-motion handling;
+- the complete Windowing category: AppWindow, AppWindowTitleBar, Multiple
+  windows, and TitleBar, with native presenter APIs, owned same-STA secondary
+  windows, capability reporting, custom drag regions, and teardown cleanup;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;

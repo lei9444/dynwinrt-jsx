@@ -369,6 +369,20 @@ export const GallerySemanticZoom = native<
     zoomedOutContent: adapter.slot('zoomedOutView'),
   },
 })
+export const GalleryTitleBar = native<
+  TitleBar,
+  {
+    leftHeaderContent?: MaybeSignal<Child>
+    rightHeaderContent?: MaybeSignal<Child>
+  }
+>(TitleBar, {
+  displayName: 'TitleBar',
+  adapters: {
+    leftHeaderContent: adapter.slot('leftHeader'),
+    rightHeaderContent: adapter.slot('rightHeader'),
+  },
+  children: adapter.slot('content'),
+})
 export const GalleryRichTextBlock = native(RichTextBlock, {
   displayName: 'RichTextBlock',
   children: adapter.collectionSlot('blocks'),
@@ -476,6 +490,8 @@ export const GalleryTreeView = native<
 })
 
 export type NavigationInstance = InstanceType<typeof NavigationView>
+export type ComboBoxInstance = InstanceType<typeof ComboBox>
+export type RadioButtonsInstance = InstanceType<typeof RadioButtons>
 export type AppBarToggleButtonInstance =
   InstanceType<typeof AppBarToggleButton>
 export type ButtonInstance = InstanceType<typeof Button>
