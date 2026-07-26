@@ -4,8 +4,10 @@ import {
   createNavigationItem,
   createSymbolIcon,
   createWinUIThemeController,
+  effect,
   gridLength,
   onCleanup,
+  signal,
   styles,
   theme,
   thickness,
@@ -16,6 +18,7 @@ import {
   Application,
   ApplicationTheme,
   AutomationProperties,
+  DispatcherQueuePriority,
   ElementTheme,
   HorizontalAlignment,
   ImageIconSource,
@@ -504,6 +507,97 @@ export function Shell(context: AppContext) {
   const titleBar: RefObject<TitleBarInstance> = {
     current: null,
   }
+  // Keep model selection separate from mounted content. Replacing a page
+  // inside NavigationView.SelectionChanged reenters its native selection work.
+  const renderedRoute = signal<GalleryRoute | null>(
+    context.model.route.value,
+  )
+  let pendingNavigation: GalleryRoute | null = null
+  let navigationQueued = false
+  let shellDisposed = false
+  let nativeSelectionRoute: GalleryRoute | null = null
+  let selectionWriteInProgress = false
+  let nativeRenderPending = false
+  let renderGeneration = 0
+  effect(() => {
+    const route = context.model.route.value
+    if (!nativeRenderPending) {
+      renderedRoute.value = route
+    }
+  })
+  const commitNavigation = () => {
+    navigationQueued = false
+    const route = pendingNavigation
+    pendingNavigation = null
+    if (
+      shellDisposed ||
+      route === null
+    ) {
+      return
+    }
+    if (route === context.model.route.value) {
+      if (nativeSelectionRoute === route) {
+        nativeSelectionRoute = null
+      }
+      return
+    }
+    nativeRenderPending = true
+    const generation = ++renderGeneration
+    renderedRoute.value = null
+    context.model.navigate(route)
+    if (
+      !context.window.dispatcherQueue.tryEnqueue(
+        DispatcherQueuePriority.Low,
+        () => {
+          if (
+            shellDisposed ||
+            generation !== renderGeneration
+          ) {
+            return
+          }
+          if (
+            navigationQueued ||
+            pendingNavigation !== null
+          ) {
+            return
+          }
+          nativeRenderPending = false
+          renderedRoute.value = context.model.route.value
+        },
+      )
+    ) {
+      nativeRenderPending = false
+      renderedRoute.value = context.model.route.value
+      throw new Error(
+        `Failed to mount NavigationView route '${route}'.`,
+      )
+    }
+  }
+  const deferNavigation = (route: GalleryRoute) => {
+    pendingNavigation = route
+    if (navigationQueued) {
+      return
+    }
+    navigationQueued = true
+    if (
+      !context.window.dispatcherQueue.tryEnqueue(
+        DispatcherQueuePriority.Low,
+        commitNavigation,
+      )
+    ) {
+      navigationQueued = false
+      pendingNavigation = null
+      throw new Error(
+        `Failed to queue NavigationView route '${route}'.`,
+      )
+    }
+  }
+  onCleanup(() => {
+    shellDisposed = true
+    pendingNavigation = null
+    nativeSelectionRoute = null
+    renderGeneration += 1
+  })
   const appIcon = new ImageIconSource()
   appIcon.imageSource = loadGalleryBitmap('GalleryAppIcon.png', 20)
   const themeController = createWinUIThemeController({
@@ -925,11 +1019,67 @@ export function Shell(context: AppContext) {
   routeItems.set('category-design', designItem)
   routeItems.set('category-accessibility', accessibilityItem)
   routeItems.set('category-styles', stylesItem)
-  const selectedItem = computed(() => {
-    if (context.model.route.value === 'settings') {
+  const categoryItems = new Map<string, NavigationViewItem>([
+    ['Framework', frameworkItem],
+    ['Fundamentals', fundamentalsItem],
+    ['Design', designItem],
+    ['Accessibility', accessibilityItem],
+    ['Styles', stylesItem],
+    ['Basic input', basicInputItem],
+    ['Collections', collectionsItem],
+    ['Date & time', dateTimeItem],
+    ['Dialogs & flyouts', dialogsFlyoutsItem],
+    ['Status & info', statusInfoItem],
+    ['Layout', layoutItem],
+    ['Media', mediaItem],
+    ['Menus & toolbars', menusToolbarsItem],
+    ['Motion', motionItem],
+    ['Windowing', windowingItem],
+    ['System', systemItem],
+    ['Navigation', navigationItem],
+    ['Scrolling', scrollingItem],
+    ['Shell', shellItem],
+    ['Text', textItem],
+  ])
+  const itemForRoute = (route: GalleryRoute) => {
+    if (route === 'settings') {
       return navigation.current?.settingsItem ?? null
     }
-    return routeItems.get(context.model.route.value) ?? null
+    return routeItems.get(route) ?? null
+  }
+  const synchronizeNavigationSelection = (route: GalleryRoute) => {
+    const current = navigation.current
+    const item = itemForRoute(route)
+    if (!current || !item) {
+      return
+    }
+    // Programmatic routes update native selection without feeding the
+    // resulting SelectionChanged event back into the route model.
+    selectionWriteInProgress = true
+    try {
+      current.selectedItem = item
+    }
+    finally {
+      selectionWriteInProgress = false
+    }
+    const page = findGalleryPage(route)
+    const categoryItem = page
+      ? categoryItems.get(page.category)
+      : undefined
+    if (categoryItem) {
+      categoryItem.isExpanded = true
+    }
+  }
+  effect(() => {
+    const route = context.model.route.value
+    if (nativeSelectionRoute !== null) {
+      if (nativeSelectionRoute === route) {
+        nativeSelectionRoute = null
+        return
+      }
+      nativeSelectionRoute = null
+    }
+    synchronizeNavigationSelection(route)
   })
 
   return (
@@ -1067,7 +1217,14 @@ export function Shell(context: AppContext) {
           />
         </UI.TitleBar>
         <Navigation
-          ref={navigation}
+          ref={(value) => {
+            navigation.current = value
+            if (value) {
+              synchronizeNavigationSelection(
+                context.model.route.value,
+              )
+            }
+          }}
           gridRow={1}
           automationId="GalleryNavigation"
           requestedTheme={themeController.requestedTheme}
@@ -1079,11 +1236,14 @@ export function Shell(context: AppContext) {
           alwaysShowHeader={false}
           menuItems={navigationItems}
           footerMenuItems={[diagnosticsItem]}
-          selectedItem={selectedItem}
           isSettingsVisible
           onSelectionChanged={(_sender, args) => {
+            if (selectionWriteInProgress) {
+              return
+            }
             if (args.isSettingsSelected) {
-              context.model.navigate('settings')
+              nativeSelectionRoute = 'settings'
+              deferNavigation('settings')
               return
             }
             const selectedContainer =
@@ -1117,14 +1277,15 @@ export function Shell(context: AppContext) {
               route === 'category-styles' ||
               findGalleryPage(route)
             ) {
-              context.model.navigate(route)
+              nativeSelectionRoute = route
+              deferNavigation(route)
             }
           }}
         >
           <ErrorBoundary
             reset={computed(
               () =>
-                `${context.model.route.value}:${context.model.hotVersion.value}`,
+                `${String(renderedRoute.value)}:${context.model.hotVersion.value}`,
             )}
             fallback={(error, errorContext) => (
               <UI.StackPanel
@@ -1148,9 +1309,12 @@ export function Shell(context: AppContext) {
               </UI.StackPanel>
             )}
           >
-            {computed(() =>
-              renderRoute(context, context.model.route.value),
-            )}
+            {computed(() => {
+              const route = renderedRoute.value
+              return route === null
+                ? null
+                : renderRoute(context, route)
+            })}
           </ErrorBoundary>
         </Navigation>
       </LayoutGrid>

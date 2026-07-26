@@ -192,6 +192,10 @@ function Ensure-NavigationItem(
     if ($LASTEXITCODE -eq 0) {
         return
     }
+    & $WinAppPath ui scroll-into-view $Selector -w "$WindowHandle" *> $null
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
     Invoke-WinApp @(
         "ui", "invoke", "PART_PaneToggleButton",
         "-w", "$WindowHandle"
@@ -2172,6 +2176,26 @@ try {
                 "ui", "invoke", "GalleryInfoBarIconVisible",
                 "-w", "$windowHandle"
             )
+            Ensure-NavigationItem $windowHandle "Galleryinfo-badgeNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "Galleryinfo-badgeNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "InfoBadgePageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Ensure-NavigationItem $windowHandle "Galleryinfo-barNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "Galleryinfo-barNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "InfoBarPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
         }
         if ($route.Heading -eq "ProgressBarPageHeading") {
             Invoke-WinApp @(
@@ -2776,6 +2800,26 @@ try {
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "Items panel: WrapGrid",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Ensure-NavigationItem $windowHandle "GallerybindingNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerybindingNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "BindingPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Ensure-NavigationItem $windowHandle "GallerytemplatesNavItem"
+            Invoke-WinApp @(
+                "ui", "invoke", "GallerytemplatesNavItem",
+                "-w", "$windowHandle"
+            )
+            Invoke-WinApp @(
+                "ui", "wait-for", "TemplatesPageHeading",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
