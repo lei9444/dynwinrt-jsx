@@ -88,8 +88,13 @@ export function createSecondaryWindowManager(
     if (owned.released) {
       return
     }
-    disposeXamlRender(owned)
     let firstError: unknown
+    try {
+      disposeXamlRender(owned)
+    }
+    catch (error) {
+      firstError ??= error
+    }
     try {
       owned.configureCleanup?.()
       owned.configureCleanup = undefined
@@ -111,10 +116,17 @@ export function createSecondaryWindowManager(
     catch (error) {
       firstError ??= error
     }
-    owned.released = true
-    xamlWindows.delete(owned)
-    if (!tearingDown) {
-      onClosed?.()
+    if (
+      owned.disposed &&
+      !owned.configureCleanup &&
+      !owned.closingSubscription &&
+      !owned.closedSubscription
+    ) {
+      owned.released = true
+      xamlWindows.delete(owned)
+      if (!tearingDown) {
+        onClosed?.()
+      }
     }
     if (firstError !== undefined) {
       throw firstError
@@ -306,6 +318,14 @@ export function createSecondaryWindowManager(
             firstError ??= new Error(
               `Secondary XAML Window '${owned.title}' did not close during teardown.`,
             )
+          }
+          else if (xamlWindows.has(owned)) {
+            try {
+              releaseXamlWindow(owned)
+            }
+            catch (error) {
+              firstError ??= error
+            }
           }
         }
         for (const owned of [...appWindows]) {
