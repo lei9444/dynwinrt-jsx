@@ -24,6 +24,7 @@ export interface VNode<Props = Record<string, unknown>> {
 export interface DynamicNode {
   readonly brand: typeof dynamicBrand
   readonly read: () => Child
+  readonly beforeDispose?: () => void
 }
 
 export interface ListNode<Item = unknown> {
@@ -85,10 +86,14 @@ export function createVNode<Props extends Record<string, unknown>>(
   }
 }
 
-export function createDynamicNode(read: () => Child): DynamicNode {
+export function createDynamicNode(
+  read: () => Child,
+  beforeDispose?: () => void,
+): DynamicNode {
   return {
     brand: dynamicBrand,
     read,
+    beforeDispose,
   }
 }
 

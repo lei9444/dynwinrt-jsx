@@ -1,13 +1,12 @@
 import {
   ErrorBoundary,
   computed,
+  createNavigationHost,
   createNavigationItem,
   createSymbolIcon,
   createWinUIThemeController,
-  effect,
   gridLength,
   onCleanup,
-  signal,
   styles,
   theme,
   thickness,
@@ -507,97 +506,6 @@ export function Shell(context: AppContext) {
   const titleBar: RefObject<TitleBarInstance> = {
     current: null,
   }
-  // Keep model selection separate from mounted content. Replacing a page
-  // inside NavigationView.SelectionChanged reenters its native selection work.
-  const renderedRoute = signal<GalleryRoute | null>(
-    context.model.route.value,
-  )
-  let pendingNavigation: GalleryRoute | null = null
-  let navigationQueued = false
-  let shellDisposed = false
-  let nativeSelectionRoute: GalleryRoute | null = null
-  let selectionWriteInProgress = false
-  let nativeRenderPending = false
-  let renderGeneration = 0
-  effect(() => {
-    const route = context.model.route.value
-    if (!nativeRenderPending) {
-      renderedRoute.value = route
-    }
-  })
-  const commitNavigation = () => {
-    navigationQueued = false
-    const route = pendingNavigation
-    pendingNavigation = null
-    if (
-      shellDisposed ||
-      route === null
-    ) {
-      return
-    }
-    if (route === context.model.route.value) {
-      if (nativeSelectionRoute === route) {
-        nativeSelectionRoute = null
-      }
-      return
-    }
-    nativeRenderPending = true
-    const generation = ++renderGeneration
-    renderedRoute.value = null
-    context.model.navigate(route)
-    if (
-      !context.window.dispatcherQueue.tryEnqueue(
-        DispatcherQueuePriority.Low,
-        () => {
-          if (
-            shellDisposed ||
-            generation !== renderGeneration
-          ) {
-            return
-          }
-          if (
-            navigationQueued ||
-            pendingNavigation !== null
-          ) {
-            return
-          }
-          nativeRenderPending = false
-          renderedRoute.value = context.model.route.value
-        },
-      )
-    ) {
-      nativeRenderPending = false
-      renderedRoute.value = context.model.route.value
-      throw new Error(
-        `Failed to mount NavigationView route '${route}'.`,
-      )
-    }
-  }
-  const deferNavigation = (route: GalleryRoute) => {
-    pendingNavigation = route
-    if (navigationQueued) {
-      return
-    }
-    navigationQueued = true
-    if (
-      !context.window.dispatcherQueue.tryEnqueue(
-        DispatcherQueuePriority.Low,
-        commitNavigation,
-      )
-    ) {
-      navigationQueued = false
-      pendingNavigation = null
-      throw new Error(
-        `Failed to queue NavigationView route '${route}'.`,
-      )
-    }
-  }
-  onCleanup(() => {
-    shellDisposed = true
-    pendingNavigation = null
-    nativeSelectionRoute = null
-    renderGeneration += 1
-  })
   const appIcon = new ImageIconSource()
   appIcon.imageSource = loadGalleryBitmap('GalleryAppIcon.png', 20)
   const themeController = createWinUIThemeController({
@@ -1053,15 +961,7 @@ export function Shell(context: AppContext) {
     if (!current || !item) {
       return
     }
-    // Programmatic routes update native selection without feeding the
-    // resulting SelectionChanged event back into the route model.
-    selectionWriteInProgress = true
-    try {
-      current.selectedItem = item
-    }
-    finally {
-      selectionWriteInProgress = false
-    }
+    current.selectedItem = item
     const page = findGalleryPage(route)
     const categoryItem = page
       ? categoryItems.get(page.category)
@@ -1070,17 +970,17 @@ export function Shell(context: AppContext) {
       categoryItem.isExpanded = true
     }
   }
-  effect(() => {
-    const route = context.model.route.value
-    if (nativeSelectionRoute !== null) {
-      if (nativeSelectionRoute === route) {
-        nativeSelectionRoute = null
-        return
-      }
-      nativeSelectionRoute = null
-    }
-    synchronizeNavigationSelection(route)
+  const navigationHost = createNavigationHost({
+    route: context.model.route,
+    navigate: (route) => context.model.navigate(route),
+    enqueue: (callback) =>
+      context.window.dispatcherQueue.tryEnqueue(
+        DispatcherQueuePriority.Low,
+        callback,
+      ),
+    selectRoute: synchronizeNavigationSelection,
   })
+  onCleanup(navigationHost.dispose)
 
   return (
     <ThemeControllerContext.Provider value={themeController}>
@@ -1220,9 +1120,7 @@ export function Shell(context: AppContext) {
           ref={(value) => {
             navigation.current = value
             if (value) {
-              synchronizeNavigationSelection(
-                context.model.route.value,
-              )
+              navigationHost.synchronizeSelection()
             }
           }}
           gridRow={1}
@@ -1238,12 +1136,8 @@ export function Shell(context: AppContext) {
           footerMenuItems={[diagnosticsItem]}
           isSettingsVisible
           onSelectionChanged={(_sender, args) => {
-            if (selectionWriteInProgress) {
-              return
-            }
             if (args.isSettingsSelected) {
-              nativeSelectionRoute = 'settings'
-              deferNavigation('settings')
+              navigationHost.requestNativeNavigation('settings')
               return
             }
             const selectedContainer =
@@ -1277,45 +1171,41 @@ export function Shell(context: AppContext) {
               route === 'category-styles' ||
               findGalleryPage(route)
             ) {
-              nativeSelectionRoute = route
-              deferNavigation(route)
+              navigationHost.requestNativeNavigation(route)
             }
           }}
         >
-          <ErrorBoundary
-            reset={computed(
-              () =>
-                `${String(renderedRoute.value)}:${context.model.hotVersion.value}`,
-            )}
-            fallback={(error, errorContext) => (
-              <UI.StackPanel
-                padding={thickness(36, 24)}
-                spacing={12}
-              >
-                <UI.TextBlock
-                  {...styles.heading({ level: 'subtitle' })}
-                  text="Sample render failed"
-                />
-                <UI.TextBlock
-                  automationId="GalleryRenderError"
-                  text={`${errorContext.phase}: ${String(error)}`}
-                  textWrapping={TextWrapping.Wrap}
-                />
-                <UI.TextBlock
-                  foreground={theme.secondaryText}
-                  text="Choose another sample from the navigation pane to continue."
-                  textWrapping={TextWrapping.Wrap}
-                />
-              </UI.StackPanel>
-            )}
-          >
-            {computed(() => {
-              const route = renderedRoute.value
-              return route === null
-                ? null
-                : renderRoute(context, route)
-            })}
-          </ErrorBoundary>
+          {navigationHost.render((route) => (
+            <ErrorBoundary
+              reset={computed(
+                () =>
+                  `${String(route)}:${context.model.hotVersion.value}`,
+              )}
+              fallback={(error, errorContext) => (
+                <UI.StackPanel
+                  padding={thickness(36, 24)}
+                  spacing={12}
+                >
+                  <UI.TextBlock
+                    {...styles.heading({ level: 'subtitle' })}
+                    text="Sample render failed"
+                  />
+                  <UI.TextBlock
+                    automationId="GalleryRenderError"
+                    text={`${errorContext.phase}: ${String(error)}`}
+                    textWrapping={TextWrapping.Wrap}
+                  />
+                  <UI.TextBlock
+                    foreground={theme.secondaryText}
+                    text="Choose another sample from the navigation pane to continue."
+                    textWrapping={TextWrapping.Wrap}
+                  />
+                </UI.StackPanel>
+              )}
+            >
+              {renderRoute(context, route)}
+            </ErrorBoundary>
+          ))}
         </Navigation>
       </LayoutGrid>
     </ThemeControllerContext.Provider>

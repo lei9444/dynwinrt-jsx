@@ -119,6 +119,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     'utf8',
   )
   assert.match(appSource, /styles\.heading/)
+  assert.match(appSource, /createNavigationHost/)
   assert.match(appSource, /styles\.button/)
   assert.match(appSource, /tokens\.spacing/)
   assert.match(appSource, /createWinUIThemeController/)

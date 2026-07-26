@@ -11,6 +11,7 @@ import {
   createGridControl,
   createItemsRepeaterControl,
   createListViewControl,
+  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
@@ -44,6 +45,7 @@ import {
   ContentDialog,
   ContentDialogButton,
   ContentDialogResult,
+  DispatcherQueuePriority,
   ElementTheme,
   Flyout,
   FocusState,
@@ -943,17 +945,37 @@ function ApplicationShell(context: DashboardAppContext) {
     ['tasks', tasksItem],
     ['diagnostics', diagnosticsItem],
   ])
-  const selectedItem = computed(() => {
-    if (context.model.route.value === 'settings') {
-      return navigation.current?.settingsItem ?? null
-    }
-    return routeItems.get(context.model.route.value) ?? null
+  const navigationHost = createNavigationHost({
+    route: context.model.route,
+    navigate(route) {
+      context.model.route.value = route
+    },
+    enqueue: (callback) =>
+      context.window.dispatcherQueue.tryEnqueue(
+        DispatcherQueuePriority.Low,
+        callback,
+      ),
+    selectRoute(route) {
+      const current = navigation.current
+      const item = route === 'settings'
+        ? current?.settingsItem
+        : routeItems.get(route)
+      if (current && item) {
+        current.selectedItem = item
+      }
+    },
   })
+  onCleanup(navigationHost.dispose)
   return (
     <ThemeControllerContext.Provider value={themeController}>
       <TeachingTipServiceContext.Provider value={teachingTipService}>
         <AppNavigation
-          ref={navigation}
+          ref={(value) => {
+            navigation.current = value
+            if (value) {
+              navigationHost.synchronizeSelection()
+            }
+          }}
           automationId="AppNavigation"
           requestedTheme={themeController.requestedTheme}
           paneTitle="DynWinRT JSX"
@@ -961,7 +983,6 @@ function ApplicationShell(context: DashboardAppContext) {
           isSettingsVisible
           menuItems={[dashboardItem, tasksItem]}
           footerMenuItems={[diagnosticsItem]}
-          selectedItem={selectedItem}
           onLoaded={() => {
             const scale = context.getXamlRoot().rasterizationScale
             context.window.appWindow.resize({
@@ -972,7 +993,7 @@ function ApplicationShell(context: DashboardAppContext) {
           }}
           onSelectionChanged={(_sender, args) => {
             if (args.isSettingsSelected) {
-              context.model.route.value = 'settings'
+              navigationHost.requestNativeNavigation('settings')
               return
             }
             const route = [...routeItems.entries()]
@@ -982,13 +1003,13 @@ function ApplicationShell(context: DashboardAppContext) {
               )
               ?.[0]
             if (route) {
-              context.model.route.value = route
+              navigationHost.requestNativeNavigation(route)
             }
           }}
         >
           <UI.Grid>
-            {computed(() =>
-              renderRoute(context, context.model.route.value),
+            {navigationHost.render(
+              (route) => renderRoute(context, route),
             )}
             <UI.TeachingTip
               ref={teachingTip}

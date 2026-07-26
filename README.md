@@ -494,6 +494,54 @@ const home = createNavigationItem(
 Collection changes validate before mutation and roll back if a native append
 fails. `createFocusTarget()` combines a native ref with typed `focus()` calls.
 
+When a native `SelectionChanged` event replaces the current page, use
+`createNavigationHost()` instead of binding `selectedItem` and content directly
+to the same route signal. The host suppresses programmatic selection feedback,
+coalesces rapid native selections, disposes the old page in one queued turn,
+and mounts only the latest route in a later turn:
+
+```tsx
+const navigationHost = createNavigationHost({
+  route: model.route,
+  navigate: (route) => model.navigate(route),
+  enqueue: (callback) =>
+    window.dispatcherQueue.tryEnqueue(
+      DispatcherQueuePriority.Low,
+      callback,
+    ),
+  selectRoute(route) {
+    const item = routeItems.get(route)
+    if (navigation.current && item) {
+      navigation.current.selectedItem = item
+    }
+  },
+})
+onCleanup(navigationHost.dispose)
+
+<Navigation
+  ref={(value) => {
+    navigation.current = value
+    if (value) {
+      navigationHost.synchronizeSelection()
+    }
+  }}
+  onSelectionChanged={(_sender, args) => {
+    navigationHost.requestNativeNavigation(
+      args.selectedItemContainer.name as AppRoute,
+    )
+  }}
+>
+  {navigationHost.render((route) => renderRoute(route))}
+</Navigation>
+```
+
+The supplied `enqueue` function must defer work to a later native dispatcher
+turn; a microtask does not cross the active WinUI selection/layout transaction.
+Queue rejection throws and leaves the controller retryable. `render()` creates
+the single owned route outlet and deactivates the host before the current page
+is disposed during whole-shell teardown. Keep `onCleanup(navigationHost.dispose)`
+as an idempotent fallback if mounting fails before the outlet is attached.
+
 Use `createListViewControl()` when JSX children should populate native
 `items`, with owned `header` and `footer` slots:
 

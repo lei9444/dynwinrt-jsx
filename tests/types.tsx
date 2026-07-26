@@ -23,6 +23,7 @@ import {
   createJsonStateStore,
   createListViewControl,
   createListViewScrollTarget,
+  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
   createReferenceBoxing,
@@ -49,8 +50,10 @@ import {
   thickness,
   tokens,
   useContext,
+  type Child,
   type MaybeSignal,
   type NativePropertyPhase,
+  type ReadonlySignal,
   type Renderer,
   type RendererInspectionSnapshot,
   type RendererInspectorOptions,
@@ -605,6 +608,32 @@ createNavigationItem(
   },
 )
 const navFocus = createFocusTarget<TypeNavigationItem>(3)
+const typeRoute = signal<'home' | 'settings'>('home')
+const navigationHost = createNavigationHost({
+  route: typeRoute,
+  navigate(route) {
+    typeRoute.value = route
+  },
+  enqueue(callback) {
+    callback()
+    return true
+  },
+  selectRoute(route) {
+    const selectedRoute: 'home' | 'settings' = route
+    void selectedRoute
+  },
+})
+const renderedRoute: ReadonlySignal<
+  'home' | 'settings' | null
+> = navigationHost.renderedRoute
+void renderedRoute
+const navigationContent: Child = navigationHost.render(
+  (route) => route,
+)
+void navigationContent
+navigationHost.requestNativeNavigation('settings')
+navigationHost.synchronizeSelection()
+navigationHost.dispose()
 const stateStore = createJsonStateStore({
   path: 'state.json',
   defaultState: () => ({ version: 1 as const, count: 0 }),

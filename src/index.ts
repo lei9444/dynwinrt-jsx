@@ -63,8 +63,11 @@ export {
 } from './winui/grid'
 
 export {
+  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
+  type NavigationHost,
+  type NavigationHostOptions,
   type NavigationItemBindings,
   type NavigationItemOptions,
   type NavigationViewCollectionProps,

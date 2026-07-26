@@ -71,6 +71,7 @@ export class RendererControlFlowService {
     read: () => Child,
     onNodesChanged: (nodes: readonly unknown[]) => void,
     parentScope: ReactiveScope,
+    beforeDispose?: () => void,
   ): MountedRecord {
     const scope = createScope(parentScope)
     setReactiveScopeInspection(scope, {
@@ -83,10 +84,16 @@ export class RendererControlFlowService {
       () => {
         let firstError: unknown
         try {
-          current?.dispose()
+          beforeDispose?.()
         }
         catch (error) {
           firstError = error
+        }
+        try {
+          current?.dispose()
+        }
+        catch (error) {
+          firstError ??= error
         }
         current = undefined
         try {

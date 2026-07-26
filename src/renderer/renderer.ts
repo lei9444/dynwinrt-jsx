@@ -816,6 +816,7 @@ export class Renderer {
         child.read,
         onNodesChanged,
         parentScope,
+        child.beforeDispose,
       )
     }
 

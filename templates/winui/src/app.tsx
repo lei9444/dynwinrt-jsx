@@ -5,6 +5,7 @@ import {
   createContext,
   createControls,
   createFocusTarget,
+  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
   createSymbolIcon,
@@ -27,6 +28,7 @@ import {
   Button,
   ContentDialog,
   ContentDialogButton,
+  DispatcherQueuePriority,
   ElementTheme,
   FocusState,
   NavigationView,
@@ -269,26 +271,46 @@ function Shell(context: AppContext) {
     ['home', homeItem],
     ['diagnostics', diagnosticsItem],
   ])
-  const selectedItem = computed(() =>
-    context.model.route.value === 'settings'
-      ? navigation.current?.settingsItem ?? null
-      : routeItems.get(context.model.route.value) ?? null,
-  )
+  const navigationHost = createNavigationHost({
+    route: context.model.route,
+    navigate(route) {
+      context.model.route.value = route
+    },
+    enqueue: (callback) =>
+      context.window.dispatcherQueue.tryEnqueue(
+        DispatcherQueuePriority.Low,
+        callback,
+      ),
+    selectRoute(route) {
+      const current = navigation.current
+      const item = route === 'settings'
+        ? current?.settingsItem
+        : routeItems.get(route)
+      if (current && item) {
+        current.selectedItem = item
+      }
+    },
+  })
+  onCleanup(navigationHost.dispose)
   return (
     <ThemeControllerContext.Provider value={themeController}>
       <Navigation
-        ref={navigation}
+        ref={(value) => {
+          navigation.current = value
+          if (value) {
+            navigationHost.synchronizeSelection()
+          }
+        }}
         automationId="AppNavigation"
         requestedTheme={themeController.requestedTheme}
         paneTitle="dynwinrt-jsx"
         paneDisplayMode={NavigationViewPaneDisplayMode.Left}
         menuItems={[homeItem]}
         footerMenuItems={[diagnosticsItem]}
-        selectedItem={selectedItem}
         isSettingsVisible
         onSelectionChanged={(_sender, args) => {
           if (args.isSettingsSelected) {
-            context.model.route.value = 'settings'
+            navigationHost.requestNativeNavigation('settings')
             return
           }
           const route = [...routeItems.entries()]
@@ -298,12 +320,12 @@ function Shell(context: AppContext) {
             )
             ?.[0]
           if (route) {
-            context.model.route.value = route
+            navigationHost.requestNativeNavigation(route)
           }
         }}
       >
-        {computed(() =>
-          renderRoute(context, context.model.route.value),
+        {navigationHost.render(
+          (route) => renderRoute(context, route),
         )}
       </Navigation>
     </ThemeControllerContext.Provider>
