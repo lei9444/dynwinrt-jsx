@@ -21,6 +21,7 @@ import * as WinUIBindings from '#winapp/bindings'
 import {
   Application,
   ApplicationTheme,
+  AppNotificationManager,
   MicaBackdrop,
   StackPanel,
   TextBlock,
@@ -34,6 +35,7 @@ import {
   createAppModel,
   type AppState,
 } from './app-model'
+import { createAppNotificationOwner } from './app-notification-owner'
 import type { AppContext } from './app'
 
 interface ParentPort {
@@ -74,6 +76,7 @@ const {
     heartbeatState: SharedArrayBuffer
     inspectorExportPath: string
     initialState: AppState
+    shellCapabilities: AppContext['shellCapabilities']
   }
 }
 
@@ -153,6 +156,9 @@ const exitCode = runWinUIWorkerApp({
   },
   mount({ window, renderer }) {
     window.systemBackdrop = new MicaBackdrop()
+    const appNotifications = createAppNotificationOwner({
+      getManager: () => AppNotificationManager.default_,
+    })
     const model = createAppModel(
       bridge,
       workerData.initialState,
@@ -222,6 +228,8 @@ const exitCode = runWinUIWorkerApp({
       model,
       renderer,
       window,
+      appNotifications,
+      shellCapabilities: workerData.shellCapabilities,
       refreshDiagnostics() {
         model.updateInspection(
           renderer.inspector.snapshot(),
@@ -257,6 +265,9 @@ const exitCode = runWinUIWorkerApp({
       },
       disposeAfterRender() {
         model.dispose()
+      },
+      beforeCloseAsync() {
+        return appNotifications.dispose()
       },
       afterRender({ renderHandle }) {
         const hotReloadController =

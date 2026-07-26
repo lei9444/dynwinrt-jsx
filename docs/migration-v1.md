@@ -160,6 +160,15 @@ failed resource references retryable, allow ordinary cleanup errors to proceed
 to `Window.Closed`, and veto close only when projection-scope release itself
 fails.
 
+## Awaited Worker application cleanup
+
+Worker applications with process-owned asynchronous cleanup should use
+the `beforeCloseAsync()` hook returned from `runWinUIWorkerApp()`'s `mount()`.
+The lifecycle cancels the initial close and awaits the hook while native
+projections remain alive, then retries the close and performs synchronous page,
+renderer, diagnostics, and projection teardown. A rejected hook keeps the
+window open so retryable cleanup can run on the next close attempt.
+
 ## Theme resources
 
 Use `theme.*` or `theme.ref(key)` instead of manually coupling `resource()` to

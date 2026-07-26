@@ -134,6 +134,7 @@ import {
   Window,
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
+import type { AppNotificationOwner } from './app-notification-owner'
 import { commandBarCollection } from './command-bar-collection'
 
 export const UI = createControls({
@@ -517,6 +518,14 @@ export interface AppContext {
   readonly model: AppModel
   readonly renderer: Renderer
   readonly window: Window
+  readonly appNotifications: AppNotificationOwner
+  readonly shellCapabilities: {
+    readonly appNotifications: {
+      readonly available: boolean
+      readonly description: string
+      readonly aumid: string | null
+    }
+  }
   refreshDiagnostics(): void
   exportDiagnostics(): void
 }

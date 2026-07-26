@@ -39,6 +39,10 @@ export interface WinUIWorkerAppWindow {
 
 export interface WinUIWorkerWindow {
   onClosed(callback: () => void): () => void
+  close(): void
+  readonly dispatcherQueue?: {
+    tryEnqueue(callback: () => void): boolean
+  }
 }
 
 export interface WinUIWorkerApplication {
@@ -98,6 +102,7 @@ export interface WinUIWorkerMountedApp<
 > {
   readonly child: Child
   readonly beforeClose?: () => void
+  readonly beforeCloseAsync?: () => void | Promise<void>
   readonly disposeAfterRender?: () => void
   readonly onProjectionDisposed?: () => void
   readonly afterRender?: (
@@ -368,6 +373,7 @@ export function runWinUIWorkerApp<
               appWindow,
               renderer,
               beforeClose,
+              beforeCloseAsync: mounted.beforeCloseAsync,
               disposeBeforeRender,
               disposeRender() {
                 renderHandle?.dispose()
@@ -421,6 +427,7 @@ export interface WinUIWindowLifecycleOptions {
   readonly appWindow: WinUIWorkerAppWindow
   readonly renderer: Pick<Renderer, 'diagnostics'>
   readonly beforeClose?: () => void
+  readonly beforeCloseAsync?: () => void | Promise<void>
   readonly disposeBeforeRender?: () => void
   readonly disposeRender: () => void
   readonly disposeAfterRender?: () => void
@@ -438,10 +445,82 @@ export function installWinUIWindowLifecycle(
 ): void {
   let closingSubscription: (() => void) | undefined
   let closeSubscription: (() => void) | undefined
+  let asyncCloseCompleted = false
+  let asyncCloseInFlight = false
+  let asyncCloseFailed = false
 
   closingSubscription = options.appWindow.onClosing(
     (_sender, args) => {
       if (args.cancel) {
+        return
+      }
+      if (
+        options.beforeCloseAsync &&
+        !asyncCloseCompleted
+      ) {
+        args.cancel = true
+        if (asyncCloseInFlight) {
+          return
+        }
+        asyncCloseInFlight = true
+        const failAsyncClose = (error: unknown) => {
+          asyncCloseFailed = true
+          asyncCloseCompleted = false
+          asyncCloseInFlight = false
+          options.setExitCode(1)
+          options.onError(error)
+        }
+        const close = () => {
+          asyncCloseCompleted = true
+          asyncCloseInFlight = false
+          try {
+            options.window.close()
+          }
+          catch (error) {
+            failAsyncClose(error)
+          }
+        }
+        const finishAsyncClose = () => {
+          let queued = false
+          try {
+            queued =
+              options.window.dispatcherQueue?.tryEnqueue(close) ??
+              false
+          }
+          catch (error) {
+            failAsyncClose(error)
+            return
+          }
+          if (
+            options.window.dispatcherQueue &&
+            !queued
+          ) {
+            failAsyncClose(
+              new Error(
+                'The async close continuation could not be queued.',
+              ),
+            )
+            return
+          }
+          if (!options.window.dispatcherQueue) {
+            close()
+          }
+        }
+        try {
+          const result = options.beforeCloseAsync()
+          if (result) {
+            void result.then(
+              finishAsyncClose,
+              failAsyncClose,
+            )
+          }
+          else {
+            finishAsyncClose()
+          }
+        }
+        catch (error) {
+          failAsyncClose(error)
+        }
         return
       }
 
@@ -502,7 +581,9 @@ export function installWinUIWindowLifecycle(
         options.onError(projectionError)
       }
       if (firstError === undefined) {
-        options.setExitCode(options.getRequestedExitCode())
+        options.setExitCode(
+          asyncCloseFailed ? 1 : options.getRequestedExitCode(),
+        )
       }
     },
   )

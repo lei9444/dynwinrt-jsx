@@ -50,6 +50,11 @@ The pages cover:
   ChildSiteLink composition host with truthful capability reporting; and
   FileOpenPicker, FileSavePicker, and FolderPicker initialized from the main
   window ID with explicit cancellation and failure states;
+- the complete Shell category: AppNotificationManager registration gated on
+  package identity or an explicit app-specific launcher/AUMID activation path,
+  owned-notification cleanup, notification setting and activation reporting,
+  rich local notifications, packaged-only taskbar badge counts and glyphs, and
+  packaged JumpList tasks with handled, persisted startup route intents;
 - integrated expandable source sections with native clipboard copy actions;
 - owned Flyout and MenuFlyout content attached to button controls;
 - ListView selection plus native ItemsRepeater and ItemsView virtualization;
@@ -83,9 +88,36 @@ Run the real WinUI navigation smoke test:
 npm run smoke:ui
 ```
 
+Run only the Shell capability paths:
+
+```powershell
+npm run smoke:ui -- -ShellOnly
+```
+
+The targeted Shell smoke uses suppressed, immediately removed notification
+probes and temporary badge or JumpList mutations only when their real runtime,
+registration, package identity, and platform prerequisites are present.
+Unpackaged-only limitations are asserted as explicit unavailable states.
+Run a packaged/identity-enabled positive path explicitly with:
+
+```powershell
+npm run smoke:ui -- -ShellOnly -PackagedShellPositivePath `
+  -PackagedGalleryLaunchCommand C:\path\to\IdentityEnabledGallery.exe
+```
+
+The packaged positive path fails fast unless the explicit launch command is
+provided. The ordinary `node main.js` command is always the unpackaged smoke
+path and is never treated as evidence for package identity.
+
+The normal unpackaged Gallery never registers shared `node.exe` for app
+notifications. An unpackaged app-specific executable may opt in only by setting
+`DYNWINRT_JSX_GALLERY_APP_NOTIFICATION_AUMID` and
+`DYNWINRT_JSX_GALLERY_APP_NOTIFICATION_FORWARDING=1`; the executable must own
+that AUMID and forward notification activation arguments.
+
 Search matches every whitespace-separated token against page titles,
 descriptions, categories, and tags. Theme, interaction, recent-page, and
-favorite-page state persist under
+favorite-page, current-route, and search state persist under
 `%LOCALAPPDATA%\dynwinrt-jsx\gallery\state.json`.
 
 The Gallery enables the optional UI-thread heartbeat by default. Diagnostics

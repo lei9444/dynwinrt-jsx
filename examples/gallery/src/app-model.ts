@@ -16,6 +16,7 @@ import {
   type GalleryRoute,
 } from './gallery-data'
 import type { AppState } from './app-state'
+import { isGalleryRoute } from './launch-intent'
 
 export type { AppState } from './app-state'
 export type { GalleryRoute } from './gallery-data'
@@ -90,8 +91,13 @@ export function createAppModel(
   initialState: AppState,
 ): AppModel {
   return createRoot((dispose: Cleanup) => {
-    const route = signal<GalleryRoute>('home')
-    const searchQuery = signal('')
+    const initialRoute = initialState.route &&
+      isGalleryRoute(initialState.route)
+      ? initialState.route
+      : 'home'
+    const initialSearchQuery = initialState.searchQuery ?? ''
+    const route = signal<GalleryRoute>(initialRoute)
+    const searchQuery = signal(initialSearchQuery)
     const recentPageIds = signal<readonly GalleryPageId[]>(
       normalizePageIds(initialState.recentPageIds),
     )
@@ -154,6 +160,8 @@ export function createAppModel(
       updatedAt: updatedAt.value,
       recentPageIds: recentPageIds.value,
       favoritePageIds: favoritePageIds.value,
+      route: route.value,
+      searchQuery: searchQuery.value,
       persistenceError: persistenceError.value,
     })
     effect(() => {

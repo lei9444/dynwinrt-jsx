@@ -23,6 +23,9 @@ const {
   createDefaultPersistedAppState,
   isPersistedAppState,
 } = require('./dist/app-state.js')
+const {
+  parseGalleryLaunchIntent,
+} = require('./dist/launch-intent.js')
 
 const architecture = {
   arm64: 'arm64',
@@ -65,10 +68,36 @@ const stateStore = createJsonStateStore({
   validate: isPersistedAppState,
 })
 const loadedState = stateStore.load()
+const launchIntent = parseGalleryLaunchIntent(process.argv.slice(2))
 const initialState = {
   ...loadedState.state,
+  ...(launchIntent ?? {}),
   status: 'starting',
   persistenceError: loadedState.error,
+}
+
+const appNotificationAumid =
+  process.env.DYNWINRT_JSX_GALLERY_APP_NOTIFICATION_AUMID?.trim() || null
+const hasActivationForwarding =
+  process.env.DYNWINRT_JSX_GALLERY_APP_NOTIFICATION_FORWARDING === '1'
+const hostedBySharedNode =
+  path.basename(process.execPath).toLowerCase() === 'node.exe'
+const appNotificationLauncherAvailable =
+  appNotificationAumid !== null &&
+  hasActivationForwarding &&
+  !hostedBySharedNode
+const shellCapabilities = {
+  appNotifications: {
+    available: appNotificationLauncherAvailable,
+    aumid: appNotificationLauncherAvailable
+      ? appNotificationAumid
+      : null,
+    description: appNotificationLauncherAvailable
+      ? `App-specific notification launcher capability detected (${appNotificationAumid}).`
+      : hostedBySharedNode
+        ? 'App notifications unavailable: unpackaged registration requires an app-specific launcher/AUMID activation path; this Gallery is hosted by shared node.exe.'
+        : 'App notifications unavailable: configure an app-specific AUMID and verified activation forwarding before unpackaged registration.',
+  },
 }
 
 function readPositiveInteger(name, fallback) {
@@ -166,6 +195,7 @@ const worker = new Worker(
       heartbeatState: heartbeatStateBuffer,
       inspectorExportPath,
       initialState,
+      shellCapabilities,
     },
     transferList: [port2],
   },
@@ -300,6 +330,8 @@ bridge.state.subscribe((state) => {
     updatedAt: state.updatedAt,
     recentPageIds: state.recentPageIds ?? [],
     favoritePageIds: state.favoritePageIds ?? [],
+    route: state.route ?? 'home',
+    searchQuery: state.searchQuery ?? '',
   }
   const fingerprint = JSON.stringify(persistedState)
   if (fingerprint === persistedFingerprint) {

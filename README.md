@@ -116,6 +116,10 @@ Applications still provide their generated `Application`, `Window`,
 projection-scope factory, renderer, model, and render callbacks.
 `runWinUIWorkerApp()` is the preferred high-level path; the lower-level
 lifecycle and hot-reload helpers remain available for custom hosts.
+Mounted applications can return `beforeCloseAsync()` for process-owned
+asynchronous cleanup. The lifecycle cancels the initial close, awaits the hook
+while native projections are still alive, then closes and performs ordinary
+synchronous renderer and projection teardown.
 
 For sibling source repositories under one work directory:
 

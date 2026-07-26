@@ -7,6 +7,9 @@ param(
     [switch]$SkipKeyboardInput,
     [switch]$ClipboardOnly,
     [switch]$SystemOnly,
+    [switch]$ShellOnly,
+    [switch]$PackagedShellPositivePath,
+    [string]$PackagedGalleryLaunchCommand,
     [switch]$WindowingOnly,
     [switch]$WindowingTeardownOnly
 )
@@ -17,6 +20,12 @@ $ErrorActionPreference = "Stop"
 $galleryRoot = Split-Path $PSScriptRoot -Parent
 $repoRoot = Split-Path (Split-Path $galleryRoot -Parent) -Parent
 $workRoot = Split-Path $repoRoot -Parent
+if (
+    $PackagedShellPositivePath -and
+    [string]::IsNullOrWhiteSpace($PackagedGalleryLaunchCommand)
+) {
+    throw "-PackagedShellPositivePath requires -PackagedGalleryLaunchCommand pointing to an identity-enabled Gallery executable. The unpackaged 'node main.js' launch is not a packaged positive path."
+}
 if (-not $WinAppPath) {
     $WinAppPath = Join-Path $workRoot "winappCli\src\winapp-npm\bin\win-x64\winapp.exe"
 }
@@ -36,6 +45,30 @@ function Invoke-WinApp([string[]]$Arguments, [switch]$Capture) {
     & $WinAppPath @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "winapp $($Arguments -join ' ') exited with code $LASTEXITCODE."
+    }
+}
+
+function Get-ElementName(
+    [int64]$WindowHandle,
+    [string]$AutomationId
+) {
+    $json = Invoke-WinApp @(
+        "ui", "get-property", $AutomationId,
+        "-w", "$WindowHandle",
+        "--json"
+    ) -Capture
+    return ($json | ConvertFrom-Json).properties.Name
+}
+
+function Assert-ElementName(
+    [int64]$WindowHandle,
+    [string]$AutomationId,
+    [string]$ExpectedName,
+    [string]$Description
+) {
+    $actualName = Get-ElementName $WindowHandle $AutomationId
+    if ($actualName -cne $ExpectedName) {
+        throw "$Description reported '$actualName'; expected '$ExpectedName'."
     }
 }
 
@@ -117,6 +150,28 @@ function Assert-Responsive([int]$ProcessId, [string]$Page) {
     }
 }
 
+function Wait-ForAnyText(
+    [int64]$WindowHandle,
+    [string[]]$Texts,
+    [string]$Description
+) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        foreach ($text in $Texts) {
+            $json = & $WinAppPath ui search $text `
+                -w "$WindowHandle" --json 2>$null
+            if ($LASTEXITCODE -eq 0 -and $json) {
+                $matches = @((($json -join "`n") | ConvertFrom-Json).matches)
+                if ($matches.Count -gt 0) {
+                    return $text
+                }
+            }
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "$Description did not report any expected truthful state: $($Texts -join '; ')"
+}
+
 function Get-UiTreeElements([object[]]$Nodes) {
     foreach ($node in @($Nodes)) {
         $node
@@ -171,6 +226,7 @@ $stylesCategoryScreenshotPath = Join-Path $evidenceRoot "styles-category.png"
 $motionCategoryScreenshotPath = Join-Path $evidenceRoot "motion-category.png"
 $windowingCategoryScreenshotPath = Join-Path $evidenceRoot "windowing-category.png"
 $systemCategoryScreenshotPath = Join-Path $evidenceRoot "system-category.png"
+$shellCategoryScreenshotPath = Join-Path $evidenceRoot "shell-category.png"
 $sourceCodeScreenshotPath = Join-Path $evidenceRoot "source-code.png"
 $smokeStatePath = Join-Path $evidenceRoot "state.json"
 $heartbeatEvidencePath = Join-Path $evidenceRoot "heartbeat-timeout.json"
@@ -191,14 +247,26 @@ if ($LASTEXITCODE -ne 0) {
     throw "Gallery build failed."
 }
 
-$nodePath = (Get-Command node -ErrorAction Stop).Source
-$appProcess = Start-Process `
-    -FilePath $nodePath `
-    -ArgumentList "main.js" `
-    -WorkingDirectory $galleryRoot `
-    -RedirectStandardOutput $stdoutPath `
-    -RedirectStandardError $stderrPath `
-    -PassThru
+if ($PackagedShellPositivePath) {
+    $packagedCommand = Get-Command `
+        $PackagedGalleryLaunchCommand `
+        -ErrorAction Stop
+    $appProcess = Start-Process `
+        -FilePath $packagedCommand.Source `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath `
+        -PassThru
+}
+else {
+    $nodePath = (Get-Command node -ErrorAction Stop).Source
+    $appProcess = Start-Process `
+        -FilePath $nodePath `
+        -ArgumentList "main.js" `
+        -WorkingDirectory $galleryRoot `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath `
+        -PassThru
+}
 
 $windowHandle = $null
 try {
@@ -244,7 +312,7 @@ try {
         throw "Legacy Gallery page IDs were not migrated."
     }
 
-    if (-not ($ClipboardOnly -or $SystemOnly)) {
+    if (-not ($ClipboardOnly -or $SystemOnly -or $ShellOnly)) {
     Ensure-NavigationItem $windowHandle "GalleryBasicInputCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryBasicInputCategoryNavItem",
@@ -675,6 +743,7 @@ try {
     )
     }
 
+    if (-not $ShellOnly) {
     Ensure-NavigationItem $windowHandle "GallerySystemCategoryNavItem"
     Invoke-WinApp @(
         "ui", "scroll-into-view", "GallerySystemCategoryNavItem",
@@ -703,6 +772,38 @@ try {
         "-w", "$windowHandle",
         "--output", $systemCategoryScreenshotPath
     )
+    }
+
+    if (-not ($ClipboardOnly -or $SystemOnly)) {
+    Ensure-NavigationItem $windowHandle "GalleryShellCategoryNavItem"
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "GalleryShellCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryShellCategoryNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "ShellCategoryPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "GalleryOpenPage-app-notifications",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Invoke-WinApp @(
+        "ui", "scroll-into-view", "GalleryOpenPage-jump-list",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $shellCategoryScreenshotPath
+    )
+    }
 
     $routes = @(
         [pscustomobject]@{ Name = "Open Signals and control flow"; Heading = "SignalsPageHeading"; Probe = $null; Query = "reactivity" },
@@ -771,6 +872,9 @@ try {
         [pscustomobject]@{ Name = "Open ContentIsland"; Heading = "ContentIslandPageHeading"; Probe = "GallerySystemContentIslandSample"; Query = "content island hosting" },
         [pscustomobject]@{ Name = "Open Storage pickers"; Heading = "StoragePickersPageHeading"; Probe = "GallerySystemStoragePickerCapabilitySample"; Query = "file picker folderpicker" },
         [pscustomobject]@{ Name = "Open Clipboard"; Heading = "ClipboardPageHeading"; Probe = "GallerySystemClipboardTextSample"; Query = "clipboard copy paste" },
+        [pscustomobject]@{ Name = "Open App notifications"; Heading = "AppNotificationsPageHeading"; Probe = "GalleryShellAppNotificationCapabilitySample"; Query = "toast notification center" },
+        [pscustomobject]@{ Name = "Open Badge notifications"; Heading = "BadgeNotificationsPageHeading"; Probe = "GalleryShellBadgeCapabilitySample"; Query = "taskbar badge" },
+        [pscustomobject]@{ Name = "Open JumpList"; Heading = "JumpListPageHeading"; Probe = "GalleryShellJumpListCapabilitySample"; Query = "jump list taskbar" },
         [pscustomobject]@{ Name = "Open AppBarButton"; Heading = "AppBarButtonPageHeading"; Probe = "GalleryMenusAppBarButtonBasicSample"; Query = "appbarbutton command" },
         [pscustomobject]@{ Name = "Open AppBarSeparator"; Heading = "AppBarSeparatorPageHeading"; Probe = "GalleryMenusAppBarSeparatorSample"; Query = "appbarseparator commandbar" },
         [pscustomobject]@{ Name = "Open AppBarToggleButton"; Heading = "AppBarToggleButtonPageHeading"; Probe = "GalleryAppBarToggleButtonControl"; Query = "appbartogglebutton toggle" },
@@ -835,6 +939,15 @@ try {
                 "ClipboardPageHeading",
                 "ContentIslandPageHeading",
                 "StoragePickersPageHeading"
+            )
+        })
+    }
+    elseif ($ShellOnly) {
+        $routes = @($routes | Where-Object {
+            $_.Heading -in @(
+                "AppNotificationsPageHeading",
+                "BadgeNotificationsPageHeading",
+                "JumpListPageHeading"
             )
         })
     }
@@ -1361,6 +1474,76 @@ try {
                 @($pickerUnavailableMatches).Count -eq 0
             ) {
                 throw "Storage pickers did not report a truthful available or unavailable state."
+            }
+        }
+        if ($route.Heading -eq "AppNotificationsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryShellAppNotificationProbe",
+                "-w", "$windowHandle"
+            )
+            if ($PackagedShellPositivePath) {
+                $registrationName = Get-ElementName `
+                    $windowHandle `
+                    "GalleryShellAppNotificationRegistrationStatus"
+                if (
+                    $registrationName -notmatch
+                    "^(Packaged|App-specific launcher) registration succeeded\. Notifications are "
+                ) {
+                    throw "App notification registration did not reach the positive path: '$registrationName'."
+                }
+                if ($registrationName.EndsWith("Notifications are enabled.")) {
+                    Wait-ForAnyText $windowHandle @(
+                        "App notification path verified",
+                        "Windows accepted and removed the suppressed probe"
+                    ) "packaged App notification positive path"
+                }
+            }
+            else {
+                Assert-ElementName `
+                    $windowHandle `
+                    "GalleryShellAppNotificationRegistrationStatus" `
+                    "App notifications unavailable: unpackaged registration requires an app-specific launcher/AUMID activation path; this Gallery is hosted by shared node.exe." `
+                    "App notification prerequisite"
+            }
+        }
+        if ($route.Heading -eq "BadgeNotificationsPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryShellBadgeProbe",
+                "-w", "$windowHandle"
+            )
+            if ($PackagedShellPositivePath) {
+                Invoke-WinApp @(
+                    "ui", "wait-for", "Badge path verified",
+                    "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
+                )
+            }
+            else {
+                Assert-ElementName `
+                    $windowHandle `
+                    "GalleryShellBadgeStatus" `
+                    "Badge notifications unavailable: taskbar badges require package identity, and this Gallery is running unpackaged." `
+                    "Badge prerequisite"
+            }
+        }
+        if ($route.Heading -eq "JumpListPageHeading") {
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryShellJumpListProbe",
+                "-w", "$windowHandle"
+            )
+            if ($PackagedShellPositivePath) {
+                Invoke-WinApp @(
+                    "ui", "wait-for", "JumpList path verified",
+                    "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
+                )
+            }
+            else {
+                Assert-ElementName `
+                    $windowHandle `
+                    "GalleryShellJumpListStatus" `
+                    "JumpList unavailable: Windows.UI.StartScreen.JumpList requires package identity, and this Gallery is running unpackaged." `
+                    "JumpList prerequisite"
             }
         }
         if ($route.Heading -eq "ButtonPageHeading") {
@@ -3167,16 +3350,27 @@ try {
         }
     }
 
-    if ($ClipboardOnly -or $SystemOnly) {
+    if ($ClipboardOnly -or $SystemOnly -or $ShellOnly) {
         Invoke-WinApp @(
             "ui", "invoke", "Close",
             "-w", "$windowHandle"
         )
+        $scope = if ($ClipboardOnly) {
+            "Clipboard"
+        }
+        elseif ($SystemOnly) {
+            "System"
+        }
+        else {
+            "Shell"
+        }
         if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
-            throw "The Gallery did not exit after the System smoke."
+            throw "The Gallery did not exit after the $scope smoke."
+        }
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery exited with code $($appProcess.ExitCode) after the $scope smoke."
         }
         $windowHandle = 0
-        $scope = if ($ClipboardOnly) { "Clipboard" } else { "System" }
         Write-Host "Gallery $scope UI smoke passed. Evidence: $evidenceRoot"
         return
     }

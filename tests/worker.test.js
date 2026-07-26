@@ -34,6 +34,10 @@ function createWindowHarness() {
         closed = callback
         return () => order.push('closed-unsubscribe')
       },
+      close() {
+        order.push('window-close')
+        closing(undefined, { cancel: false })
+      },
     },
     appWindow: {
       onClosing(callback) {
@@ -180,6 +184,96 @@ test('window lifecycle cancels projection failure and permits retry', () => {
     harness.order.includes('closing-unsubscribe'),
     true,
   )
+})
+
+test('window lifecycle awaits async cleanup before teardown', async () => {
+  const harness = createWindowHarness()
+  let finishCleanup
+  const cleanupGate = new Promise((resolve) => {
+    finishCleanup = resolve
+  })
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    async beforeCloseAsync() {
+      harness.order.push('async-start')
+      await cleanupGate
+      harness.order.push('async-finish')
+    },
+    disposeRender() {
+      harness.order.push('render')
+    },
+    onError(error) {
+      throw error
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  const args = harness.close()
+  assert.equal(args.cancel, true)
+  await Promise.resolve()
+  assert.deepEqual(harness.order, ['async-start'])
+  finishCleanup()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(harness.order, [
+    'async-start',
+    'async-finish',
+    'window-close',
+    'render',
+    'closing-unsubscribe',
+  ])
+})
+
+test('window lifecycle reports async cleanup failure and permits retry', async () => {
+  const harness = createWindowHarness()
+  const failure = new Error('async cleanup failed')
+  const errors = []
+  const exitCodes = []
+  let attempts = 0
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    async beforeCloseAsync() {
+      attempts += 1
+      if (attempts === 1) {
+        throw failure
+      }
+    },
+    disposeRender() {
+      harness.order.push('render')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode(value) {
+      exitCodes.push(value)
+    },
+  })
+
+  assert.equal(harness.close().cancel, true)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(errors, [failure])
+  assert.deepEqual(harness.order, [])
+
+  assert.equal(harness.close().cancel, true)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(attempts, 2)
+  assert.deepEqual(harness.order, [
+    'window-close',
+    'render',
+    'closing-unsubscribe',
+  ])
+  assert.equal(exitCodes.at(-1), 1)
 })
 
 test('worker app owns startup, mount, activation, and close order', () => {

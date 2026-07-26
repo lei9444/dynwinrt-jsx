@@ -5,6 +5,8 @@ export interface PersistedAppState {
   readonly updatedAt: string | null
   readonly recentPageIds?: readonly string[]
   readonly favoritePageIds?: readonly string[]
+  readonly route?: string
+  readonly searchQuery?: string
 }
 
 export interface AppState extends PersistedAppState {
@@ -20,6 +22,8 @@ export function createDefaultPersistedAppState(): PersistedAppState {
     updatedAt: null,
     recentPageIds: [],
     favoritePageIds: [],
+    route: 'home',
+    searchQuery: '',
   }
 }
 
@@ -39,11 +43,17 @@ export function isPersistedAppState(
     isStringArray(
       (value as PersistedAppState).favoritePageIds,
     ) &&
+    isOptionalString((value as PersistedAppState).route) &&
+    isOptionalString((value as PersistedAppState).searchQuery) &&
     (
       (value as PersistedAppState).updatedAt === null ||
       typeof (value as PersistedAppState).updatedAt === 'string'
     )
   )
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string'
 }
 
 function isStringArray(value: unknown): boolean {

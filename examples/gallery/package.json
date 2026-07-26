@@ -12,6 +12,7 @@
     "dev": "node dev.js",
     "start": "npm run build && node main.js",
     "smoke:ui": "pwsh -NoProfile -File scripts/smoke-ui.ps1",
+    "test:lifecycle": "npm run build && node --test tests/*.test.js",
     "build:codegen": "cargo build --release -p dynwinrt-codegen --manifest-path \"../../../dynwinrt/Cargo.toml\""
   },
   "engines": {
@@ -124,6 +125,13 @@
           "namespace": "Windows.System",
           "classes": [
             "Launcher"
+          ]
+        },
+        {
+          "namespace": "Windows.UI.StartScreen",
+          "classes": [
+            "JumpList",
+            "JumpListItem"
           ]
         },
         {

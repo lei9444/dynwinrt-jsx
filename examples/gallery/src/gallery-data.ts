@@ -645,6 +645,39 @@ export const galleryPages = [
     image: 'ControlImages/StoragePickers.png',
   },
   {
+    id: 'app-notifications',
+    category: 'Shell',
+    title: 'App notifications',
+    subtitle:
+      'Send notifications that appear in Notification Center and as popup banners.',
+    description:
+      'Register package identity or an explicit app-specific launcher/AUMID activation path with AppNotificationManager, inspect the effective setting, and submit owned text, image, input, and progress notifications.',
+    tags: ['toast', 'notification', 'notification center', 'appnotification'],
+    image: 'ControlImages/AppNotification.png',
+  },
+  {
+    id: 'badge-notifications',
+    category: 'Shell',
+    title: 'Badge notifications',
+    subtitle:
+      'Show numeric or glyph badges on the app taskbar icon.',
+    description:
+      'Use package identity and BadgeNotificationManager to set, replace, and clear taskbar badge counts and glyphs.',
+    tags: ['taskbar badge', 'badge', 'notification badge', 'glyph'],
+    image: 'ControlImages/BadgeNotification.png',
+  },
+  {
+    id: 'jump-list',
+    category: 'Shell',
+    title: 'JumpList',
+    subtitle:
+      'Add custom tasks and groups to the app taskbar JumpList.',
+    description:
+      'Use package identity, JumpList.IsSupported, handled Gallery startup arguments, and projected task collections to save taskbar actions and custom groups.',
+    tags: ['jump list', 'taskbar', 'recent', 'tasks', 'jumplist'],
+    image: 'ControlImages/JumpList.png',
+  },
+  {
     id: 'app-bar-button',
     category: 'Menus & toolbars',
     title: 'AppBarButton',
@@ -1293,6 +1326,7 @@ export type GalleryRoute =
   | 'category-motion'
   | 'category-windowing'
   | 'category-system'
+  | 'category-shell'
   | 'category-menus-toolbars'
   | 'category-navigation'
   | 'category-scrolling'
@@ -1343,6 +1377,10 @@ export const windowingPages = galleryPages.filter(
 
 export const systemPages = galleryPages.filter(
   (page) => page.category === 'System',
+)
+
+export const shellPages = galleryPages.filter(
+  (page) => page.category === 'Shell',
 )
 
 export const menusToolbarsPages = galleryPages.filter(
