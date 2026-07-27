@@ -225,6 +225,17 @@ export {
 } from './runtime/persistence'
 
 export {
+  capabilityAvailable,
+  capabilityUnavailable,
+  createCapabilityOwner,
+  mapCapability,
+  type AvailableCapability,
+  type Capability,
+  type CapabilityOwner,
+  type UnavailableCapability,
+} from './runtime/capability'
+
+export {
   createRenderer,
   Renderer,
   type NativeCollection,

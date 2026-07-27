@@ -10,6 +10,7 @@ test('host entry avoids renderer and WinUI modules', () => {
   for (const modulePath of [
     hostPath,
     require.resolve('../dist/runtime/bridge.js'),
+    require.resolve('../dist/runtime/capability.js'),
     require.resolve('../dist/runtime/diagnostics.js'),
     require.resolve('../dist/runtime/persistence.js'),
     require.resolve('../dist/runtime/heartbeat.js'),
@@ -19,6 +20,7 @@ test('host entry avoids renderer and WinUI modules', () => {
 
   const host = require('dynwinrt-jsx/host')
   assert.equal(typeof host.createMessageTransport, 'function')
+  assert.equal(typeof host.capabilityAvailable, 'function')
   assert.equal(typeof host.createStateBridge, 'function')
   assert.equal(typeof host.createDiagnosticRecord, 'function')
   assert.equal(typeof host.createJsonStateStore, 'function')

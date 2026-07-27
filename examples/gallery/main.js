@@ -10,6 +10,8 @@ const {
 const {
   createMessageTransport,
   createStateBridge,
+  capabilityAvailable,
+  capabilityUnavailable,
   createDiagnosticRecord,
   createJsonStateStore,
   createRendererHeartbeatSharedState,
@@ -87,17 +89,13 @@ const appNotificationLauncherAvailable =
   hasActivationForwarding &&
   !hostedBySharedNode
 const shellCapabilities = {
-  appNotifications: {
-    available: appNotificationLauncherAvailable,
-    aumid: appNotificationLauncherAvailable
-      ? appNotificationAumid
-      : null,
-    description: appNotificationLauncherAvailable
-      ? `App-specific notification launcher capability detected (${appNotificationAumid}).`
-      : hostedBySharedNode
-        ? 'App notifications unavailable: unpackaged registration requires an app-specific launcher/AUMID activation path; this Gallery is hosted by shared node.exe.'
-        : 'App notifications unavailable: configure an app-specific AUMID and verified activation forwarding before unpackaged registration.',
-  },
+  appNotifications: appNotificationLauncherAvailable
+    ? capabilityAvailable(appNotificationAumid)
+    : capabilityUnavailable(
+        hostedBySharedNode
+          ? 'App notifications unavailable: unpackaged registration requires an app-specific launcher/AUMID activation path; this Gallery is hosted by shared node.exe.'
+          : 'App notifications unavailable: configure an app-specific AUMID and verified activation forwarding before unpackaged registration.',
+      ),
 }
 
 function readPositiveInteger(name, fallback) {

@@ -26,6 +26,15 @@ export {
 } from './runtime/persistence'
 
 export {
+  capabilityAvailable,
+  capabilityUnavailable,
+  mapCapability,
+  type AvailableCapability,
+  type Capability,
+  type UnavailableCapability,
+} from './runtime/capability'
+
+export {
   createRendererHeartbeatSharedState,
   createRendererHeartbeatMonitor,
   getRendererHeartbeatSharedState,

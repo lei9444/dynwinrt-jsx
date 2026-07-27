@@ -11,6 +11,7 @@ import {
   createVirtualizedItemsControl,
   native,
   type Child,
+  type Capability,
   type MaybeSignal,
   type Renderer,
 } from 'dynwinrt-jsx'
@@ -524,11 +525,7 @@ export interface AppContext {
   readonly appNotifications: AppNotificationOwner
   readonly secondaryWindows: GallerySecondaryWindowManager
   readonly shellCapabilities: {
-    readonly appNotifications: {
-      readonly available: boolean
-      readonly description: string
-      readonly aumid: string | null
-    }
+    readonly appNotifications: Capability<string>
   }
   refreshDiagnostics(): void
   exportDiagnostics(): void

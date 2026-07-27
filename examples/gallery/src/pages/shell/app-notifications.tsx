@@ -57,11 +57,17 @@ export function AppNotificationsPage(context: AppContext) {
   const identity = detectPackageIdentity()
   const launcherCapability =
     context.shellCapabilities.appNotifications
+  const registrationPrerequisite = identity.available
+    ? identity
+    : launcherCapability
   const registrationPrerequisiteAvailable =
-    identity.available || launcherCapability.available
-  const registrationPrerequisiteDescription = identity.available
-    ? identity.description
-    : launcherCapability.description
+    registrationPrerequisite.available
+  const registrationPrerequisiteDescription =
+    registrationPrerequisite.available
+      ? identity.available
+        ? `Package identity detected (${identity.value}).`
+        : `App-specific notification launcher capability detected (${registrationPrerequisite.value}).`
+      : registrationPrerequisite.reason
   let supported = false
   let supportError: unknown
   try {

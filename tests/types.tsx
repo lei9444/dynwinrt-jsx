@@ -7,6 +7,8 @@ import {
   adapter,
   bind,
   boxNullable,
+  capabilityAvailable,
+  capabilityUnavailable,
   color,
   computed,
   cornerRadius,
@@ -14,6 +16,7 @@ import {
   createBitmapImage,
   createContext,
   createComboBoxControl,
+  createCapabilityOwner,
   createControls,
   createFocusTarget,
   createFontFamily,
@@ -39,6 +42,7 @@ import {
   createWinUIThemeController,
   createWinUIRendererPreset,
   gridLength,
+  mapCapability,
   native,
   resource,
   signal,
@@ -52,6 +56,7 @@ import {
   tokens,
   useContext,
   type Child,
+  type Capability,
   type MaybeSignal,
   type NativePropertyPhase,
   type ReadonlySignal,
@@ -681,6 +686,43 @@ const stateStore = createJsonStateStore({
 stateStore.save({ version: 1, count: 1 })
 
 const count = signal(0)
+const hardwareCapability: Capability<
+  string,
+  { readonly source: 'device' }
+> = capabilityAvailable(
+  'Camera',
+  { source: 'device' },
+)
+const capabilityLabel = mapCapability(
+  hardwareCapability,
+  (value) => value.toUpperCase(),
+)
+if (capabilityLabel.available) {
+  capabilityLabel.value satisfies string
+}
+else {
+  capabilityLabel.reason satisfies string
+}
+const capabilityOwner = createCapabilityOwner(
+  capabilityAvailable({ close() {} }),
+  (value) => value.close(),
+)
+capabilityOwner.dispose()
+// @ts-expect-error Available capability owners require cleanup.
+createCapabilityOwner(capabilityAvailable('camera'))
+createCapabilityOwner(
+  capabilityAvailable('camera'),
+  // @ts-expect-error CapabilityOwner cleanup must be synchronous.
+  async () => {},
+)
+declare const maybeAsyncCleanup:
+  () => void | Promise<void>
+createCapabilityOwner(
+  capabilityAvailable('camera'),
+  // @ts-expect-error Promise unions are asynchronous cleanup.
+  maybeAsyncCleanup,
+)
+capabilityUnavailable('No package identity.')
 const enabled = signal(true)
 const clickHandler = signal((
   _sender: TypeButton,

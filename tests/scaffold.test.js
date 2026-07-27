@@ -114,6 +114,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.match(workerSource, /import \* as WinUIBindings/)
   assert.match(workerSource, /createWinUIRendererPreset/)
   assert.match(workerSource, /winuiRendererPreset\.createRenderer\(\)/)
+  assert.match(workerSource, /releaseProjectedValue/)
   const appSource = fs.readFileSync(
     path.join(target, 'src', 'app.tsx'),
     'utf8',

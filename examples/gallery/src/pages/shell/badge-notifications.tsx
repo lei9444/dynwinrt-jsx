@@ -1,7 +1,10 @@
 import {
+  capabilityAvailable,
   computed,
+  createCapabilityOwner,
   onCleanup,
   signal,
+  type CapabilityOwner,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
@@ -32,7 +35,9 @@ export function BadgeNotificationsPage(context: AppContext) {
       : unpackagedPrerequisite,
   )
   let manager: BadgeNotificationManager | undefined
-  let badgeOwned = false
+  let badgeOwner:
+    | CapabilityOwner<BadgeNotificationManager>
+    | undefined
 
   const checkCapability = (): boolean => {
     if (!identity.available) {
@@ -56,13 +61,27 @@ export function BadgeNotificationsPage(context: AppContext) {
     }
   }
 
+  const ownBadge = () => {
+    if (!badgeOwner || badgeOwner.disposed) {
+      badgeOwner = createCapabilityOwner(
+        capabilityAvailable(manager!),
+        (ownedManager) => ownedManager.clearBadge(),
+      )
+    }
+  }
+
   const clearBadge = (cleanup = false) => {
     if (!manager && !checkCapability()) {
       return false
     }
     try {
-      manager!.clearBadge()
-      badgeOwned = false
+      if (badgeOwner && !badgeOwner.disposed) {
+        badgeOwner.dispose()
+        badgeOwner = undefined
+      }
+      else {
+        manager!.clearBadge()
+      }
       if (!cleanup) {
         status.value = 'The taskbar badge was cleared.'
         context.model.recordInteraction()
@@ -79,15 +98,33 @@ export function BadgeNotificationsPage(context: AppContext) {
   }
 
   onCleanup(() => {
-    if (
-      badgeOwned &&
-      !clearBadge(true) &&
-      !clearBadge(true)
-    ) {
+    const owner = badgeOwner
+    if (!owner || owner.disposed) {
+      return
+    }
+    let firstError: unknown
+    try {
+      owner.dispose()
+    }
+    catch (error) {
+      firstError = error
+    }
+    if (!owner.disposed) {
+      try {
+        owner.dispose()
+      }
+      catch (error) {
+        firstError ??= error
+      }
+    }
+    if (!owner.disposed) {
+      badgeOwner = undefined
       throw new Error(
         'The Shell badge owned by this page could not be cleared after two attempts.',
+        { cause: firstError },
       )
     }
+    badgeOwner = undefined
   })
 
   const setCount = () => {
@@ -100,7 +137,7 @@ export function BadgeNotificationsPage(context: AppContext) {
     )
     try {
       manager!.setBadgeAsCount(value)
-      badgeOwned = true
+      ownBadge()
       status.value = `Taskbar badge count set to ${value}.`
       context.model.recordInteraction()
     }
@@ -119,7 +156,7 @@ export function BadgeNotificationsPage(context: AppContext) {
     }
     try {
       manager!.setBadgeAsGlyph(glyph)
-      badgeOwned = true
+      ownBadge()
       status.value = `Taskbar badge glyph set to ${name}.`
       context.model.recordInteraction()
     }
@@ -136,9 +173,12 @@ export function BadgeNotificationsPage(context: AppContext) {
     }
     try {
       manager!.setBadgeAsCount(1)
-      badgeOwned = true
-      manager!.clearBadge()
-      badgeOwned = false
+      ownBadge()
+      if (!clearBadge(true)) {
+        throw new Error(
+          'The temporary badge could not be cleared.',
+        )
+      }
       status.value =
         'Badge path verified: a temporary count was set and cleared through BadgeNotificationManager.'
       context.model.recordInteraction()

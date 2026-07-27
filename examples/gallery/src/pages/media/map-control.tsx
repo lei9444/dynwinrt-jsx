@@ -10,25 +10,16 @@ import {
   MapControl,
   MapElementsLayer,
   MapIcon,
-  Package,
   PasswordBox,
 } from '#winapp/bindings'
 import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
 import { loadGalleryBitmap } from '../../gallery-assets'
-
-function hasPackageIdentity(): boolean {
-  try {
-    void Package.current.id
-    return true
-  }
-  catch {
-    return false
-  }
-}
+import { detectPackageIdentity } from '../shell/shared'
 
 export function MapControlPage(context: AppContext) {
-  const packaged = hasPackageIdentity()
+  const identity = detectPackageIdentity()
+  const packaged = identity.available
   const map: RefObject<MapControl> = { current: null }
   const token: RefObject<PasswordBox> = { current: null }
   const screenshot = loadGalleryBitmap(
@@ -38,7 +29,7 @@ export function MapControlPage(context: AppContext) {
   const status = signal(
     packaged
       ? 'MapControl is ready for an Azure Maps service token.'
-      : 'MapControl unavailable: this Gallery is running without package identity.',
+      : `MapControl unavailable: ${identity.reason}`,
   )
   const configureMap = () => {
     const current = map.current
@@ -150,7 +141,7 @@ map.layers.append(layer)`}
       <UI.TextBlock
         text={computed(() => packaged
           ? 'Package identity detected.'
-          : 'No package identity detected.')}
+          : identity.reason)}
       />
     </Page>
   )

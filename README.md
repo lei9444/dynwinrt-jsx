@@ -116,10 +116,14 @@ Applications still provide their generated `Application`, `Window`,
 projection-scope factory, renderer, model, and render callbacks.
 `runWinUIWorkerApp()` is the preferred high-level path; the lower-level
 lifecycle and hot-reload helpers remain available for custom hosts.
+Pass the generated `releaseProjected` function as `releaseProjectedValue`.
+The Worker caches `Application.current`, `Window`, and `AppWindow` before the
+projection scope is created, then releases those root wrappers from
+`Window.Closed` after ordinary renderer/projection teardown.
 Mounted applications can return `beforeCloseAsync()` for process-owned
 asynchronous cleanup. The lifecycle cancels the initial close, awaits the hook
-while native projections are still alive, then closes and performs ordinary
-synchronous renderer and projection teardown.
+while native projections are still alive, performs ordinary synchronous
+renderer and projection teardown, then closes the Window.
 
 For sibling source repositories under one work directory:
 
@@ -590,11 +594,49 @@ pageWindows.openAppWindow({
 Scopes override application close cancellation only during forced teardown,
 dispose XAML render handles before native destruction, retry failed render or
 subscription cleanup, and fall back to `AppWindow.destroy()` when a later
-handler cancels a forced XAML close. Call `secondaryWindows.dispose()` from
-`disposeAsync()` from `beforeCloseAsync()` with a DispatcherQueue enqueue
-function so forced child teardown runs after the main window's active Closing
-callback. The call is idempotent after successful shutdown and remains
-retryable after failure.
+handler cancels a forced XAML close. Call
+`secondaryWindows.disposeAsync(enqueue)` from `beforeCloseAsync()` so forced
+child teardown runs after the main window's active Closing callback. The call
+is idempotent after successful shutdown and remains retryable after failure.
+
+Use `Capability<T>` for prerequisites that may be absent because of package
+identity, registration, permissions, hardware/services, or the current host:
+
+```ts
+const camera = device
+  ? capabilityAvailable(device, { source: 'hardware' })
+  : capabilityUnavailable(
+      'No camera device is available.',
+      { source: 'hardware' },
+    )
+
+if (camera.available) {
+  startPreview(camera.value)
+}
+else {
+  showUnavailable(camera.reason)
+}
+```
+
+Available values contain `value`; unavailable values always contain a
+non-empty `reason`. Optional `details` are preserved by `mapCapability()`.
+These plain values are exported from both `dynwinrt-jsx` and
+`dynwinrt-jsx/host`, so serializable values can cross a Worker boundary.
+
+Use `createCapabilityOwner()` when an available capability also owns a local
+resource:
+
+```ts
+const island = createCapabilityOwner(
+  capabilityAvailable(resources),
+  (value) => releaseContentIsland(value),
+)
+onCleanup(island.dispose)
+```
+
+The owner is idempotent after success. If cleanup throws, `disposed` remains
+false and a later `dispose()` retries the same resource. Cleanup must be
+synchronous; Promise-returning callbacks are rejected.
 
 Use `createListViewControl()` when JSX children should populate native
 `items`, with owned `header` and `footer` slots:

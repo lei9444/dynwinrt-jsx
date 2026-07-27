@@ -1,9 +1,13 @@
 import {
+  capabilityAvailable,
+  capabilityUnavailable,
+  computed,
   For,
   createUri,
   gridLength,
   onCleanup,
   signal,
+  type Capability,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
@@ -49,6 +53,8 @@ declare const AbortController: {
 export function CaptureElementPreviewPage(context: AppContext) {
   const preview: RefObject<MediaPlayerElement> = { current: null }
   const status = signal('Camera preview not started.')
+  const cameraCapability =
+    signal<Capability<string> | null>(null)
   const starting = signal(false)
   const ready = signal(false)
   const mirrored = signal(false)
@@ -61,6 +67,14 @@ export function CaptureElementPreviewPage(context: AppContext) {
   let mediaCapture: MediaCapture | null = null
   let mediaSource: MediaSource | null = null
   let disposed = false
+  const setCameraCapability = (
+    capability: Capability<string>,
+  ) => {
+    cameraCapability.value = capability
+    status.value = capability.available
+      ? `Viewing: ${capability.value}`
+      : capability.reason
+  }
   const startPreview = async () => {
     if (starting.value || ready.value) {
       return
@@ -90,7 +104,9 @@ export function CaptureElementPreviewPage(context: AppContext) {
         info.mediaStreamType === MediaStreamType.VideoRecord,
       )
       if (!selected) {
-        status.value = 'No camera devices found.'
+        setCameraCapability(
+          capabilityUnavailable('No camera devices found.'),
+        )
         return
       }
       const { group, info: sourceInfo } = selected
@@ -108,7 +124,9 @@ export function CaptureElementPreviewPage(context: AppContext) {
       }
       const frameSource = pendingCapture.frameSources.get(sourceInfo.id)
       if (!frameSource) {
-        status.value = 'The selected camera frame source is unavailable.'
+        setCameraCapability(capabilityUnavailable(
+          'The selected camera frame source is unavailable.',
+        ))
         return
       }
       const source = MediaSource.createFromMediaFrameSource(frameSource)
@@ -123,15 +141,19 @@ export function CaptureElementPreviewPage(context: AppContext) {
       pendingCapture = null
       mediaSource = source
       ready.value = true
-      status.value = `Viewing: ${group.displayName}`
+      setCameraCapability(
+        capabilityAvailable(group.displayName),
+      )
       context.model.recordInteraction()
     }
     catch (error: unknown) {
       if (!disposed) {
         const message = String(error)
-        status.value = /access|denied|unauthorized/i.test(message)
-          ? 'Camera access denied. Enable camera access in Windows privacy settings.'
-          : `Camera unavailable: ${message}`
+        setCameraCapability(capabilityUnavailable(
+          /access|denied|unauthorized/i.test(message)
+            ? 'Camera access denied. Enable camera access in Windows privacy settings.'
+            : `Camera unavailable: ${message}`,
+        ))
       }
     }
     finally {
@@ -246,10 +268,24 @@ export function CaptureElementPreviewPage(context: AppContext) {
 await mediaCapture.initializeAsync(settings)
 preview.source = MediaSource.createFromMediaFrameSource(frameSource)`}
         output={
-          <UI.TextBlock
-            automationId="GalleryMediaCameraStatus"
-            text={status}
-          />
+          <UI.StackPanel spacing={4}>
+            <UI.TextBlock
+              automationId="GalleryMediaCameraStatus"
+              text={status}
+            />
+            <UI.TextBlock
+              automationId="GalleryMediaCameraCapability"
+              text={computed(() => {
+                const capability = cameraCapability.value
+                if (!capability) {
+                  return 'Camera capability has not been checked.'
+                }
+                return capability.available
+                  ? `Camera capability available: ${capability.value}`
+                  : `Camera capability unavailable: ${capability.reason}`
+              })}
+            />
+          </UI.StackPanel>
         }
         options={
           <UI.StackPanel spacing={8}>
