@@ -46,9 +46,11 @@ export interface WinUIWorkerWindow {
 }
 
 export interface WinUIWorkerApplication {
-  readonly current: {
-    exit(): void
-  }
+  readonly current: WinUIWorkerApplicationCurrent
+}
+
+export interface WinUIWorkerApplicationCurrent {
+  exit(): void
 }
 
 export interface WinUIWorkerApplicationHost
@@ -137,6 +139,7 @@ export interface RunWinUIWorkerAppOptions<
   readonly application: WinUIWorkerApplicationHost
   readonly createRenderer: () => Renderer
   readonly createWindow: () => Window
+  readonly releaseProjectedValue?: (value: object) => void
   readonly configureWindow?: (
     context: WinUIWorkerAppContext<
       Window,
@@ -202,6 +205,12 @@ export function runWinUIWorkerApp<
   let requestedExitCode = 1
   let window: Window | undefined
   let appWindow: AppWindow | undefined
+  let applicationCurrent:
+    | WinUIWorkerApplicationCurrent
+    | undefined
+  let applicationCurrentReleased = false
+  let appWindowReleased = false
+  let windowReleased = false
   let projectionScope: ProjectionScope | undefined
   let renderHandle: RenderHandle | undefined
   let mounted:
@@ -212,6 +221,10 @@ export function runWinUIWorkerApp<
       >
     | undefined
   let renderedHooks: WinUIWorkerRenderedHooks | undefined
+  let lifecycleInstalled = false
+  let windowLifecycle:
+    | WinUIWindowLifecycleController
+    | undefined
   let beforeClose: (() => void) | undefined
   let disposeBeforeRender: (() => void) | undefined
   let disposeAfterRender: (() => void) | undefined
@@ -261,6 +274,63 @@ export function runWinUIWorkerApp<
     options.onError(error)
   }
 
+  const releaseApplicationCurrent = () => {
+    if (
+      applicationCurrentReleased ||
+      !applicationCurrent
+    ) {
+      return
+    }
+    options.releaseProjectedValue?.(
+      applicationCurrent as object,
+    )
+    applicationCurrentReleased = true
+  }
+
+  const releaseAppWindow = () => {
+    if (appWindowReleased || !appWindow) {
+      return
+    }
+    options.releaseProjectedValue?.(appWindow as object)
+    appWindowReleased = true
+  }
+
+  const releaseWindow = () => {
+    if (windowReleased || !window) {
+      return
+    }
+    options.releaseProjectedValue?.(window as object)
+    windowReleased = true
+  }
+
+  const exitApplicationAfterFailure = () => {
+    const current =
+      applicationCurrent ?? options.application.current
+    let firstError: unknown
+    const attempt = (action: () => void) => {
+      try {
+        action()
+      }
+      catch (error) {
+        firstError ??= error
+      }
+    }
+    attempt(releaseAppWindow)
+    attempt(releaseWindow)
+    attempt(() => current.exit())
+    if (current === applicationCurrent) {
+      attempt(releaseApplicationCurrent)
+    }
+    else {
+      attempt(() => {
+        options.releaseProjectedValue?.(current as object)
+      })
+    }
+    if (firstError !== undefined) {
+      options.onError(firstError)
+    }
+  }
+
   const cleanupStartupFailure = () => {
     let firstError: unknown
     for (const cleanup of [
@@ -298,6 +368,7 @@ export function runWinUIWorkerApp<
       try {
         options.application.create(() => {
           try {
+            applicationCurrent = options.application.current
             window = options.createWindow()
             appWindow = window.appWindow
             options.onStage?.('window-created')
@@ -365,7 +436,7 @@ export function runWinUIWorkerApp<
                   exitCode = value
                 },
                 exitApplication() {
-                  options.application.current.exit()
+                  applicationCurrent!.exit()
                 },
               }
             renderedHooks =
@@ -375,8 +446,12 @@ export function runWinUIWorkerApp<
               renderedHooks?.disposeBeforeRender,
             )
 
-            installWinUIWindowLifecycle({
+            windowLifecycle = installWinUIWindowLifecycle({
               application: options.application,
+              applicationCurrent,
+              releaseApplicationCurrent,
+              releaseAppWindow,
+              releaseWindow,
               window,
               appWindow,
               renderer,
@@ -402,6 +477,7 @@ export function runWinUIWorkerApp<
                 exitCode = value
               },
             })
+            lifecycleInstalled = true
 
             window.activate()
             requestedExitCode = 0
@@ -411,14 +487,31 @@ export function runWinUIWorkerApp<
           }
           catch (error) {
             reportError(error)
-            cleanupStartupFailure()
-            options.application.current.exit()
+            if (lifecycleInstalled && window) {
+              try {
+                window.close()
+                if (
+                  !windowLifecycle?.closed &&
+                  !windowLifecycle?.closePending
+                ) {
+                  windowLifecycle?.shutdownAfterCloseFailure()
+                }
+              }
+              catch (closeError) {
+                options.onError(closeError)
+                windowLifecycle?.shutdownAfterCloseFailure()
+              }
+            }
+            else {
+              cleanupStartupFailure()
+              exitApplicationAfterFailure()
+            }
           }
         })
       }
       catch (error) {
         reportError(error)
-        options.application.current.exit()
+        exitApplicationAfterFailure()
       }
     })
   }
@@ -431,6 +524,11 @@ export function runWinUIWorkerApp<
 
 export interface WinUIWindowLifecycleOptions {
   readonly application: WinUIWorkerApplication
+  readonly applicationCurrent?:
+    WinUIWorkerApplicationCurrent
+  readonly releaseApplicationCurrent?: () => void
+  readonly releaseAppWindow?: () => void
+  readonly releaseWindow?: () => void
   readonly window: WinUIWorkerWindow
   readonly appWindow: WinUIWorkerAppWindow
   readonly renderer: Pick<Renderer, 'diagnostics'>
@@ -449,17 +547,229 @@ export interface WinUIWindowLifecycleOptions {
   readonly setExitCode: (value: number) => void
 }
 
+export interface WinUIWindowLifecycleController {
+  readonly closed: boolean
+  readonly closePending: boolean
+  shutdownAfterCloseFailure(): void
+}
+
 export function installWinUIWindowLifecycle(
   options: WinUIWindowLifecycleOptions,
-): void {
+): WinUIWindowLifecycleController {
+  const applicationCurrent =
+    options.applicationCurrent ?? options.application.current
   let closingSubscription: (() => void) | undefined
   let closeSubscription: (() => void) | undefined
   let asyncCloseCompleted = false
   let asyncCloseInFlight = false
   let asyncCloseFailed = false
+  let closedWhileAsyncCleanup = false
+  let finalCloseInProgress = false
+  let closedDuringFinalClose = false
+  let closedCompleted = false
+  let teardownCompleted = false
+  let closedRootCompletionAllowed = true
+  let closedTeardownRetryAttempted = false
+  let closedTeardownRetryQueued = false
 
-  closingSubscription = options.appWindow.onClosing(
-    (_sender, args) => {
+  const completeWindowClosed = () => {
+    if (closedCompleted) {
+      return
+    }
+    closedCompleted = true
+    const unsubscribe = closeSubscription
+    closeSubscription = undefined
+    let firstError: unknown
+    try {
+      unsubscribe?.()
+    }
+    catch (error) {
+      firstError ??= error
+    }
+    try {
+      options.releaseAppWindow?.()
+    }
+    catch (error) {
+      firstError ??= error
+    }
+    try {
+      options.releaseWindow?.()
+    }
+    catch (error) {
+      firstError ??= error
+    }
+    try {
+      applicationCurrent.exit()
+    }
+    catch (error) {
+      firstError ??= error
+    }
+    try {
+      options.releaseApplicationCurrent?.()
+    }
+    catch (error) {
+      firstError ??= error
+    }
+    if (firstError !== undefined) {
+      throw firstError
+    }
+  }
+
+  const performSynchronousTeardown = (
+    cancel?: () => void,
+    unsubscribeClosing = true,
+  ): boolean => {
+    let firstError: unknown
+    const attempt = (action: (() => void) | undefined) => {
+      if (!action) {
+        return true
+      }
+      try {
+        action()
+        return true
+      }
+      catch (error) {
+        firstError ??= error
+        return false
+      }
+    }
+
+    attempt(options.beforeClose)
+    attempt(options.disposeBeforeRender)
+    attempt(options.disposeRender)
+    attempt(options.disposeAfterRender)
+
+    const diagnostics = options.renderer.diagnostics
+    attempt(() => {
+      assertRendererIdle(diagnostics)
+    })
+    attempt(() => {
+      options.onDiagnostics?.(diagnostics)
+    })
+
+    let projectionError: unknown
+    try {
+      options.disposeProjection?.()
+    }
+    catch (error) {
+      projectionError = error
+      firstError ??= error
+    }
+
+    if (projectionError === undefined) {
+      if (unsubscribeClosing) {
+        if (attempt(closingSubscription)) {
+          closingSubscription = undefined
+        }
+      }
+    }
+    else {
+      cancel?.()
+    }
+
+    if (firstError !== undefined) {
+      options.setExitCode(1)
+      options.onError(firstError)
+    }
+    if (
+      projectionError !== undefined &&
+      projectionError !== firstError
+    ) {
+      options.onError(projectionError)
+    }
+    if (firstError === undefined) {
+      options.setExitCode(
+        asyncCloseFailed ? 1 : options.getRequestedExitCode(),
+      )
+    }
+    return projectionError === undefined
+  }
+
+  const reportClosedCleanupError = (error: unknown) => {
+    options.setExitCode(1)
+    options.onError(error)
+  }
+
+  const runClosedTeardown = () => {
+    if (closedTeardownRetryQueued) {
+      return
+    }
+    try {
+      if (!teardownCompleted) {
+        if (performSynchronousTeardown(
+          undefined,
+          false,
+        )) {
+          teardownCompleted = true
+        }
+        else {
+          if (closedTeardownRetryAttempted) {
+            return
+          }
+          closedTeardownRetryAttempted = true
+          const retry = () => {
+            closedTeardownRetryQueued = false
+            runClosedTeardown()
+          }
+          if (options.window.dispatcherQueue) {
+            try {
+              closedTeardownRetryQueued =
+                options.window.dispatcherQueue.tryEnqueue(retry)
+            }
+            catch (error) {
+              reportClosedCleanupError(error)
+              retry()
+              return
+            }
+            if (!closedTeardownRetryQueued) {
+              reportClosedCleanupError(new Error(
+                'The Window.Closed teardown retry could not be queued.',
+              ))
+              retry()
+            }
+          }
+          else {
+            retry()
+          }
+          return
+        }
+      }
+      if (closedRootCompletionAllowed) {
+        if (closingSubscription) {
+          try {
+            closingSubscription()
+            closingSubscription = undefined
+          }
+          catch (error) {
+            reportClosedCleanupError(error)
+          }
+        }
+        completeWindowClosed()
+      }
+    }
+    catch (error) {
+      reportClosedCleanupError(error)
+    }
+  }
+
+  const onClosing = (
+    _sender: unknown,
+    args: WinUIWorkerClosingArgs,
+  ) => {
+      if (finalCloseInProgress) {
+        if (args.cancel) {
+          return
+        }
+        if (performSynchronousTeardown(
+          () => {
+            args.cancel = true
+          },
+          false,
+        )) {
+          teardownCompleted = true
+        }
+        return
+      }
       if (args.cancel) {
         return
       }
@@ -478,18 +788,91 @@ export function installWinUIWindowLifecycle(
           asyncCloseInFlight = false
           options.setExitCode(1)
           options.onError(error)
+          if (closedWhileAsyncCleanup) {
+            closedRootCompletionAllowed = true
+            runClosedTeardown()
+          }
         }
         const close = () => {
           asyncCloseCompleted = true
           asyncCloseInFlight = false
+          if (
+            closedWhileAsyncCleanup ||
+            closedCompleted
+          ) {
+            closedRootCompletionAllowed = true
+            runClosedTeardown()
+            return
+          }
           try {
-            options.window.close()
+            if (closingSubscription) {
+              closingSubscription()
+              closingSubscription =
+                options.appWindow.onClosing(onClosing)
+            }
+            finalCloseInProgress = true
+            closedDuringFinalClose = false
+            closedRootCompletionAllowed = false
+            let closeError: unknown
+            try {
+              options.window.close()
+            }
+            catch (error) {
+              closeError = error
+            }
+            if (!closedDuringFinalClose) {
+              closedRootCompletionAllowed = true
+              failAsyncClose(
+                closeError ?? new Error(
+                  'The final Window.close() call returned without raising Window.Closed.',
+                ),
+              )
+              return
+            }
+            let unsubscribeError: unknown
+            if (closingSubscription) {
+              try {
+                closingSubscription()
+                closingSubscription = undefined
+              }
+              catch (error) {
+                unsubscribeError = error
+              }
+            }
+            closedRootCompletionAllowed = true
+            runClosedTeardown()
+            if (
+              closeError !== undefined &&
+              unsubscribeError !== undefined
+            ) {
+              failAsyncClose(new AggregateError(
+                [closeError, unsubscribeError],
+                'Window close and Closing unsubscribe failed.',
+              ))
+            }
+            else if (closeError !== undefined) {
+              failAsyncClose(closeError)
+            }
+            else if (unsubscribeError !== undefined) {
+              failAsyncClose(unsubscribeError)
+            }
           }
           catch (error) {
+            closedRootCompletionAllowed = true
             failAsyncClose(error)
+          }
+          finally {
+            finalCloseInProgress = false
           }
         }
         const finishAsyncClose = () => {
+          if (closedWhileAsyncCleanup) {
+            asyncCloseCompleted = true
+            asyncCloseInFlight = false
+            closedRootCompletionAllowed = true
+            runClosedTeardown()
+            return
+          }
           let queued = false
           try {
             queued =
@@ -532,81 +915,58 @@ export function installWinUIWindowLifecycle(
         }
         return
       }
-
-      let firstError: unknown
-      const attempt = (action: (() => void) | undefined) => {
-        if (!action) {
-          return true
-        }
-        try {
-          action()
-          return true
-        }
-        catch (error) {
-          firstError ??= error
-          return false
-        }
-      }
-
-      attempt(options.beforeClose)
-      attempt(options.disposeBeforeRender)
-      attempt(options.disposeRender)
-      attempt(options.disposeAfterRender)
-
-      const diagnostics = options.renderer.diagnostics
-      attempt(() => {
-        assertRendererIdle(diagnostics)
-      })
-      attempt(() => {
-        options.onDiagnostics?.(diagnostics)
-      })
-
-      let projectionError: unknown
-      try {
-        options.disposeProjection?.()
-      }
-      catch (error) {
-        projectionError = error
-        firstError ??= error
-      }
-
-      if (projectionError === undefined) {
-        if (attempt(closingSubscription)) {
-          closingSubscription = undefined
-        }
-      }
-      else {
+      if (performSynchronousTeardown(() => {
         args.cancel = true
+      })) {
+        teardownCompleted = true
       }
-
-      if (firstError !== undefined) {
-        options.setExitCode(1)
-        options.onError(firstError)
-      }
-      if (
-        projectionError !== undefined &&
-        projectionError !== firstError
-      ) {
-        options.onError(projectionError)
-      }
-      if (firstError === undefined) {
-        options.setExitCode(
-          asyncCloseFailed ? 1 : options.getRequestedExitCode(),
-        )
-      }
-    },
-  )
+    }
+  closingSubscription = options.appWindow.onClosing(onClosing)
 
   closeSubscription = options.window.onClosed(() => {
-    const unsubscribe = closeSubscription
-    closeSubscription = undefined
-    try {
-      unsubscribe?.()
+    if (
+      asyncCloseInFlight &&
+      !finalCloseInProgress
+    ) {
+      closedWhileAsyncCleanup = true
+      return
     }
-    finally {
-      options.application.current.exit()
+    if (finalCloseInProgress) {
+      closedDuringFinalClose = true
+      runClosedTeardown()
+      return
     }
+    runClosedTeardown()
   })
+
+  return {
+    get closed() {
+      return closedCompleted
+    },
+    get closePending() {
+      return (
+        asyncCloseInFlight ||
+        finalCloseInProgress ||
+        closedTeardownRetryQueued
+      )
+    },
+    shutdownAfterCloseFailure() {
+      if (closedCompleted) {
+        return
+      }
+      if (closingSubscription) {
+        try {
+          closingSubscription()
+          closingSubscription = undefined
+        }
+        catch (error) {
+          reportClosedCleanupError(error)
+        }
+      }
+      closedRootCompletionAllowed = true
+      runClosedTeardown()
+    },
+  }
 }
 
 export interface FileHotReloadMessage {

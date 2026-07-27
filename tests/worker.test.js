@@ -23,9 +23,11 @@ const idleDiagnostics = {
   listEntriesReused: 0,
 }
 
-function createWindowHarness() {
+function createWindowHarness(options = {}) {
   let closing
+  let closingActive = false
   let closed
+  let closeFailures = options.closeFailures ?? 0
   const order = []
   return {
     order,
@@ -36,21 +38,43 @@ function createWindowHarness() {
       },
       close() {
         order.push('window-close')
-        closing(undefined, { cancel: false })
+        if (closeFailures > 0) {
+          closeFailures -= 1
+          throw new Error('window close failed')
+        }
+        if (closingActive) {
+          const args = { cancel: false }
+          closing(undefined, args)
+          if (!args.cancel) {
+            closed?.()
+          }
+        }
+        else {
+          closed?.()
+        }
       },
     },
     appWindow: {
       onClosing(callback) {
         closing = callback
-        return () => order.push('closing-unsubscribe')
+        closingActive = true
+        return () => {
+          closingActive = false
+          order.push('closing-unsubscribe')
+        }
       },
     },
     close(args = { cancel: false }) {
-      closing(undefined, args)
+      if (closingActive) {
+        closing(undefined, args)
+      }
       return args
     },
     closed() {
       closed()
+    },
+    isClosingActive() {
+      return closingActive
     },
   }
 }
@@ -223,10 +247,62 @@ test('window lifecycle awaits async cleanup before teardown', async () => {
   assert.deepEqual(harness.order, [
     'async-start',
     'async-finish',
+    'closing-unsubscribe',
     'window-close',
     'render',
     'closing-unsubscribe',
+    'closed-unsubscribe',
   ])
+})
+
+test('window lifecycle does not reclose after Closed during async cleanup', async () => {
+  const harness = createWindowHarness()
+  let finishCleanup
+  const cleanupGate = new Promise((resolve) => {
+    finishCleanup = resolve
+  })
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    async beforeCloseAsync() {
+      harness.order.push('async-start')
+      await cleanupGate
+      harness.order.push('async-finish')
+    },
+    disposeRender() {
+      harness.order.push('render')
+    },
+    onError(error) {
+      throw error
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  assert.equal(harness.close().cancel, true)
+  harness.closed()
+  assert.deepEqual(harness.order, [
+    'async-start',
+  ])
+
+  finishCleanup()
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.deepEqual(harness.order, [
+    'async-start',
+    'async-finish',
+    'render',
+    'closing-unsubscribe',
+    'closed-unsubscribe',
+  ])
+  assert.equal(
+    harness.order.includes('window-close'),
+    false,
+  )
 })
 
 test('window lifecycle reports async cleanup failure and permits retry', async () => {
@@ -269,11 +345,449 @@ test('window lifecycle reports async cleanup failure and permits retry', async (
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(attempts, 2)
   assert.deepEqual(harness.order, [
+    'closing-unsubscribe',
     'window-close',
     'render',
     'closing-unsubscribe',
+    'closed-unsubscribe',
   ])
   assert.equal(exitCodes.at(-1), 1)
+})
+
+test('window lifecycle preserves Closing subscription when final close fails', () => {
+  const harness = createWindowHarness({
+    closeFailures: 1,
+  })
+  const errors = []
+  let asyncAttempts = 0
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    beforeCloseAsync() {
+      asyncAttempts += 1
+    },
+    disposeRender() {
+      harness.order.push('render')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  assert.equal(harness.close().cancel, true)
+  assert.match(errors[0].message, /window close failed/)
+  assert.equal(
+    harness.isClosingActive(),
+    true,
+  )
+
+  assert.equal(harness.close().cancel, true)
+  assert.equal(asyncAttempts, 2)
+  assert.equal(
+    harness.order.includes('closing-unsubscribe'),
+    true,
+  )
+})
+
+test('window lifecycle does not complete a cancelled final close', () => {
+  const closingHandlers = []
+  let closed
+  let closedCount = 0
+  const errors = []
+  const releases = []
+  const appWindow = {
+    onClosing(callback) {
+      const entry = { active: true, callback }
+      closingHandlers.push(entry)
+      return () => {
+        entry.active = false
+      }
+    },
+  }
+  const emitClosing = () => {
+    const args = { cancel: false }
+    for (const entry of closingHandlers) {
+      if (entry.active) {
+        entry.callback(undefined, args)
+      }
+    }
+    if (!args.cancel) {
+      closed?.()
+      closedCount += 1
+    }
+    return args
+  }
+  const window = {
+    close() {
+      emitClosing()
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+  }
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window,
+    appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    beforeCloseAsync() {},
+    disposeRender() {},
+    releaseAppWindow() {
+      releases.push('app-window')
+    },
+    releaseWindow() {
+      releases.push('window')
+    },
+    releaseApplicationCurrent() {
+      releases.push('application')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+  appWindow.onClosing((_sender, args) => {
+    args.cancel = true
+  })
+
+  assert.equal(emitClosing().cancel, true)
+  assert.equal(closedCount, 0)
+  assert.deepEqual(releases, [])
+  assert.match(
+    errors[0].message,
+    /without raising Window\.Closed/,
+  )
+})
+
+test('window lifecycle preserves cancellation before its final-close handler', () => {
+  const closingHandlers = []
+  let closedCount = 0
+  let closingCount = 0
+  const errors = []
+  const appWindow = {
+    onClosing(callback) {
+      const entry = { active: true, callback }
+      closingHandlers.push(entry)
+      return () => {
+        entry.active = false
+      }
+    },
+  }
+  appWindow.onClosing((_sender, args) => {
+    closingCount += 1
+    if (closingCount > 1) {
+      args.cancel = true
+    }
+  })
+  const emitClosing = () => {
+    const args = { cancel: false }
+    for (const entry of closingHandlers) {
+      if (entry.active) {
+        entry.callback(undefined, args)
+      }
+    }
+    return args
+  }
+  const window = {
+    close() {
+      const args = emitClosing()
+      if (!args.cancel) {
+        closedCount += 1
+      }
+    },
+    onClosed() {
+      return () => {}
+    },
+  }
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window,
+    appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    beforeCloseAsync() {},
+    disposeRender() {},
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  assert.equal(emitClosing().cancel, true)
+  assert.equal(closedCount, 0)
+  assert.match(
+    errors[0].message,
+    /without raising Window\.Closed/,
+  )
+})
+
+test('window lifecycle reports Window.Closed cleanup failures', () => {
+  const harness = createWindowHarness()
+  const errors = []
+  const exitCodes = []
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    disposeRender() {},
+    releaseAppWindow() {
+      throw new Error('root release failed')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode(value) {
+      exitCodes.push(value)
+    },
+  })
+
+  harness.close()
+  harness.closed()
+
+  assert.match(errors[0].message, /root release failed/)
+  assert.equal(exitCodes.at(-1), 1)
+})
+
+test('window lifecycle completes Closed cleanup when final unsubscribe fails', () => {
+  let closing
+  let closed
+  let unsubscribeCount = 0
+  const errors = []
+  const releases = []
+  const appWindow = {
+    onClosing(callback) {
+      closing = callback
+      return () => {
+        unsubscribeCount += 1
+        if (unsubscribeCount === 2) {
+          throw new Error('unsubscribe failed')
+        }
+      }
+    },
+  }
+  const window = {
+    close() {
+      const args = { cancel: false }
+      closing(undefined, args)
+      if (!args.cancel) {
+        closed()
+      }
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+  }
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: {
+        exit() {
+          releases.push('application-exit')
+        },
+      },
+    },
+    window,
+    appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    beforeCloseAsync() {},
+    disposeRender() {},
+    releaseAppWindow() {
+      releases.push('app-window')
+    },
+    releaseWindow() {
+      releases.push('window')
+    },
+    releaseApplicationCurrent() {
+      releases.push('application')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  closing(undefined, { cancel: false })
+
+  assert.deepEqual(releases, [
+    'app-window',
+    'window',
+    'application-exit',
+    'application',
+  ])
+  assert.match(errors[0].message, /unsubscribe failed/)
+})
+
+test('window lifecycle retries projection cleanup after Window.Closed', () => {
+  const queue = []
+  const errors = []
+  const releases = []
+  let closing
+  let closed
+  let projectionAttempts = 0
+  let closingUnsubscribeCount = 0
+  const window = {
+    dispatcherQueue: {
+      tryEnqueue(callback) {
+        queue.push(callback)
+        return true
+      },
+    },
+    close() {
+      closed()
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+  }
+  const appWindow = {
+    onClosing(callback) {
+      closing = callback
+      return () => {
+        closingUnsubscribeCount += 1
+      }
+    },
+  }
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: {
+        exit() {
+          releases.push('application-exit')
+        },
+      },
+    },
+    window,
+    appWindow,
+    renderer: { diagnostics: idleDiagnostics },
+    beforeCloseAsync() {},
+    disposeRender() {},
+    disposeProjection() {
+      projectionAttempts += 1
+      if (projectionAttempts === 1) {
+        throw new Error('projection failed')
+      }
+    },
+    releaseAppWindow() {
+      releases.push('app-window')
+    },
+    releaseWindow() {
+      releases.push('window')
+    },
+    releaseApplicationCurrent() {
+      releases.push('application')
+    },
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  const args = { cancel: false }
+  closing(undefined, args)
+  assert.equal(args.cancel, true)
+  assert.equal(queue.length, 1)
+
+  queue.shift()()
+  assert.equal(projectionAttempts, 1)
+  assert.deepEqual(releases, [])
+  assert.equal(queue.length, 1)
+
+  queue.shift()()
+  assert.equal(projectionAttempts, 2)
+  assert.equal(closingUnsubscribeCount, 2)
+  assert.deepEqual(releases, [
+    'app-window',
+    'window',
+    'application-exit',
+    'application',
+  ])
+  assert.match(errors[0].message, /projection failed/)
+})
+
+test('window lifecycle retries immediately when Closed enqueue fails', () => {
+  const releases = []
+  let projectionAttempts = 0
+  let closed
+  const window = {
+    dispatcherQueue: {
+      tryEnqueue() {
+        return false
+      },
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+  }
+
+  installWinUIWindowLifecycle({
+    application: {
+      current: {
+        exit() {
+          releases.push('application-exit')
+        },
+      },
+    },
+    window,
+    appWindow: {
+      onClosing() {
+        return () => {}
+      },
+    },
+    renderer: { diagnostics: idleDiagnostics },
+    disposeRender() {},
+    disposeProjection() {
+      projectionAttempts += 1
+      if (projectionAttempts === 1) {
+        throw new Error('projection failed')
+      }
+    },
+    releaseAppWindow() {
+      releases.push('app-window')
+    },
+    releaseWindow() {
+      releases.push('window')
+    },
+    releaseApplicationCurrent() {
+      releases.push('application')
+    },
+    onError() {},
+    getRequestedExitCode: () => 0,
+    setExitCode() {},
+  })
+
+  closed()
+
+  assert.equal(projectionAttempts, 2)
+  assert.deepEqual(releases, [
+    'app-window',
+    'window',
+    'application-exit',
+    'application',
+  ])
 })
 
 test('worker app owns startup, mount, activation, and close order', () => {
@@ -342,6 +856,17 @@ test('worker app owns startup, mount, activation, and close order', () => {
     createWindow() {
       order.push('window-create')
       return window
+    },
+    releaseProjectedValue(value) {
+      if (value === appWindow) {
+        order.push('release-app-window')
+      }
+      else if (value === window) {
+        order.push('release-window')
+      }
+      else {
+        order.push('release-application')
+      }
     },
     configureWindow() {
       order.push('window-configure')
@@ -416,7 +941,10 @@ test('worker app owns startup, mount, activation, and close order', () => {
     'projection-disposed',
     'closing-unsubscribe',
     'closed-unsubscribe',
+    'release-app-window',
+    'release-window',
     'application-exit',
+    'release-application',
   ])
 })
 
@@ -483,6 +1011,73 @@ test('worker app cleans projection scope after mount failure', () => {
   ])
 })
 
+test('worker app releases every acquired root after startup failure', () => {
+  const order = []
+  const current = {
+    exit() {
+      order.push('application-exit')
+    },
+  }
+  const appWindow = {}
+  const window = {
+    appWindow,
+    onClosed() {
+      return () => {}
+    },
+    activate() {},
+  }
+
+  runWinUIWorkerApp({
+    application: {
+      current,
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          throw new Error('render should not run')
+        },
+      }
+    },
+    createWindow() {
+      return window
+    },
+    releaseProjectedValue(value) {
+      if (value === appWindow) {
+        order.push('release-app-window')
+        throw new Error('app window release failed')
+      }
+      if (value === window) {
+        order.push('release-window')
+        return
+      }
+      if (value === current) {
+        order.push('release-application')
+      }
+    },
+    configureWindow() {
+      throw new Error('configure failed')
+    },
+    mount() {
+      throw new Error('mount should not run')
+    },
+    onError() {},
+  })
+
+  assert.deepEqual(order, [
+    'release-app-window',
+    'release-window',
+    'application-exit',
+    'release-application',
+  ])
+})
+
 test('worker app does not repeat successful cleanup after activation failure', () => {
   const failure = new Error('after activate failed')
   const errors = []
@@ -494,19 +1089,20 @@ test('worker app does not repeat successful cleanup after activation failure', (
   let closing
   let closed
   let exiting = false
+  let rootAppWindow
+  let rootWindow
+  const released = new Set()
+  const current = {
+    exit() {
+      assert.equal(released.has(rootAppWindow), true)
+      assert.equal(released.has(rootWindow), true)
+      exiting = true
+    },
+  }
 
   const exitCode = runWinUIWorkerApp({
     application: {
-      current: {
-        exit() {
-          if (exiting) {
-            return
-          }
-          exiting = true
-          closing(undefined, { cancel: false })
-          closed()
-        },
-      },
+      current,
       start(callback) {
         callback()
       },
@@ -529,20 +1125,31 @@ test('worker app does not repeat successful cleanup after activation failure', (
       }
     },
     createWindow() {
-      const appWindow = {
+      rootAppWindow = {
         onClosing(callback) {
           closing = callback
           return () => {}
         },
       }
-      return {
-        appWindow,
+      rootWindow = {
+        appWindow: rootAppWindow,
+        close() {
+          const args = { cancel: false }
+          closing(undefined, args)
+          if (!args.cancel) {
+            closed()
+          }
+        },
         onClosed(callback) {
           closed = callback
           return () => {}
         },
         activate() {},
       }
+      return rootWindow
+    },
+    releaseProjectedValue(value) {
+      released.add(value)
     },
     createProjectionScope() {
       return {
@@ -581,6 +1188,325 @@ test('worker app does not repeat successful cleanup after activation failure', (
     afterRender: 1,
     projection: 1,
   })
+  assert.equal(released.has(rootAppWindow), true)
+  assert.equal(released.has(rootWindow), true)
+  assert.equal(released.has(current), true)
+})
+
+test('worker app closes through lifecycle when activation exit fails', () => {
+  const errors = []
+  const order = []
+  let closing
+  let closed
+  const current = {
+    exit() {
+      throw new Error('application exit failed')
+    },
+  }
+  const appWindow = {
+    onClosing(callback) {
+      closing = callback
+      return () => {}
+    },
+  }
+  const window = {
+    appWindow,
+    close() {
+      const args = { cancel: false }
+      closing(undefined, args)
+      if (!args.cancel) {
+        closed()
+      }
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+    activate() {
+      throw new Error('activate failed')
+    },
+  }
+
+  runWinUIWorkerApp({
+    application: {
+      current,
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          return {
+            container: window,
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {
+              order.push('render-dispose')
+            },
+          }
+        },
+      }
+    },
+    createWindow() {
+      return window
+    },
+    releaseProjectedValue(value) {
+      if (value === appWindow) {
+        order.push('release-app-window')
+      }
+      else if (value === window) {
+        order.push('release-window')
+      }
+      else if (value === current) {
+        order.push('release-application')
+      }
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          order.push('projection-dispose')
+        },
+      }
+    },
+    mount() {
+      return { child: 'tree' }
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(
+    errors.some((error) =>
+      /activate failed/.test(error.message)),
+    true,
+  )
+  assert.equal(
+    errors.some((error) =>
+      /application exit failed/.test(error.message)),
+    true,
+  )
+  assert.deepEqual(order, [
+    'render-dispose',
+    'projection-dispose',
+    'release-app-window',
+    'release-window',
+    'release-application',
+  ])
+})
+
+test('worker app force-cleans when activation close fails', () => {
+  const errors = []
+  const order = []
+  const current = {
+    exit() {
+      order.push('application-exit')
+    },
+  }
+  const appWindow = {
+    onClosing() {
+      return () => {}
+    },
+  }
+  const window = {
+    appWindow,
+    close() {
+      order.push('window-close')
+      throw new Error('window close failed')
+    },
+    onClosed() {
+      return () => {}
+    },
+    activate() {
+      throw new Error('activate failed')
+    },
+  }
+
+  runWinUIWorkerApp({
+    application: {
+      current,
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          return {
+            container: window,
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {
+              order.push('render-dispose')
+            },
+          }
+        },
+      }
+    },
+    createWindow() {
+      return window
+    },
+    releaseProjectedValue(value) {
+      if (value === appWindow) {
+        order.push('release-app-window')
+      }
+      else if (value === window) {
+        order.push('release-window')
+      }
+      else if (value === current) {
+        order.push('release-application')
+      }
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          order.push('projection-dispose')
+        },
+      }
+    },
+    mount() {
+      return { child: 'tree' }
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(
+    errors.some((error) =>
+      /activate failed/.test(error.message)),
+    true,
+  )
+  assert.equal(
+    errors.some((error) =>
+      /window close failed/.test(error.message)),
+    true,
+  )
+  assert.deepEqual(order, [
+    'window-close',
+    'render-dispose',
+    'projection-dispose',
+    'release-app-window',
+    'release-window',
+    'application-exit',
+    'release-application',
+  ])
+})
+
+test('worker app waits for pending async cleanup after activation failure', async () => {
+  const order = []
+  let closing
+  let closed
+  let finishCleanup
+  let closeCount = 0
+  const cleanupGate = new Promise((resolve) => {
+    finishCleanup = resolve
+  })
+  const window = {
+    appWindow: {
+      onClosing(callback) {
+        closing = callback
+        return () => {}
+      },
+    },
+    close() {
+      closeCount += 1
+      const args = { cancel: false }
+      closing(undefined, args)
+      if (!args.cancel) {
+        closed()
+      }
+    },
+    onClosed(callback) {
+      closed = callback
+      return () => {}
+    },
+    activate() {
+      throw new Error('activate failed')
+    },
+  }
+
+  runWinUIWorkerApp({
+    application: {
+      current: {
+        exit() {
+          order.push('application-exit')
+        },
+      },
+      start(callback) {
+        callback()
+      },
+      create(callback) {
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          return {
+            container: window,
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {
+              order.push('render-dispose')
+            },
+          }
+        },
+      }
+    },
+    createWindow() {
+      return window
+    },
+    createProjectionScope() {
+      return {
+        dispose() {
+          order.push('projection-dispose')
+        },
+      }
+    },
+    mount() {
+      return {
+        child: 'tree',
+        async beforeCloseAsync() {
+          order.push('async-start')
+          await cleanupGate
+          order.push('async-finish')
+        },
+        afterActivate() {
+          throw new Error('after activate failed')
+        },
+      }
+    },
+    onError() {},
+  })
+
+  assert.deepEqual(order, ['async-start'])
+  assert.equal(closeCount, 1)
+
+  finishCleanup()
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.deepEqual(order, [
+    'async-start',
+    'async-finish',
+    'render-dispose',
+    'projection-dispose',
+    'application-exit',
+  ])
+  assert.equal(closeCount, 2)
 })
 
 test('worker app runs beforeClose once across projection retry', () => {

@@ -23,6 +23,7 @@ import {
   TitleBarTheme,
   Window,
   createProjectedLifetimeScope,
+  releaseProjected,
 } from '#winapp/bindings'
 import {
   createAppModel,
@@ -112,6 +113,7 @@ const errorTree = (error: unknown): Child => (
 
 const exitCode = runWinUIWorkerApp({
   application: Application,
+  releaseProjectedValue: releaseProjected,
   createRenderer() {
     return winuiRendererPreset.createRenderer()
   },
@@ -119,15 +121,33 @@ const exitCode = runWinUIWorkerApp({
     return new Window()
   },
   configureWindow({ window }) {
-    Application.current.requestedTheme =
-      workerData.initialState.darkTheme
-        ? ApplicationTheme.Dark
-        : ApplicationTheme.Light
+    const application = Application.current
+    try {
+      application.requestedTheme =
+        workerData.initialState.darkTheme
+          ? ApplicationTheme.Dark
+          : ApplicationTheme.Light
+    }
+    finally {
+      releaseProjected(application)
+    }
     window.title = 'dynwinrt-jsx'
-    window.appWindow.titleBar.preferredTheme =
-      workerData.initialState.darkTheme
-        ? TitleBarTheme.Dark
-        : TitleBarTheme.Light
+    const configuredAppWindow = window.appWindow
+    try {
+      const titleBar = configuredAppWindow.titleBar
+      try {
+        titleBar.preferredTheme =
+          workerData.initialState.darkTheme
+            ? TitleBarTheme.Dark
+            : TitleBarTheme.Light
+      }
+      finally {
+        releaseProjected(titleBar)
+      }
+    }
+    finally {
+      releaseProjected(configuredAppWindow)
+    }
   },
   createProjectionScope() {
     return createProjectedLifetimeScope()

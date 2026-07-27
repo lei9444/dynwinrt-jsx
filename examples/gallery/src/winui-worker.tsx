@@ -31,6 +31,7 @@ import {
   TitleBarTheme,
   Window,
   createProjectedLifetimeScope,
+  releaseProjected,
 } from '#winapp/bindings'
 import {
   createAppModel,
@@ -131,6 +132,7 @@ const errorTree = (error: unknown): Child => (
 
 const exitCode = runWinUIWorkerApp({
   application: Application,
+  releaseProjectedValue: releaseProjected,
   createRenderer() {
     return winuiRendererPreset.createRenderer()
   },
@@ -139,21 +141,39 @@ const exitCode = runWinUIWorkerApp({
   },
   configureWindow({ window }) {
     window.extendsContentIntoTitleBar = true
-    Application.current.requestedTheme =
-      workerData.initialState.darkTheme
-        ? ApplicationTheme.Dark
-        : ApplicationTheme.Light
+    const application = Application.current
+    try {
+      application.requestedTheme =
+        workerData.initialState.darkTheme
+          ? ApplicationTheme.Dark
+          : ApplicationTheme.Light
+    }
+    finally {
+      releaseProjected(application)
+    }
     window.title = 'dynwinrt-jsx Gallery'
-    window.appWindow.resize({
-      width: 1280,
-      height: 820,
-    })
-    window.appWindow.titleBar.preferredTheme =
-      workerData.initialState.darkTheme
-        ? TitleBarTheme.Dark
-        : TitleBarTheme.Light
-    window.appWindow.titleBar.preferredHeightOption =
-      TitleBarHeightOption.Tall
+    const configuredAppWindow = window.appWindow
+    try {
+      configuredAppWindow.resize({
+        width: 1280,
+        height: 820,
+      })
+      const titleBar = configuredAppWindow.titleBar
+      try {
+        titleBar.preferredTheme =
+          workerData.initialState.darkTheme
+            ? TitleBarTheme.Dark
+            : TitleBarTheme.Light
+        titleBar.preferredHeightOption =
+          TitleBarHeightOption.Tall
+      }
+      finally {
+        releaseProjected(titleBar)
+      }
+    }
+    finally {
+      releaseProjected(configuredAppWindow)
+    }
   },
   createProjectionScope() {
     return createProjectedLifetimeScope()
@@ -302,6 +322,12 @@ const exitCode = runWinUIWorkerApp({
           notificationCleanup = appNotifications.dispose()
         }
         catch (notificationError) {
+          if (
+            secondaryWindows.xamlWindowCount === 0 &&
+            secondaryWindows.appWindowCount === 0
+          ) {
+            throw notificationError
+          }
           return {
             then(onFulfilled, onRejected) {
               disposeWindows().then(
@@ -315,6 +341,12 @@ const exitCode = runWinUIWorkerApp({
               )
             },
           }
+        }
+        if (
+          secondaryWindows.xamlWindowCount === 0 &&
+          secondaryWindows.appWindowCount === 0
+        ) {
+          return notificationCleanup
         }
         if (!notificationCleanup) {
           return disposeWindows()

@@ -16,6 +16,7 @@ import {
   Window,
   XamlRoot,
   createProjectedLifetimeScope,
+  releaseProjected,
 } from '#winapp/bindings'
 import type {
   DashboardAppContext,
@@ -72,6 +73,7 @@ export function runDashboardApplication(
 
   return runWinUIWorkerApp({
     application: Application,
+    releaseProjectedValue: releaseProjected,
     createRenderer() {
       return winuiRendererPreset.createRenderer()
     },
@@ -79,15 +81,33 @@ export function runDashboardApplication(
       return new Window()
     },
     configureWindow({ window }) {
-      Application.current.requestedTheme =
-        workerData.initialState.darkTheme
-          ? ApplicationTheme.Dark
-          : ApplicationTheme.Light
+      const application = Application.current
+      try {
+        application.requestedTheme =
+          workerData.initialState.darkTheme
+            ? ApplicationTheme.Dark
+            : ApplicationTheme.Light
+      }
+      finally {
+        releaseProjected(application)
+      }
       window.title = 'DynWinRT JSX Workspace'
-      window.appWindow.titleBar.preferredTheme =
-        workerData.initialState.darkTheme
-          ? TitleBarTheme.Dark
-          : TitleBarTheme.Light
+      const configuredAppWindow = window.appWindow
+      try {
+        const titleBar = configuredAppWindow.titleBar
+        try {
+          titleBar.preferredTheme =
+            workerData.initialState.darkTheme
+              ? TitleBarTheme.Dark
+              : TitleBarTheme.Light
+        }
+        finally {
+          releaseProjected(titleBar)
+        }
+      }
+      finally {
+        releaseProjected(configuredAppWindow)
+      }
     },
     createProjectionScope() {
       return createProjectedLifetimeScope()
