@@ -150,6 +150,7 @@ export interface NativeItemsRepeaterAdapter<Instance> {
   readonly getElementMountHost?: (
     elementHost: object,
   ) => object
+  readonly ownsElementMountHost?: boolean
   readonly createElementFactory: (
     factory: NativeItemsRepeaterFactory,
   ) => unknown

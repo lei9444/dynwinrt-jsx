@@ -116,7 +116,11 @@ Applications still provide their generated `Application`, `Window`,
 projection-scope factory, renderer, model, and render callbacks.
 `runWinUIWorkerApp()` is the preferred high-level path; the lower-level
 lifecycle and hot-reload helpers remain available for custom hosts.
+Generated bindings must provide `Application.startScheduled()`.
+`runWinUIWorkerApp()` returns `Promise<number>` after the application exits.
 Pass the generated `releaseProjected` function as `releaseProjectedValue`.
+Also pass it as the renderer's `releaseNative` option so renderer-created
+controls are released and untracked when their mounted records are disposed.
 The Worker caches `Application.current`, `Window`, and `AppWindow` before the
 projection scope is created, then releases those root wrappers from
 `Window.Closed` after ordinary renderer/projection teardown.
@@ -1178,7 +1182,7 @@ same lookup chain plus theme dictionaries and automatic theme refresh.
 
 ## WinUI lifecycle
 
-Bootstrap the Windows App SDK in the main process before creating the UI Worker. The Worker must call `roInitialize(0)`, enter `Application.start()`, create resources with `Application.create()`, and create/render all WinUI objects from that STA.
+Bootstrap the Windows App SDK in the main process before creating the UI Worker. The Worker must call `roInitialize(0)`, enter `Application.startScheduled()`, create resources with `Application.create()`, and create/render all WinUI objects from that STA.
 
 Generated bindings include a package-local lifetime module. Tracking remains
 inactive until the UI host explicitly creates a scope:

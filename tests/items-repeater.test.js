@@ -199,11 +199,13 @@ function createItemsView() {
     },
   }, {
     displayName: 'ItemsView',
+    ownsItemMountHost: true,
   })
 }
 
-function renderer() {
+function renderer(options = {}) {
   return createRenderer({
+    ...options,
     onError(error) {
       throw error
     },
@@ -258,7 +260,12 @@ test('ItemsRepeater realizes a bounded native working set', () => {
     })),
   )
   const window = new FakeWindow()
-  const nativeRenderer = renderer()
+  const released = []
+  const nativeRenderer = renderer({
+    releaseNative(value) {
+      released.push(value)
+    },
+  })
   const handle = nativeRenderer.render(
     jsx(ItemsRepeater, {
       each: items,
@@ -308,12 +315,19 @@ test('ItemsRepeater realizes a bounded native working set', () => {
   assert.equal(repeater.itemsSource, null)
   assert.equal(repeater.itemTemplate.released, true)
   assert.ok(hosts.every((host) => host.content === null))
+  assert.ok(released.includes(repeater))
+  assert.ok(hosts.every((host) => released.includes(host)))
 })
 
 test('virtualized items controls support persistent element hosts', () => {
   const ItemsView = createItemsView()
   const window = new FakeWindow()
-  const nativeRenderer = renderer()
+  const released = []
+  const nativeRenderer = renderer({
+    releaseNative(value) {
+      released.push(value)
+    },
+  })
   const handle = nativeRenderer.render(
     jsx(ItemsView, {
       each: [{ id: 1, label: 'One' }],
@@ -328,6 +342,8 @@ test('virtualized items controls support persistent element hosts', () => {
 
   assert.equal(host.child.content.text, 'One')
   handle.dispose()
+  assert.ok(released.some((value) => value instanceof FakeItemContainer))
+  assert.ok(released.some((value) => value instanceof FakeContentControl))
   assert.ok(host.child instanceof FakeContentControl)
   assert.equal(host.child.content, null)
   assert.equal(itemsView.itemsSource, null)

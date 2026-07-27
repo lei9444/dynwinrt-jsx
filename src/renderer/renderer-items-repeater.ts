@@ -20,6 +20,7 @@ interface ItemsRepeaterChildController {
 
 interface ItemsRepeaterEntry {
   readonly host: object
+  readonly mountHost: object
   readonly controller: ItemsRepeaterChildController
   readonly index: Signal<number>
   readonly inspectionNodeId: number
@@ -53,7 +54,11 @@ export interface RendererItemsRepeaterHost {
     host: object,
     scope: ReactiveScope,
   ): number
-  releaseNative(id: number): void
+  releaseNative(
+    value: object,
+    id: number,
+    owned: boolean,
+  ): void
 }
 
 export interface RendererItemsRepeaterController {
@@ -123,6 +128,40 @@ export class RendererItemsRepeaterService {
         preservedKeys.has(entry.keyToken)
     }
 
+    const releaseEntryNative = (
+      host: object,
+      mountHost: object,
+      inspectionNodeId: number,
+      mountHostInspectionNodeId?: number,
+    ) => {
+      let firstError: unknown
+      if (mountHostInspectionNodeId !== undefined) {
+        try {
+          this.host.releaseNative(
+            mountHost,
+            mountHostInspectionNodeId,
+            adapter.ownsElementMountHost === true,
+          )
+        }
+        catch (error) {
+          firstError = error
+        }
+      }
+      try {
+        this.host.releaseNative(
+          host,
+          inspectionNodeId,
+          true,
+        )
+      }
+      catch (error) {
+        firstError ??= error
+      }
+      if (firstError !== undefined) {
+        throw firstError
+      }
+    }
+
     const createEntry = (
       descriptor: ItemDescriptor,
     ): ItemsRepeaterEntry => {
@@ -145,16 +184,25 @@ export class RendererItemsRepeaterService {
         )
       }
       catch (error) {
-        if (mountHostInspectionNodeId !== undefined) {
-          this.host.releaseNative(
+        try {
+          releaseEntryNative(
+            host,
+            mountHost,
+            inspectionNodeId,
             mountHostInspectionNodeId,
           )
         }
-        this.host.releaseNative(inspectionNodeId)
+        catch (releaseError) {
+          throw new AggregateError(
+            [error, releaseError],
+            'ItemsRepeater entry creation and native release failed.',
+          )
+        }
         throw error
       }
       const entry: ItemsRepeaterEntry = {
         host,
+        mountHost,
         controller,
         index,
         inspectionNodeId,
@@ -576,17 +624,16 @@ export class RendererItemsRepeaterService {
         catch (failure) {
           cleanupError ??= failure
         }
-        finally {
-          if (
-            entry.mountHostInspectionNodeId !== undefined
-          ) {
-            this.host.releaseNative(
-              entry.mountHostInspectionNodeId,
-            )
-          }
-          this.host.releaseNative(
+        try {
+          releaseEntryNative(
+            entry.host,
+            entry.mountHost,
             entry.inspectionNodeId,
+            entry.mountHostInspectionNodeId,
           )
+        }
+        catch (failure) {
+          cleanupError ??= failure
         }
       }
       entries.clear()
@@ -640,17 +687,16 @@ export class RendererItemsRepeaterService {
           catch (error) {
             firstError ??= error
           }
-          finally {
-            if (
-              entry.mountHostInspectionNodeId !== undefined
-            ) {
-              this.host.releaseNative(
-                entry.mountHostInspectionNodeId,
-              )
-            }
-            this.host.releaseNative(
+          try {
+            releaseEntryNative(
+              entry.host,
+              entry.mountHost,
               entry.inspectionNodeId,
+              entry.mountHostInspectionNodeId,
             )
+          }
+          catch (error) {
+            firstError ??= error
           }
         }
         entries.clear()

@@ -78,13 +78,13 @@ const stateBridge = createStateBridge<DashboardState>(
 )
 postStartupStage('bridge-created')
 
-const exitCode = runDashboardApplication({
+void runDashboardApplication({
   parentPort: workerPort,
   workerData,
   stateBridge,
   postStartupStage,
+}).then((exitCode) => {
+  stateBridge.dispose()
+  workerData.statePort.close()
+  process.exit(exitCode)
 })
-
-stateBridge.dispose()
-workerData.statePort.close()
-process.exit(exitCode)

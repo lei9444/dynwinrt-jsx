@@ -478,6 +478,7 @@ export const GalleryItemsView =
     IReference_Int32,
   }, {
     displayName: 'ItemsView',
+    ownsItemMountHost: true,
   })
 export const GalleryTreeView = native<
   TreeView,

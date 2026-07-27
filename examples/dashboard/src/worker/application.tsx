@@ -61,7 +61,7 @@ const winuiRendererPreset =
 
 export function runDashboardApplication(
   options: RunDashboardApplicationOptions,
-): number {
+): Promise<number> {
   const {
     parentPort,
     workerData,
@@ -75,7 +75,9 @@ export function runDashboardApplication(
     application: Application,
     releaseProjectedValue: releaseProjected,
     createRenderer() {
-      return winuiRendererPreset.createRenderer()
+      return winuiRendererPreset.createRenderer({
+        releaseNative: releaseProjected,
+      })
     },
     createWindow() {
       return new Window()

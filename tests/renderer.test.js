@@ -122,6 +122,62 @@ test('mounts native controls, props, children, refs, and events', () => {
   assert.equal(button.listeners.size, 0)
 })
 
+test('releases renderer-owned native instances after subtree cleanup', () => {
+  const released = []
+  const renderer = createRenderer({
+    releaseNative(value) {
+      if (value instanceof FakePanel) {
+        assert.equal(value.children.size, 0)
+      }
+      if (value instanceof FakeButton) {
+        assert.equal(value.listeners.size, 0)
+      }
+      released.push(value)
+    },
+  })
+  const window = new FakeWindow()
+  const handle = renderer.render(
+    jsx(Controls.Panel, {
+      children: jsx(Controls.Button, {
+        onClick() {},
+      }),
+    }),
+    window,
+  )
+  const panel = window.content
+  const [button] = panel.children.toArray()
+
+  handle.dispose()
+  handle.dispose()
+
+  assert.deepEqual(released, [button, panel])
+})
+
+test('retries renderer-owned native release failures', () => {
+  let attempts = 0
+  const renderer = createRenderer({
+    releaseNative() {
+      attempts += 1
+      if (attempts === 1) {
+        throw new Error('release failed')
+      }
+    },
+  })
+  const handle = renderer.render(
+    jsx(Controls.Button, {}),
+    new FakeWindow(),
+  )
+
+  assert.throws(() => handle.dispose(), /release failed/)
+  assert.equal(handle.disposed, false)
+  assert.equal(renderer.diagnostics.activeNative, 1)
+
+  handle.dispose()
+  assert.equal(attempts, 2)
+  assert.equal(handle.disposed, true)
+  assert.equal(renderer.diagnostics.activeNative, 0)
+})
+
 test('supports function components and reactive Show branches', () => {
   const renderer = createFakeRenderer()
   const window = new FakeWindow()

@@ -9,8 +9,25 @@ const {
   createFileHotReloadController,
   createRendererHeartbeatController,
   installWinUIWindowLifecycle,
-  runWinUIWorkerApp,
+  runWinUIWorkerApp: runWinUIWorkerAppRuntime,
 } = require('dynwinrt-jsx/worker')
+
+function runWinUIWorkerApp(options) {
+  const application = options.application
+  return runWinUIWorkerAppRuntime({
+    ...options,
+    application:
+      typeof application.startScheduled === 'function'
+        ? application
+        : {
+            ...application,
+            startScheduled(callback) {
+              application.start(callback)
+              return Promise.resolve()
+            },
+          },
+  })
+}
 
 const idleDiagnostics = {
   nativeCreated: 1,
@@ -790,7 +807,7 @@ test('window lifecycle retries immediately when Closed enqueue fails', () => {
   ])
 })
 
-test('worker app owns startup, mount, activation, and close order', () => {
+test('worker app owns startup, mount, activation, and close order', async () => {
   const order = []
   const errors = []
   let projectionCreated = false
@@ -826,7 +843,7 @@ test('worker app owns startup, mount, activation, and close order', () => {
     },
   }
 
-  const exitCode = runWinUIWorkerApp({
+  const exitCode = await runWinUIWorkerApp({
     application: {
       current: {
         exit() {
@@ -904,7 +921,8 @@ test('worker app owns startup, mount, activation, and close order', () => {
         afterActivate(context) {
           order.push('after-activate')
           context.setExitCode(7)
-          closing(undefined, { cancel: false })
+          closing(undefined, { cancel: false           })
+
           closed()
         },
       }
@@ -948,12 +966,80 @@ test('worker app owns startup, mount, activation, and close order', () => {
   ])
 })
 
-test('worker app cleans projection scope after mount failure', () => {
+test('worker app requires scheduled Application start', async () => {
+  const order = []
+  const appWindow = {
+    onClosing() {
+      return () => {}
+    },
+  }
+  const window = {
+    appWindow,
+    onClosed() {
+      return () => {}
+    },
+    activate() {
+      order.push('activate')
+    },
+  }
+
+  const result = runWinUIWorkerAppRuntime({
+    application: {
+      current: {
+        exit() {},
+      },
+      startScheduled(callback) {
+        order.push('start-scheduled')
+        callback()
+        return Promise.resolve()
+      },
+      create(callback) {
+        order.push('create')
+        callback()
+      },
+    },
+    createRenderer() {
+      return {
+        diagnostics: idleDiagnostics,
+        render() {
+          order.push('render')
+          return {
+            container: window,
+            roots: [],
+            disposed: false,
+            update() {},
+            dispose() {},
+          }
+        },
+      }
+    },
+    createWindow() {
+      return window
+    },
+    mount() {
+      return { child: 'tree' }
+    },
+    onError(error) {
+      throw error
+    },
+  })
+
+  assert.equal(result instanceof Promise, true)
+  assert.equal(await result, 0)
+  assert.deepEqual(order, [
+    'start-scheduled',
+    'create',
+    'render',
+    'activate',
+  ])
+})
+
+test('worker app cleans projection scope after mount failure', async () => {
   const order = []
   const failure = new Error('mount failed')
   const errors = []
 
-  const exitCode = runWinUIWorkerApp({
+  const exitCode = await runWinUIWorkerApp({
     application: {
       current: {
         exit() {
@@ -1078,7 +1164,7 @@ test('worker app releases every acquired root after startup failure', () => {
   ])
 })
 
-test('worker app does not repeat successful cleanup after activation failure', () => {
+test('worker app does not repeat successful cleanup after activation failure', async () => {
   const failure = new Error('after activate failed')
   const errors = []
   const counts = {
@@ -1100,7 +1186,7 @@ test('worker app does not repeat successful cleanup after activation failure', (
     },
   }
 
-  const exitCode = runWinUIWorkerApp({
+  const exitCode = await runWinUIWorkerApp({
     application: {
       current,
       start(callback) {
@@ -1509,14 +1595,14 @@ test('worker app waits for pending async cleanup after activation failure', asyn
   assert.equal(closeCount, 2)
 })
 
-test('worker app runs beforeClose once across projection retry', () => {
+test('worker app runs beforeClose once across projection retry', async () => {
   let closing
   let closed
   let beforeCloseCount = 0
   let projectionAttempts = 0
   const errors = []
 
-  const exitCode = runWinUIWorkerApp({
+  const exitCode = await runWinUIWorkerApp({
     application: {
       current: { exit() {} },
       start(callback) {
@@ -1594,12 +1680,12 @@ test('worker app runs beforeClose once across projection retry', () => {
   assert.match(errors[0].message, /projection retry/)
 })
 
-test('worker app reports renderer creation failure without starting', () => {
+test('worker app reports renderer creation failure without starting', async () => {
   const failure = new Error('renderer failed')
   const errors = []
   let started = false
 
-  const exitCode = runWinUIWorkerApp({
+  const exitCode = await runWinUIWorkerApp({
     application: {
       current: { exit() {} },
       start() {

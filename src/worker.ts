@@ -55,7 +55,7 @@ export interface WinUIWorkerApplicationCurrent {
 
 export interface WinUIWorkerApplicationHost
   extends WinUIWorkerApplication {
-  start(callback: () => void): void
+  startScheduled(callback: () => void): Promise<void>
   create(callback: () => void): void
 }
 
@@ -180,7 +180,7 @@ export interface RunWinUIWorkerAppOptions<
   ) => void
 }
 
-export function runWinUIWorkerApp<
+export async function runWinUIWorkerApp<
   Window extends WinUIWorkerActivatableWindow<AppWindow>,
   AppWindow extends WinUIWorkerAppWindow,
   ProjectionScope extends { dispose(): void },
@@ -190,7 +190,7 @@ export function runWinUIWorkerApp<
     AppWindow,
     ProjectionScope
   >,
-): number {
+): Promise<number> {
   let renderer: Renderer
   try {
     renderer = options.createRenderer()
@@ -364,7 +364,7 @@ export function runWinUIWorkerApp<
 
   try {
     options.onStage?.('application-starting')
-    options.application.start(() => {
+    const initializeApplication = () => {
       try {
         options.application.create(() => {
           try {
@@ -513,7 +513,10 @@ export function runWinUIWorkerApp<
         reportError(error)
         exitApplicationAfterFailure()
       }
-    })
+    }
+    await options.application.startScheduled(
+      initializeApplication,
+    )
   }
   catch (error) {
     reportError(error)

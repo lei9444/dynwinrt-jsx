@@ -160,6 +160,24 @@ failed resource references retryable, allow ordinary cleanup errors to proceed
 to `Window.Closed`, and veto close only when projection-scope release itself
 fails.
 
+## Scheduled WinUI application start
+
+Regenerate WinUI bindings and prefer the generated
+`Application.startScheduled()` method. It returns a Promise when the
+application exits and lets the current Node callback unwind before
+`Application.Start` takes ownership of the STA. `runWinUIWorkerApp()` selects
+this method and returns `Promise<number>`; await its result before disposing
+Worker ports or terminating the process. Regenerate bindings before upgrading.
+
+## Renderer-owned native release
+
+Pass generated `releaseProjected` to
+`createWinUIRendererPreset(...).createRenderer({ releaseNative:
+releaseProjected })`. The renderer releases only controls and ItemsRepeater
+hosts it creates, after child, event, ref, and reactive cleanup. Application-
+owned Window, AppWindow, and service projections remain the application's
+responsibility.
+
 ## Awaited Worker application cleanup
 
 Worker applications with process-owned asynchronous cleanup should use

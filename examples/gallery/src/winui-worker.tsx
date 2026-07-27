@@ -130,11 +130,13 @@ const errorTree = (error: unknown): Child => (
   </FallbackUI.StackPanel>
 )
 
-const exitCode = runWinUIWorkerApp({
+void runWinUIWorkerApp({
   application: Application,
   releaseProjectedValue: releaseProjected,
   createRenderer() {
-    return winuiRendererPreset.createRenderer()
+    return winuiRendererPreset.createRenderer({
+      releaseNative: releaseProjected,
+    })
   },
   createWindow() {
     return new Window()
@@ -590,8 +592,8 @@ const exitCode = runWinUIWorkerApp({
           : String(error),
     })
   },
+}).then((exitCode) => {
+  bridge.dispose()
+  workerData.statePort.close()
+  process.exit(exitCode)
 })
-
-bridge.dispose()
-workerData.statePort.close()
-process.exit(exitCode)

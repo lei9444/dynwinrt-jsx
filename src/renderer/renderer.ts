@@ -94,6 +94,7 @@ export type NativePropertyConverter = (
 
 export interface RendererOptions {
   inspector?: RendererInspectorOptions
+  releaseNative?: (value: object) => void
   asCollection?: (
     value: unknown,
     owner: object,
@@ -633,7 +634,10 @@ export class Renderer {
             scope,
           )
         },
-        releaseNative: (id) => {
+        releaseNative: (value, id, owned) => {
+          if (owned) {
+            this.options.releaseNative?.(value)
+          }
           this.counters.nativeDisposed += 1
           this.counters.activeNative -= 1
           this.inspection.releaseNode(id)
@@ -1257,6 +1261,7 @@ export class Renderer {
     > = []
     const ref = vnode.props.ref as Ref<object> | undefined
     let nativeActive = true
+    let nativeReleased = false
 
     const markDisposed = () => {
       if (!nativeActive) {
@@ -1304,6 +1309,15 @@ export class Renderer {
         }
         catch (error) {
           firstError ??= error
+        }
+        if (!nativeReleased) {
+          try {
+            this.options.releaseNative?.(instance)
+            nativeReleased = true
+          }
+          catch (error) {
+            firstError ??= error
+          }
         }
         if (firstError !== undefined) {
           throw firstError

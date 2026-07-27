@@ -476,8 +476,14 @@ const rendererPreset = createWinUIRendererPreset({
 })
 const textCapability: WinUIRendererCapability = 'text'
 const presetRenderer: Renderer = rendererPreset.createRenderer()
+const releasingPresetRenderer: Renderer = rendererPreset.createRenderer({
+  releaseNative(value) {
+    void value
+  },
+})
 void rendererPreset.capabilities[textCapability]
 void presetRenderer
+void releasingPresetRenderer
 const inspectorOptions: RendererInspectorOptions = {
   maxOperations: 128,
 }
@@ -576,6 +582,7 @@ const VirtualizedTypeItemsView =
     },
   }, {
     displayName: 'ItemsView',
+    ownsItemMountHost: false,
   })
 adapter.controlled<TypeListView>({
   changeProperty: 'onSelectedIndexChange',

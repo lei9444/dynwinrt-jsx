@@ -130,6 +130,7 @@ export function createVirtualizedItemsControl<
   >,
   options: {
     readonly displayName?: string
+    readonly ownsItemMountHost?: boolean
   } = {},
 ): <Item>(
   props: VirtualizedItemsProps<Instance, Item>,
@@ -152,6 +153,8 @@ export function createVirtualizedItemsControl<
           ? {
               getElementMountHost: (host: object) =>
                 bindings.getItemMountHost!(host as Host),
+              ownsElementMountHost:
+                options.ownsItemMountHost === true,
             }
           : {}),
         createElementFactory: (factory) =>
