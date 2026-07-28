@@ -22,6 +22,7 @@ import {
   createContext,
   createComboBoxControl,
   createCapabilityOwner,
+  createProjectedValueOwner,
   createControls,
   createFocusTarget,
   createFontFamily,
@@ -39,6 +40,7 @@ import {
   createRelativeUri,
   createRouter,
   createRouterNavigationHost,
+  createRouterNavigationViewShell,
   defineRouteRegistry,
   createScrollViewerController,
   createSecondaryWindowManager,
@@ -63,6 +65,7 @@ import {
   themeResource,
   thickness,
   tokens,
+  ownProjectedValue,
   useContext,
   useRouteParams,
   useRouteQuery,
@@ -84,6 +87,9 @@ import {
   type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
+import {
+  defineWinUIHost,
+} from 'dynwinrt-jsx/host'
 import {
   defineWinUIApp,
   type DefinedWinUIAppContext,
@@ -120,7 +126,8 @@ class TypeNavigationView {
   readonly menuItems = new TypeVector()
   readonly footerMenuItems = new TypeVector()
   content: unknown = null
-  selectedItem: unknown = null
+  selectedItem: TypeNavigationItem | null = null
+  settingsItem: TypeNavigationItem | null = null
 
   onSelectionChanged(
     _callback: (
@@ -133,10 +140,12 @@ class TypeNavigationView {
 }
 
 class TypeNavigationItem {
+  readonly menuItems = new TypeVector()
   name = ''
   content: unknown = null
   icon: TypeSymbolIcon | null = null
   selectsOnInvoked = true
+  isExpanded = false
   focus(_state: number): boolean {
     return true
   }
@@ -723,6 +732,41 @@ void typeRouter.navigate({
 })
 void typeRouterTree
 void typeRouterNavigationHost
+const typeRouterNavigationShell =
+  createRouterNavigationViewShell({
+    router: typeRouter,
+    bindings: {
+      NavigationViewItem: TypeNavigationItem,
+      TextBlock: TypeTextBlock,
+    },
+    items: [
+      {
+        routeId: 'home',
+        label: 'Home',
+        children: [
+          {
+            routeId: 'tasks',
+            label: 'Tasks',
+          },
+        ],
+      },
+    ],
+    settingsRouteId: 'settings',
+    enqueue() {
+      return true
+    },
+    releaseProjected() {},
+  })
+typeRouterNavigationShell.ref(new TypeNavigationView())
+typeRouterNavigationShell.onSelectionChanged(
+  new TypeNavigationView(),
+  {
+    isSettingsSelected: false,
+    selectedItemContainer:
+      typeRouterNavigationShell.itemForRoute('home'),
+  },
+)
+void typeRouterNavigationShell.menuItems
 const VirtualizedTypeList = createItemsRepeaterControl({
   ItemsRepeater: TypeItemsRepeater,
   ContentControl: TypeContentControl,
@@ -952,6 +996,54 @@ createCapabilityOwner(
   // @ts-expect-error CapabilityOwner cleanup must be synchronous.
   async () => {},
 )
+const projectedOwner = createProjectedValueOwner(
+  new TypeTextBlock(),
+  () => {},
+)
+void projectedOwner.value
+void ownProjectedValue(
+  new TypeTextBlock(),
+  () => {},
+)
+ownProjectedValue(
+  new TypeTextBlock(),
+  // @ts-expect-error Scoped projected cleanup must be synchronous.
+  async () => {},
+)
+createProjectedValueOwner(
+  new TypeTextBlock(),
+  // @ts-expect-error ProjectedValueOwner cleanup must be synchronous.
+  async () => {},
+)
+
+const typeHost = defineWinUIHost({
+  rootDirectory: 'C:\\app',
+  bootstrap: false,
+  state: {
+    defaultState: () => ({
+      version: 1 as const,
+      count: 0,
+    }),
+    validate(value): value is {
+      readonly version: 1
+      readonly count: number
+    } {
+      return (
+        typeof value === 'object' &&
+        value !== null
+      )
+    },
+    initialize: (loaded) => ({
+      ...loaded.state,
+      status: 'starting' as const,
+    }),
+    persist: (state) => ({
+      version: 1 as const,
+      count: state.count,
+    }),
+  },
+})
+void typeHost.run
 declare const maybeAsyncCleanup:
   () => void | Promise<void>
 createCapabilityOwner(

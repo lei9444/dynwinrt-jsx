@@ -76,7 +76,13 @@ export {
 
 export {
   createRouterNavigationHost,
+  createRouterNavigationViewShell,
   type RouterNavigationHostOptions,
+  type RouterNavigationSelectionChangedEvent,
+  type RouterNavigationViewInstance,
+  type RouterNavigationViewItemDefinition,
+  type RouterNavigationViewShell,
+  type RouterNavigationViewShellOptions,
 } from './winui/router'
 
 export {
@@ -290,6 +296,12 @@ export {
   type CapabilityOwner,
   type UnavailableCapability,
 } from './runtime/capability'
+
+export {
+  createProjectedValueOwner,
+  ownProjectedValue,
+  type ProjectedValueOwner,
+} from './runtime/projected-owner'
 
 export {
   createRenderer,

@@ -85,6 +85,12 @@ export {
   type RendererInspectionIdleSummary,
 } from './runtime/diagnostic-evidence'
 
+export {
+  createProjectedValueOwner,
+  ownProjectedValue,
+  type ProjectedValueOwner,
+} from './runtime/projected-owner'
+
 export type {
   RendererHeartbeat,
 } from './runtime/heartbeat'

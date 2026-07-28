@@ -99,3 +99,15 @@ export {
   type RendererHeartbeatState,
   type RendererHeartbeatTimeoutSummary,
 } from './runtime/heartbeat'
+
+export {
+  defineWinUIHost,
+  type DefinedWinUIHost,
+  type DefineWinUIHostOptions,
+  type WinUIHostBootstrapOptions,
+  type WinUIHostHotReloadOptions,
+  type WinUIHostLogger,
+  type WinUIHostStateOptions,
+  type WinUIHostWorker,
+  type WinUIHostWorkerContext,
+} from './runtime/host-app'

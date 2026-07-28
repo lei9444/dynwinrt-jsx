@@ -7,10 +7,9 @@ import {
   createContext,
   createControls,
   createFocusTarget,
-  createNavigationItem,
   createNavigationViewControl,
   createRouter,
-  createRouterNavigationHost,
+  createRouterNavigationViewShell,
   createSymbolIcon,
   createWinUIThemeController,
   formatRendererDiagnostics,
@@ -37,6 +36,7 @@ import {
   NavigationView,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
+  releaseProjected,
   StackPanel,
   Symbol,
   SymbolIcon,
@@ -62,7 +62,6 @@ const ThemeControllerContext = createContext<{
   setDark(value: boolean): void
 } | null>(null)
 
-type NavigationInstance = InstanceType<typeof NavigationView>
 type ButtonInstance = InstanceType<typeof Button>
 type ToggleInstance = InstanceType<typeof ToggleSwitch>
 
@@ -227,7 +226,6 @@ function SettingsPage(context: AppContext) {
 }
 
 function Shell(context: AppContext) {
-  const navigation: RefObject<NavigationInstance> = { current: null }
   const themeController = createWinUIThemeController({
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
@@ -238,31 +236,6 @@ function Shell(context: AppContext) {
     titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
-  const itemBindings = {
-    NavigationViewItem,
-    TextBlock,
-    AutomationProperties,
-  }
-  const homeItem = createNavigationItem(itemBindings, {
-    name: 'home',
-    label: 'Home',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Home),
-    automationId: 'HomeNavItem',
-    automationPositionInSet: 1,
-    automationSizeOfSet: 2,
-  })
-  const diagnosticsItem = createNavigationItem(itemBindings, {
-    name: 'diagnostics',
-    label: 'Diagnostics',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
-    automationId: 'DiagnosticsNavItem',
-    automationPositionInSet: 2,
-    automationSizeOfSet: 2,
-  })
-  const routeItems = new Map<string, NavigationViewItem>([
-    ['home', homeItem],
-    ['diagnostics', diagnosticsItem],
-  ])
   const routePaths: Readonly<Record<AppRoute, string>> = {
     home: '/',
     diagnostics: '/diagnostics',
@@ -296,57 +269,58 @@ function Shell(context: AppContext) {
       context.model.route.value = routeId as AppRoute
     }
   })
-  const navigationHost = createRouterNavigationHost(router, {
-    enqueue: (callback) =>
-      context.window.dispatcherQueue.tryEnqueue(
-        DispatcherQueuePriority.Low,
-        callback,
-      ),
-    selectRoute(routeId) {
-      const current = navigation.current
-      const item = routeId === 'settings'
-        ? current?.settingsItem
-        : routeItems.get(routeId)
-      if (current && item) {
-        current.selectedItem = item
-      }
-    },
-  })
-  onCleanup(navigationHost.dispose)
+  const navigationShell =
+    createRouterNavigationViewShell({
+      router,
+      bindings: {
+        NavigationViewItem,
+        TextBlock,
+        AutomationProperties,
+      },
+      items: [
+        {
+          routeId: 'home',
+          label: 'Home',
+          icon: createSymbolIcon(SymbolIcon, Symbol.Home),
+          automationId: 'HomeNavItem',
+          automationPositionInSet: 1,
+          automationSizeOfSet: 2,
+        },
+      ],
+      footerItems: [
+        {
+          routeId: 'diagnostics',
+          label: 'Diagnostics',
+          icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
+          automationId: 'DiagnosticsNavItem',
+          automationPositionInSet: 2,
+          automationSizeOfSet: 2,
+        },
+      ],
+      settingsRouteId: 'settings',
+      enqueue: (callback) =>
+        context.window.dispatcherQueue.tryEnqueue(
+          DispatcherQueuePriority.Low,
+          callback,
+        ),
+      releaseProjected,
+    })
+  onCleanup(navigationShell.dispose)
   return (
     <ThemeControllerContext.Provider value={themeController}>
       <Navigation
-        ref={(value) => {
-          navigation.current = value
-          if (value) {
-            navigationHost.synchronizeSelection()
-          }
-        }}
+        ref={navigationShell.ref}
         automationId="AppNavigation"
         requestedTheme={themeController.requestedTheme}
         paneTitle="dynwinrt-jsx"
         paneDisplayMode={NavigationViewPaneDisplayMode.Left}
-        menuItems={[homeItem]}
-        footerMenuItems={[diagnosticsItem]}
+        menuItems={navigationShell.menuItems}
+        footerMenuItems={navigationShell.footerMenuItems}
         isSettingsVisible
-        onSelectionChanged={(_sender, args) => {
-          if (args.isSettingsSelected) {
-            navigationHost.requestNativeNavigation('settings')
-            return
-          }
-          const route = [...routeItems.entries()]
-            .find(
-              ([, item]) =>
-                item.name === args.selectedItemContainer.name,
-            )
-            ?.[0]
-          if (route) {
-            navigationHost.requestNativeNavigation(route)
-          }
-        }}
+        onSelectionChanged={navigationShell.onSelectionChanged}
       >
         <RouterProvider router={router}>
-          {navigationHost.render(() => <Outlet />)}
+          {navigationShell.render(() => <Outlet />)}
         </RouterProvider>
       </Navigation>
     </ThemeControllerContext.Provider>

@@ -13,10 +13,9 @@ import {
   createGridControl,
   createItemsRepeaterControl,
   createListViewControl,
-  createNavigationItem,
   createNavigationViewControl,
   createRouter,
-  createRouterNavigationHost,
+  createRouterNavigationViewShell,
   createSymbolIcon,
   createWinUIThemeController,
   effect,
@@ -67,6 +66,7 @@ import {
   NavigationViewPaneDisplayMode,
   ProgressBar,
   PropertyValue,
+  releaseProjected,
   RowDefinition,
   ScrollBarVisibility,
   ScrollViewer,
@@ -860,9 +860,6 @@ function SettingsPage(context: DashboardAppContext) {
 }
 
 function ApplicationShell(context: DashboardAppContext) {
-  const navigation: RefObject<NavigationViewInstance> = {
-    current: null,
-  }
   const themeController = createWinUIThemeController({
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
@@ -949,43 +946,6 @@ function ApplicationShell(context: DashboardAppContext) {
       teachingTipTimer.start()
     },
   }
-  const itemBindings = {
-    NavigationViewItem,
-    TextBlock,
-    AutomationProperties,
-  }
-  const dashboardItem = createNavigationItem(itemBindings, {
-    name: 'dashboard',
-    label: 'Dashboard',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Home),
-    automationId: 'DashboardNavItem',
-    automationName: 'Dashboard page',
-    automationPositionInSet: 1,
-    automationSizeOfSet: 3,
-  })
-  const tasksItem = createNavigationItem(itemBindings, {
-    name: 'tasks',
-    label: 'Tasks',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Bullets),
-    automationId: 'TasksNavItem',
-    automationName: 'Tasks page',
-    automationPositionInSet: 2,
-    automationSizeOfSet: 3,
-  })
-  const diagnosticsItem = createNavigationItem(itemBindings, {
-    name: 'diagnostics',
-    label: 'Diagnostics',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
-    automationId: 'DiagnosticsNavItem',
-    automationName: 'Diagnostics page',
-    automationPositionInSet: 3,
-    automationSizeOfSet: 3,
-  })
-  const routeItems = new Map<string, NavigationViewItem>([
-    ['dashboard', dashboardItem],
-    ['tasks', tasksItem],
-    ['diagnostics', diagnosticsItem],
-  ])
   const routePaths: Readonly<Record<DashboardRoute, string>> = {
     dashboard: '/',
     tasks: '/tasks',
@@ -1027,40 +987,66 @@ function ApplicationShell(context: DashboardAppContext) {
         routeId as DashboardRoute
     }
   })
-  const navigationHost = createRouterNavigationHost(router, {
-    enqueue: (callback) =>
-      context.window.dispatcherQueue.tryEnqueue(
-        DispatcherQueuePriority.Low,
-        callback,
-      ),
-    selectRoute(routeId) {
-      const current = navigation.current
-      const item = routeId === 'settings'
-        ? current?.settingsItem
-        : routeItems.get(routeId)
-      if (current && item) {
-        current.selectedItem = item
-      }
-    },
-  })
-  onCleanup(navigationHost.dispose)
+  const navigationShell =
+    createRouterNavigationViewShell({
+      router,
+      bindings: {
+        NavigationViewItem,
+        TextBlock,
+        AutomationProperties,
+      },
+      items: [
+        {
+          routeId: 'dashboard',
+          label: 'Dashboard',
+          icon: createSymbolIcon(SymbolIcon, Symbol.Home),
+          automationId: 'DashboardNavItem',
+          automationName: 'Dashboard page',
+          automationPositionInSet: 1,
+          automationSizeOfSet: 3,
+        },
+        {
+          routeId: 'tasks',
+          label: 'Tasks',
+          icon: createSymbolIcon(SymbolIcon, Symbol.Bullets),
+          automationId: 'TasksNavItem',
+          automationName: 'Tasks page',
+          automationPositionInSet: 2,
+          automationSizeOfSet: 3,
+        },
+      ],
+      footerItems: [
+        {
+          routeId: 'diagnostics',
+          label: 'Diagnostics',
+          icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
+          automationId: 'DiagnosticsNavItem',
+          automationName: 'Diagnostics page',
+          automationPositionInSet: 3,
+          automationSizeOfSet: 3,
+        },
+      ],
+      settingsRouteId: 'settings',
+      enqueue: (callback) =>
+        context.window.dispatcherQueue.tryEnqueue(
+          DispatcherQueuePriority.Low,
+          callback,
+        ),
+      releaseProjected,
+    })
+  onCleanup(navigationShell.dispose)
   return (
     <ThemeControllerContext.Provider value={themeController}>
       <TeachingTipServiceContext.Provider value={teachingTipService}>
         <AppNavigation
-          ref={(value) => {
-            navigation.current = value
-            if (value) {
-              navigationHost.synchronizeSelection()
-            }
-          }}
+          ref={navigationShell.ref}
           automationId="AppNavigation"
           requestedTheme={themeController.requestedTheme}
           paneTitle="DynWinRT JSX"
           paneDisplayMode={NavigationViewPaneDisplayMode.Left}
           isSettingsVisible
-          menuItems={[dashboardItem, tasksItem]}
-          footerMenuItems={[diagnosticsItem]}
+          menuItems={navigationShell.menuItems}
+          footerMenuItems={navigationShell.footerMenuItems}
           onLoaded={() => {
             const scale = context.getXamlRoot().rasterizationScale
             context.window.appWindow.resize({
@@ -1069,25 +1055,11 @@ function ApplicationShell(context: DashboardAppContext) {
             })
             context.window.appWindow.moveInZOrderAtTop()
           }}
-          onSelectionChanged={(_sender, args) => {
-            if (args.isSettingsSelected) {
-              navigationHost.requestNativeNavigation('settings')
-              return
-            }
-            const route = [...routeItems.entries()]
-              .find(
-                ([, item]) =>
-                  item.name === args.selectedItemContainer.name,
-              )
-              ?.[0]
-            if (route) {
-              navigationHost.requestNativeNavigation(route)
-            }
-          }}
+          onSelectionChanged={navigationShell.onSelectionChanged}
         >
           <UI.Grid>
             <RouterProvider router={router}>
-              {navigationHost.render(() => <Outlet />)}
+              {navigationShell.render(() => <Outlet />)}
             </RouterProvider>
             <UI.TeachingTip
               ref={setTeachingTip}

@@ -12,6 +12,7 @@ const {
   createRenderer,
   createRouter,
   createRouterNavigationHost,
+  createRouterNavigationViewShell,
   defineRouteRegistry,
   onCleanup,
   parseRouterQuery,
@@ -622,6 +623,209 @@ test('router NavigationView host resolves parameterized targets', () => {
   assert.equal(router.navigationRouteId.value, 'tasks')
   assert.equal(selections.at(-1), 'home')
   host.dispose()
+  router.dispose()
+})
+
+test('router NavigationView shell owns items and selection', () => {
+  class Vector {
+    values = []
+
+    append(value) {
+      this.values.push(value)
+    }
+  }
+  class Item {
+    menuItems = new Vector()
+    name = ''
+    content = null
+    icon = null
+    selectsOnInvoked = true
+    isExpanded = false
+  }
+  class Text {
+    text = ''
+  }
+  const router = createRouter({
+    routes: [
+      {
+        id: 'home',
+        path: '/',
+        render: () => null,
+      },
+      {
+        id: 'tasks',
+        path: '/tasks',
+        render: () => null,
+      },
+      {
+        id: 'task-detail',
+        path: '/tasks/:taskId',
+        navigationId: 'tasks',
+        render: () => null,
+      },
+      {
+        id: 'settings',
+        path: '/settings',
+        render: () => null,
+      },
+    ],
+  })
+  const queue = []
+  const releases = []
+  let failedRelease = false
+  let tasksItem = null
+  const shell = createRouterNavigationViewShell({
+    router,
+    bindings: {
+      NavigationViewItem: Item,
+      TextBlock: Text,
+    },
+    items: [
+      {
+        routeId: 'home',
+        label: 'Home',
+      },
+      {
+        name: 'work',
+        label: 'Work',
+        selectable: false,
+        children: [
+          {
+            routeId: 'tasks',
+            label: 'Tasks',
+          },
+        ],
+      },
+    ],
+    settingsRouteId: 'settings',
+    enqueue(callback) {
+      queue.push(callback)
+      return true
+    },
+    releaseProjected(value) {
+      releases.push(value)
+      if (value === tasksItem && !failedRelease) {
+        failedRelease = true
+        throw new Error('release failed')
+      }
+    },
+  })
+  tasksItem = shell.itemForRoute('tasks')
+  const settingsItem = new Item()
+  const navigation = {
+    selectedItem: null,
+    settingsItem,
+  }
+
+  shell.ref(navigation)
+  assert.equal(
+    navigation.selectedItem,
+    shell.itemForRoute('home'),
+  )
+  assert.equal(shell.menuItems.length, 2)
+  assert.equal(
+    shell.menuItems[1].menuItems.values[0],
+    shell.itemForRoute('tasks'),
+  )
+
+  router.navigate({
+    routeId: 'task-detail',
+    params: { taskId: 42 },
+  })
+  assert.equal(
+    navigation.selectedItem,
+    shell.itemForRoute('tasks'),
+  )
+  assert.equal(shell.menuItems[1].isExpanded, true)
+
+  navigation.selectedItem = shell.itemForRoute('home')
+  const projectedHomeItem = new Item()
+  projectedHomeItem.name = 'home'
+  shell.onSelectionChanged(navigation, {
+    isSettingsSelected: false,
+    selectedItemContainer: projectedHomeItem,
+  })
+  queue.shift()()
+  queue.shift()()
+  assert.equal(router.routeId.value, 'home')
+
+  navigation.selectedItem = settingsItem
+  shell.onSelectionChanged(navigation, {
+    isSettingsSelected: true,
+    selectedItemContainer: settingsItem,
+  })
+  queue.shift()()
+  queue.shift()()
+  assert.equal(router.routeId.value, 'settings')
+  assert.equal(navigation.selectedItem, settingsItem)
+
+  assert.throws(
+    () => shell.dispose(),
+    /release failed/,
+  )
+  assert.equal(shell.disposed, false)
+  shell.dispose()
+  assert.equal(shell.disposed, true)
+  assert.equal(
+    releases.filter((value) => value === tasksItem).length,
+    2,
+  )
+  router.dispose()
+})
+
+test('router NavigationView shell releases partial item creation', () => {
+  class Vector {
+    append() {}
+  }
+  let itemCount = 0
+  class Item {
+    menuItems = itemCount++ === 0
+      ? new Vector()
+      : undefined
+    name = ''
+    content = null
+    icon = null
+    selectsOnInvoked = true
+  }
+  class Text {
+    text = ''
+  }
+  const router = createRouter({
+    routes: [{
+      id: 'home',
+      path: '/',
+      render: () => null,
+    }],
+  })
+  const released = []
+
+  assert.throws(
+    () => createRouterNavigationViewShell({
+      router,
+      bindings: {
+        NavigationViewItem: Item,
+        TextBlock: Text,
+      },
+      items: [
+        {
+          routeId: 'home',
+          label: 'Home',
+        },
+        {
+          name: 'group',
+          label: 'Group',
+          children: [{
+            routeId: 'child',
+            label: 'Child',
+          }],
+        },
+      ],
+      enqueue: () => true,
+      releaseProjected: (value) => released.push(value),
+    }),
+    /does not expose menuItems/,
+  )
+  assert.equal(released.length, 4)
   router.dispose()
 })
 

@@ -101,6 +101,47 @@ const {
 } = require('dynwinrt-jsx/host')
 ```
 
+`defineWinUIHost()` is the preferred main-process host. It owns Windows App
+SDK bootstrap, the Worker and transferred state port, atomic persistence,
+standard Worker diagnostics, optional file hot reload, and exit cleanup:
+
+```js
+const { defineWinUIHost } = require('dynwinrt-jsx/host')
+
+const host = defineWinUIHost({
+  rootDirectory: __dirname,
+  state: {
+    defaultState: createDefaultPersistedAppState,
+    validate: isPersistedAppState,
+    initialize: (loaded) => ({
+      ...loaded.state,
+      status: 'starting',
+      persistenceError: loaded.error,
+    }),
+    persist: ({ version, count, updatedAt }) => ({
+      version,
+      count,
+      updatedAt,
+    }),
+    isReady: (state) => state.status === 'running',
+  },
+})
+
+host.run().then(
+  (code) => {
+    process.exitCode = code
+  },
+  (error) => {
+    console.error(error)
+    process.exitCode = 1
+  },
+)
+```
+
+Set `bootstrap: false` only when another host already initialized the Windows
+App SDK. `workerData` can add application-specific transferred configuration;
+the Host always owns `statePort`, `initialState`, and `hotStatePath`.
+
 Worker entry points can reuse deterministic Window teardown and file-backed hot
 reload without copying the lifecycle implementation:
 
@@ -669,20 +710,39 @@ Parameterized registry targets require their inferred params at compile time.
 entry or replaces the current entry with the logical parent. `navigationId`
 lets parameterized/detail routes keep a stable NavigationView selection.
 
-Use `createRouterNavigationHost()` when a native `NavigationView` drives the
-router. It adapts stable route IDs to `createNavigationHost()`, retaining the
-separate DispatcherQueue turns for old-page disposal and target mounting:
+Use `createRouterNavigationViewShell()` for the normal native
+`NavigationView` path. It creates menu/footer items from route metadata, owns
+route-item maps, synchronizes native selection, expands parent groups for
+detail routes, and retains separate DispatcherQueue turns for old-page
+disposal and target mounting:
 
 ```tsx
-const navigationHost = createRouterNavigationHost(router, {
+const navigationShell = createRouterNavigationViewShell({
+  router,
+  bindings: {
+    NavigationViewItem,
+    TextBlock,
+    AutomationProperties,
+  },
+  items: [{
+    routeId: 'home',
+    label: 'Home',
+  }, {
+    name: 'work',
+    label: 'Work',
+    selectable: false,
+    children: [{
+      routeId: 'tasks',
+      label: 'Tasks',
+    }],
+  }],
+  settingsRouteId: 'settings',
+  releaseProjected,
   enqueue: (callback) =>
     window.dispatcherQueue.tryEnqueue(
       DispatcherQueuePriority.Low,
       callback,
     ),
-  selectRoute(routeId) {
-    navigation.selectedItem = routeItems.get(routeId)
-  },
   targetForRoute(routeId) {
     return routeId === 'tasks'
       ? routes.target('task', {
@@ -691,29 +751,38 @@ const navigationHost = createRouterNavigationHost(router, {
       : { routeId }
   },
 })
-onCleanup(navigationHost.dispose)
+onCleanup(navigationShell.dispose)
 
-<Navigation onSelectionChanged={(_sender, args) => {
-  navigationHost.requestNativeNavigation(
-    args.selectedItemContainer.name,
-  )
-}}>
+<Navigation
+  ref={navigationShell.ref}
+  menuItems={navigationShell.menuItems}
+  footerMenuItems={navigationShell.footerMenuItems}
+  onSelectionChanged={navigationShell.onSelectionChanged}
+>
   <RouterProvider router={router}>
-    {navigationHost.render(() => <Outlet />)}
+    {navigationShell.render(() => <Outlet />)}
   </RouterProvider>
 </Navigation>
 ```
+
+`createRouterNavigationHost()` remains the lower-level bridge when native
+items are created or selected by application-specific policy.
+The shell requires `releaseProjected`; it owns and retry-releases every
+NavigationViewItem and TextBlock label that it creates. Icons supplied in item
+metadata remain caller-owned.
 
 The router is not React Router and does not use browser history. Route render
 functions mount once per matched route identity; application changes flow
 through signals. Transition diagnostics contain stable route IDs and reason
 codes, not path parameters or query values.
 
-The generated template, Dashboard, and Gallery use this path. Gallery builds
-its root route tree from `pages/*/routes.tsx`; each category folder owns its
-category fallback and sample child routes. The persisted route remains the
-hot-reload seed, and structural parents plus `up()` provide generic
-sample-to-category back navigation instead of category-specific branches.
+The generated template and Dashboard use the high-level shell. Gallery keeps
+the lower-level bridge for its application-specific category metadata and
+title-bar pane control. It builds the root route tree from
+`pages/*/routes.tsx`; each category folder owns its category fallback and
+sample child routes. The persisted route remains the hot-reload seed, and
+structural parents plus `up()` provide generic sample-to-category back
+navigation instead of category-specific branches.
 
 Use one application-scoped `createSecondaryWindowManager()` when pages create
 additional XAML `Window` or raw `AppWindow` instances. Each page owns a scope,
@@ -806,6 +875,20 @@ onCleanup(island.dispose)
 The owner is idempotent after success. If cleanup throws, `disposed` remains
 false and a later `dispose()` retries the same resource. Cleanup must be
 synchronous; Promise-returning callbacks are rejected.
+
+For a projected object that is already available, use
+`createProjectedValueOwner()` directly. `ownProjectedValue()` additionally
+registers disposal with the current component scope:
+
+```ts
+const brush = ownProjectedValue(
+  new SolidColorBrush(),
+  releaseProjected,
+)
+```
+
+Manual projected owners are idempotent after success and remain retryable when
+release throws. Release callbacks must be synchronous.
 
 Use `createListViewControl()` when JSX children should populate native
 `items`, with owned `header` and `footer` slots:
