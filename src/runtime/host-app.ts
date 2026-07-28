@@ -49,6 +49,10 @@ interface HostPath {
   join(...parts: string[]): string
 }
 
+interface HostModule {
+  createRequire(filename: string): (id: string) => unknown
+}
+
 interface HostMessagePort extends MessageEndpoint {
   close(): void
 }
@@ -202,6 +206,7 @@ export interface DefinedWinUIHost<State> {
 
 interface HostRuntimeModules {
   readonly fs: HostFileSystem
+  readonly module: HostModule
   readonly os: HostOperatingSystem
   readonly path: HostPath
   readonly workerThreads: HostWorkerThreads
@@ -210,6 +215,7 @@ interface HostRuntimeModules {
 function loadHostRuntime(): HostRuntimeModules {
   return {
     fs: require('node:fs') as HostFileSystem,
+    module: require('node:module') as HostModule,
     os: require('node:os') as HostOperatingSystem,
     path: require('node:path') as HostPath,
     workerThreads: require(
@@ -276,7 +282,15 @@ function initializeWindowsAppSdk(
   }
   process.env.WINAPPSDK_BOOTSTRAP_DLL_PATH =
     bootstrapDll
-  const dynwinrt = require('@microsoft/dynwinrt')
+  const requireFromApplication =
+    runtime.module.createRequire(
+      runtime.path.join(
+        rootDirectory,
+        'package.json',
+      ),
+    )
+  const dynwinrt =
+    requireFromApplication('@microsoft/dynwinrt')
   if (
     !isRecord(dynwinrt) ||
     typeof dynwinrt.initWinappsdk !== 'function'

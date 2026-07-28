@@ -427,11 +427,12 @@ test('Gallery uses the signal-native router', () => {
   )
 
   assert.match(galleryShell, /createRouter(?:<|\()/)
-  assert.match(galleryShell, /createRouterNavigationHost/)
+  assert.match(galleryShell, /createRouterNavigationViewShell/)
   assert.match(galleryShell, /<RouterProvider router=\{router\}>/)
   assert.match(galleryShell, /<Outlet \/>/)
   assert.match(galleryShell, /createGalleryRoutes/)
   assert.doesNotMatch(galleryShell, /createNavigationHost/)
+  assert.doesNotMatch(galleryShell, /new Map<GalleryRoute/)
   assert.doesNotMatch(galleryShell, /renderSamplePage/)
   assert.doesNotMatch(
     galleryShell,
@@ -441,6 +442,19 @@ test('Gallery uses the signal-native router', () => {
     galleryShell,
     /currentPage\?\.category ===/,
   )
+  const galleryMain = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'main.js',
+    ),
+    'utf8',
+  )
+  assert.match(galleryMain, /defineWinUIHost/)
+  assert.doesNotMatch(galleryMain, /new MessageChannel/)
+  assert.doesNotMatch(galleryMain, /initWinappsdk/)
   for (const directory of [
     'basic-input',
     'collections',

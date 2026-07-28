@@ -431,13 +431,21 @@ export interface NavigationItemOptions<Icon = unknown> {
   readonly automationSizeOfSet?: number
 }
 
-export function createNavigationItem<
+export interface NavigationItemRecord<
+  Item,
+  Text,
+> {
+  readonly item: Item
+  readonly label: Text
+}
+
+export function createNavigationItemRecord<
   Item extends NavigationItemInstance,
   Text extends TextInstance,
 >(
   bindings: NavigationItemBindings<Item, Text>,
   options: NavigationItemOptions<Item['icon']>,
-): Item {
+): NavigationItemRecord<Item, Text> {
   const item = new bindings.NavigationViewItem()
   const label = new bindings.TextBlock()
   label.text = options.label
@@ -488,5 +496,21 @@ export function createNavigationItem<
       options.automationSizeOfSet,
     )
   }
-  return item
+  return {
+    item,
+    label,
+  }
+}
+
+export function createNavigationItem<
+  Item extends NavigationItemInstance,
+  Text extends TextInstance,
+>(
+  bindings: NavigationItemBindings<Item, Text>,
+  options: NavigationItemOptions<Item['icon']>,
+): Item {
+  return createNavigationItemRecord(
+    bindings,
+    options,
+  ).item
 }

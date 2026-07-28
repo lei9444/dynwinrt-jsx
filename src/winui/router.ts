@@ -4,7 +4,7 @@ import type {
 } from '../core/router'
 import {
   createNavigationHost,
-  createNavigationItem,
+  createNavigationItemRecord,
   type NavigationHost,
   type NavigationItemBindings,
   type NavigationItemOptions,
@@ -75,6 +75,7 @@ interface RouterNavigationTextInstance {
 export interface RouterNavigationViewInstance {
   selectedItem: unknown
   readonly settingsItem?: unknown
+  isPaneOpen?: boolean
 }
 
 export interface RouterNavigationSelectionChangedEvent {
@@ -119,6 +120,7 @@ export interface RouterNavigationViewShellOptions<
     Item['icon']
   >[]
   readonly settingsRouteId?: RouteId
+  readonly preservePaneOpenOnSelection?: boolean
   readonly enqueue: (callback: () => void) => boolean
   readonly releaseProjected: Extract<
     ReleaseResult,
@@ -244,7 +246,10 @@ export function createRouterNavigationViewShell<
     const selectable =
       definition.selectable ??
       definition.routeId !== undefined
-    const item = createNavigationItem(
+    const {
+      item,
+      label,
+    } = createNavigationItemRecord(
       options.bindings,
       {
         ...definition,
@@ -252,17 +257,12 @@ export function createRouterNavigationViewShell<
         selectsOnInvoked: selectable,
       },
     )
-    if (
-      typeof item.content === 'object' &&
-      item.content !== null
-    ) {
-      projectedOwners.push(
-        createProjectedValueOwner(
-          item.content,
-          options.releaseProjected,
-        ),
-      )
-    }
+    projectedOwners.push(
+      createProjectedValueOwner(
+        label,
+        options.releaseProjected,
+      ),
+    )
     projectedOwners.push(
       createProjectedValueOwner(
         item,
@@ -316,6 +316,41 @@ export function createRouterNavigationViewShell<
   const itemForRoute = (routeId: RouteId): Item | null =>
     routeItems.get(routeId) ?? null
 
+  const preservePaneOpen = (
+    selectedNavigation: RouterNavigationViewInstance,
+    name: string,
+  ) => {
+    if (
+      !options.preservePaneOpenOnSelection ||
+      selectedNavigation.isPaneOpen !== true
+    ) {
+      return
+    }
+    const paneQueued = options.enqueue(() => {
+      if (disposed) {
+        return
+      }
+      const finalPaneQueued = options.enqueue(() => {
+        if (
+          !disposed &&
+          navigation === selectedNavigation
+        ) {
+          selectedNavigation.isPaneOpen = true
+        }
+      })
+      if (!finalPaneQueued) {
+        throw new Error(
+          `Failed to reopen navigation item '${name}'.`,
+        )
+      }
+    })
+    if (!paneQueued) {
+      throw new Error(
+        `Failed to preserve navigation item '${name}'.`,
+      )
+    }
+  }
+
   const selectRoute = (routeId: string) => {
     if (navigation === null) {
       return
@@ -333,6 +368,7 @@ export function createRouterNavigationViewShell<
     if (item === null) {
       return
     }
+    preservePaneOpen(navigation, routeId)
     navigation.selectedItem = item
     let parent = parentItems.get(item)
     while (parent !== undefined) {
@@ -373,11 +409,13 @@ export function createRouterNavigationViewShell<
       return disposed
     },
     ref(value) {
+      if (value === null) {
+        navigation = null
+        return
+      }
       ensureActive('set the navigation ref')
       navigation = value
-      if (value !== null) {
-        host.synchronizeSelection()
-      }
+      host.synchronizeSelection()
     },
     onSelectionChanged(_sender, event) {
       ensureActive('handle navigation selection')
@@ -386,6 +424,12 @@ export function createRouterNavigationViewShell<
           host.requestNativeNavigation(
             options.settingsRouteId,
           )
+          if (navigation !== null) {
+            preservePaneOpen(
+              navigation,
+              options.settingsRouteId,
+            )
+          }
         }
         return
       }
@@ -398,6 +442,9 @@ export function createRouterNavigationViewShell<
         nameRoutes.get(selected.name)
       if (routeId !== undefined) {
         host.requestNativeNavigation(routeId)
+      }
+      if (navigation !== null) {
+        preservePaneOpen(navigation, selected.name)
       }
     },
     itemForRoute,

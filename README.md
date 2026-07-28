@@ -737,6 +737,7 @@ const navigationShell = createRouterNavigationViewShell({
     }],
   }],
   settingsRouteId: 'settings',
+  preservePaneOpenOnSelection: true,
   releaseProjected,
   enqueue: (callback) =>
     window.dispatcherQueue.tryEnqueue(
@@ -776,13 +777,12 @@ functions mount once per matched route identity; application changes flow
 through signals. Transition diagnostics contain stable route IDs and reason
 codes, not path parameters or query values.
 
-The generated template and Dashboard use the high-level shell. Gallery keeps
-the lower-level bridge for its application-specific category metadata and
-title-bar pane control. It builds the root route tree from
-`pages/*/routes.tsx`; each category folder owns its category fallback and
-sample child routes. The persisted route remains the hot-reload seed, and
-structural parents plus `up()` provide generic sample-to-category back
-navigation instead of category-specific branches.
+The generated template, Dashboard, and Gallery use the high-level shell.
+Gallery generates its category/item definitions from page metadata and builds
+the root route tree from `pages/*/routes.tsx`; each category folder owns its
+category fallback and sample child routes. The persisted route remains the
+hot-reload seed, and structural parents plus `up()` provide generic
+sample-to-category back navigation instead of category-specific branches.
 
 Use one application-scoped `createSecondaryWindowManager()` when pages create
 additional XAML `Window` or raw `AppWindow` instances. Each page owns a scope,

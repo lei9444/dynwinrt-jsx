@@ -3,14 +3,14 @@ import {
   Outlet,
   RouterProvider,
   computed,
-  createNavigationItem,
   createRouter,
-  createRouterNavigationHost,
+  createRouterNavigationViewShell,
   createSymbolIcon,
   createWinUIThemeController,
   effect,
   gridLength,
   onCleanup,
+  ownProjectedValue,
   styles,
   theme,
   thickness,
@@ -28,6 +28,7 @@ import {
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
   PropertyValue,
+  releaseProjected,
   Symbol,
   SymbolIcon,
   TextBlock,
@@ -39,17 +40,13 @@ import {
   type AppContext,
   LayoutGrid,
   Navigation,
-  type NavigationInstance,
   ThemeControllerContext,
   type TitleBarInstance,
   UI,
 } from './gallery-ui'
 import { loadGalleryBitmap } from './gallery-assets'
 import {
-  findGalleryPage,
   galleryPages,
-  type GalleryPageId,
-  type GalleryRoute,
 } from './gallery-data'
 import { isGalleryRoute } from './launch-intent'
 import {
@@ -57,10 +54,119 @@ import {
   galleryCategoryRouteIds,
 } from './pages/routes'
 
+interface GalleryNavigationCategory {
+  readonly category: string
+  readonly name: string
+  readonly symbol: Symbol
+}
+
+const primaryNavigationCategories = [
+  {
+    category: 'Framework',
+    name: 'Framework',
+    symbol: Symbol.Document,
+  },
+  {
+    category: 'Fundamentals',
+    name: 'Fundamentals',
+    symbol: Symbol.Library,
+  },
+  {
+    category: 'Design',
+    name: 'Design',
+    symbol: Symbol.Highlight,
+  },
+  {
+    category: 'Accessibility',
+    name: 'Accessibility',
+    symbol: Symbol.Permissions,
+  },
+  {
+    category: 'Styles',
+    name: 'Styles',
+    symbol: Symbol.Highlight,
+  },
+] as const satisfies readonly GalleryNavigationCategory[]
+
+const controlNavigationCategories = [
+  {
+    category: 'Basic input',
+    name: 'BasicInput',
+    symbol: Symbol.TouchPointer,
+  },
+  {
+    category: 'Collections',
+    name: 'Collections',
+    symbol: Symbol.Bullets,
+  },
+  {
+    category: 'Date & time',
+    name: 'DateTime',
+    symbol: Symbol.Clock,
+  },
+  {
+    category: 'Dialogs & flyouts',
+    name: 'DialogsFlyouts',
+    symbol: Symbol.OpenWith,
+  },
+  {
+    category: 'Layout',
+    name: 'Layout',
+    symbol: Symbol.Page,
+  },
+  {
+    category: 'Media',
+    name: 'Media',
+    symbol: Symbol.Play,
+  },
+  {
+    category: 'Menus & toolbars',
+    name: 'MenusToolbars',
+    symbol: Symbol.Bullets,
+  },
+  {
+    category: 'Motion',
+    name: 'Motion',
+    symbol: Symbol.Sync,
+  },
+  {
+    category: 'Windowing',
+    name: 'Windowing',
+    symbol: Symbol.NewWindow,
+  },
+  {
+    category: 'System',
+    name: 'System',
+    symbol: Symbol.Setting,
+  },
+  {
+    category: 'Navigation',
+    name: 'Navigation',
+    symbol: Symbol.GlobalNavigationButton,
+  },
+  {
+    category: 'Scrolling',
+    name: 'Scrolling',
+    symbol: Symbol.Forward,
+  },
+  {
+    category: 'Shell',
+    name: 'Shell',
+    symbol: Symbol.Repair,
+  },
+  {
+    category: 'Text',
+    name: 'Text',
+    symbol: Symbol.Font,
+  },
+  {
+    category: 'Status & info',
+    name: 'StatusInfo',
+    symbol: Symbol.Flag,
+  },
+] as const satisfies readonly GalleryNavigationCategory[]
+
 export function Shell(context: AppContext) {
-  const navigation: RefObject<NavigationInstance> = {
-    current: null,
-  }
   const titleBar: RefObject<TitleBarInstance> = {
     current: null,
   }
@@ -76,439 +182,6 @@ export function Shell(context: AppContext) {
     titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
-
-  const itemBindings = {
-    NavigationViewItem,
-    TextBlock,
-    AutomationProperties,
-  }
-  const homeItem = createNavigationItem(itemBindings, {
-    name: 'home',
-    label: 'Home',
-    icon: createSymbolIcon(SymbolIcon, Symbol.Home),
-    automationId: 'GalleryHomeNavItem',
-  })
-  const pageItems = new Map<GalleryPageId, NavigationViewItem>(
-    galleryPages.map((page) => [
-      page.id,
-      createNavigationItem(itemBindings, {
-        name: page.id,
-        label: page.title,
-        automationId: `Gallery${page.id}NavItem`,
-      }),
-    ]),
-  )
-  const createNavigationGroup = (
-    name: string,
-    label: string,
-    symbol: Symbol,
-    pageIds: readonly GalleryPageId[],
-    route?: GalleryRoute,
-  ) => {
-    const item = createNavigationItem(itemBindings, {
-      name: route ?? `category-${name}`,
-      label,
-      icon: createSymbolIcon(SymbolIcon, symbol),
-      selectsOnInvoked: route !== undefined,
-      automationId: `Gallery${name}CategoryNavItem`,
-    })
-    item.isExpanded = false
-    if (pageIds.length === 0) {
-      item.menuItems.append(createNavigationItem(itemBindings, {
-        name: `placeholder-${name}`,
-        label: 'Coming soon',
-        selectsOnInvoked: false,
-      }))
-      return item
-    }
-    for (const pageId of pageIds) {
-      item.menuItems.append(pageItems.get(pageId)!)
-    }
-    return item
-  }
-  const controlsHeader = createNavigationItem(itemBindings, {
-    name: 'controls-header',
-    label: 'Controls',
-    selectsOnInvoked: false,
-    automationId: 'GalleryControlsHeader',
-  })
-  const allItem = createNavigationItem(itemBindings, {
-    name: 'all-controls',
-    label: 'All',
-    icon: createSymbolIcon(SymbolIcon, Symbol.AllApps),
-    selectsOnInvoked: false,
-    automationId: 'GalleryAllControlsNavItem',
-  })
-  const basicInputItem = createNavigationGroup(
-    'BasicInput',
-    'Basic input',
-    Symbol.TouchPointer,
-    [
-      'button',
-      'drop-down-button',
-      'hyperlink-button',
-      'repeat-button',
-      'toggle-button',
-      'split-button',
-      'toggle-split-button',
-      'check-box',
-      'color-picker',
-      'combo-box',
-      'radio-button',
-      'rating-control',
-      'slider',
-      'toggle-switch',
-    ],
-    'category-basic-input',
-  )
-  const collectionsItem = createNavigationGroup(
-    'Collections',
-    'Collections',
-    Symbol.Bullets,
-    [
-      'flip-view',
-      'grid-view',
-      'items-repeater',
-      'items-view',
-      'list-view',
-      'pull-to-refresh',
-      'tree-view',
-    ],
-    'category-collections',
-  )
-  const dateTimeItem = createNavigationGroup(
-    'DateTime',
-    'Date & time',
-    Symbol.Clock,
-    [
-      'calendar-date-picker',
-      'calendar-view',
-      'date-picker',
-      'time-picker',
-    ],
-    'category-date-time',
-  )
-  const dialogsFlyoutsItem = createNavigationGroup(
-    'DialogsFlyouts',
-    'Dialogs & flyouts',
-    Symbol.OpenWith,
-    [
-      'content-dialog',
-      'flyout',
-      'popup',
-      'teaching-tip',
-    ],
-    'category-dialogs-flyouts',
-  )
-  const statusInfoItem = createNavigationGroup(
-    'StatusInfo',
-    'Status & info',
-    Symbol.Flag,
-    [
-      'info-badge',
-      'info-bar',
-      'progress-bar',
-      'progress-ring',
-      'tool-tip',
-    ],
-    'category-status-info',
-  )
-  const layoutItem = createNavigationGroup(
-    'Layout',
-    'Layout',
-    Symbol.Page,
-    [
-      'border',
-      'canvas',
-      'expander',
-      'grid',
-      'relative-panel',
-      'split-view',
-      'stack-panel',
-      'variable-sized-wrap-grid',
-      'viewbox',
-    ],
-    'category-layout',
-  )
-  const menusToolbarsItem = createNavigationGroup(
-    'MenusToolbars',
-    'Menus & toolbars',
-    Symbol.Bullets,
-    [
-      'app-bar-button',
-      'app-bar-separator',
-      'app-bar-toggle-button',
-      'command-bar',
-      'command-bar-flyout',
-      'menu-bar',
-      'menu-flyout',
-      'swipe-control',
-      'standard-ui-command',
-      'xaml-ui-command',
-    ],
-    'category-menus-toolbars',
-  )
-  const navigationItem = createNavigationGroup(
-    'Navigation',
-    'Navigation',
-    Symbol.GlobalNavigationButton,
-    [
-      'breadcrumb-bar',
-      'navigation-view',
-      'pivot',
-      'selector-bar',
-      'tab-view',
-    ],
-    'category-navigation',
-  )
-  const scrollingItem = createNavigationGroup(
-    'Scrolling',
-    'Scrolling',
-    Symbol.Forward,
-    [
-      'annotated-scroll-bar',
-      'pips-pager',
-      'scroll-view',
-      'scroll-viewer',
-      'semantic-zoom',
-    ],
-    'category-scrolling',
-  )
-  const textItem = createNavigationGroup(
-    'Text',
-    'Text',
-    Symbol.Font,
-    [
-      'auto-suggest-box',
-      'number-box',
-      'password-box',
-      'rich-edit-box',
-      'rich-text-block',
-      'text-block',
-      'text-box',
-    ],
-    'category-text',
-  )
-  const fundamentalsItem = createNavigationGroup(
-    'Fundamentals',
-    'Fundamentals',
-    Symbol.Library,
-    [
-      'resources',
-      'style',
-      'binding',
-      'templates',
-      'custom-user-controls',
-      'xaml-conditions',
-      'scratch-pad',
-    ],
-    'category-fundamentals',
-  )
-  const frameworkItem = createNavigationGroup(
-    'Framework',
-    'Framework',
-    Symbol.Document,
-    ['signals', 'selection'],
-  )
-  const designItem = createNavigationGroup(
-    'Design',
-    'Design',
-    Symbol.Highlight,
-    [
-      'color',
-      'geometry',
-      'iconography',
-      'spacing',
-      'typography',
-    ],
-    'category-design',
-  )
-  const accessibilityItem = createNavigationGroup(
-    'Accessibility',
-    'Accessibility',
-    Symbol.Permissions,
-    [
-      'color-contrast',
-      'keyboard-navigation',
-      'screen-reader',
-    ],
-    'category-accessibility',
-  )
-  const stylesItem = createNavigationGroup(
-    'Styles',
-    'Styles',
-    Symbol.Highlight,
-    [
-      'acrylic-brush',
-      'animated-icon',
-      'compact-sizing',
-      'icon-element',
-      'line',
-      'shape',
-      'radial-gradient-brush',
-      'system-backdrops',
-      'system-backdrop-element',
-      'theme-shadow',
-    ],
-    'category-styles',
-  )
-  const mediaItem = createNavigationGroup(
-    'Media',
-    'Media',
-    Symbol.Play,
-    [
-      'animated-visual-player',
-      'capture-element-preview',
-      'image',
-      'map-control',
-      'media-player-element',
-      'person-picture',
-      'sound',
-    ],
-    'category-media',
-  )
-  const motionItem = createNavigationGroup(
-    'Motion',
-    'Motion',
-    Symbol.Sync,
-    [
-      'animation-interop',
-      'connected-animation',
-      'easing-functions',
-      'implicit-transitions',
-      'page-transitions',
-      'theme-transitions',
-      'parallax-view',
-    ],
-    'category-motion',
-  )
-  const windowingItem = createNavigationGroup(
-    'Windowing',
-    'Windowing',
-    Symbol.NewWindow,
-    [
-      'app-window',
-      'app-window-title-bar',
-      'multiple-windows',
-      'title-bar',
-    ],
-    'category-windowing',
-  )
-  const systemItem = createNavigationGroup(
-    'System',
-    'System',
-    Symbol.Setting,
-    [
-      'clipboard',
-      'content-island',
-      'storage-pickers',
-    ],
-    'category-system',
-  )
-  const shellItem = createNavigationGroup(
-    'Shell',
-    'Shell',
-    Symbol.Repair,
-    [
-      'app-notifications',
-      'badge-notifications',
-      'jump-list',
-    ],
-    'category-shell',
-  )
-  const navigationItems = [
-    homeItem,
-    frameworkItem,
-    fundamentalsItem,
-    designItem,
-    accessibilityItem,
-    stylesItem,
-    controlsHeader,
-    allItem,
-    basicInputItem,
-    collectionsItem,
-    dateTimeItem,
-    dialogsFlyoutsItem,
-    layoutItem,
-    mediaItem,
-    menusToolbarsItem,
-    motionItem,
-    windowingItem,
-    systemItem,
-    navigationItem,
-    scrollingItem,
-    shellItem,
-    textItem,
-    statusInfoItem,
-  ]
-  const diagnosticsItem = createNavigationItem(
-    itemBindings,
-    {
-      name: 'diagnostics',
-      label: 'Diagnostics',
-      icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
-      automationId: 'GalleryDiagnosticsNavItem',
-    },
-  )
-  const routeItems = new Map<GalleryRoute, NavigationViewItem>(
-    [
-      ['home', homeItem],
-      ...galleryPages.map((page) => [
-        page.id,
-        pageItems.get(page.id)!,
-      ] as const),
-    ],
-  )
-  routeItems.set('diagnostics', diagnosticsItem)
-  const categoryItems = new Map<string, NavigationViewItem>([
-    ['Framework', frameworkItem],
-    ['Fundamentals', fundamentalsItem],
-    ['Design', designItem],
-    ['Accessibility', accessibilityItem],
-    ['Styles', stylesItem],
-    ['Basic input', basicInputItem],
-    ['Collections', collectionsItem],
-    ['Date & time', dateTimeItem],
-    ['Dialogs & flyouts', dialogsFlyoutsItem],
-    ['Status & info', statusInfoItem],
-    ['Layout', layoutItem],
-    ['Media', mediaItem],
-    ['Menus & toolbars', menusToolbarsItem],
-    ['Motion', motionItem],
-    ['Windowing', windowingItem],
-    ['System', systemItem],
-    ['Navigation', navigationItem],
-    ['Scrolling', scrollingItem],
-    ['Shell', shellItem],
-    ['Text', textItem],
-  ])
-  for (const [category, routeId] of galleryCategoryRouteIds) {
-    const item = categoryItems.get(category)
-    if (item) {
-      routeItems.set(routeId, item)
-    }
-  }
-  const itemForRoute = (routeId: string) => {
-    if (routeId === 'settings') {
-      return navigation.current?.settingsItem ?? null
-    }
-    return routeItems.get(routeId as GalleryRoute) ?? null
-  }
-  const synchronizeNavigationSelection = (routeId: string) => {
-    const current = navigation.current
-    const item = itemForRoute(routeId)
-    if (!current || !item) {
-      return
-    }
-    current.selectedItem = item
-    const page = findGalleryPage(routeId)
-    const categoryItem = page
-      ? categoryItems.get(page.category)
-      : undefined
-    if (categoryItem) {
-      categoryItem.isExpanded = true
-    }
-  }
   const router = createRouter({
     routes: createGalleryRoutes(context),
     initialRouteId: context.model.route.peek(),
@@ -528,15 +201,86 @@ export function Shell(context: AppContext) {
       context.model.navigate(routeId)
     }
   })
-  const navigationHost = createRouterNavigationHost(router, {
-    enqueue: (callback) =>
-      context.window.dispatcherQueue.tryEnqueue(
-        DispatcherQueuePriority.Low,
-        callback,
-      ),
-    selectRoute: synchronizeNavigationSelection,
-  })
-  onCleanup(navigationHost.dispose)
+  const ownedIcon = (symbol: Symbol) =>
+    ownProjectedValue(
+      createSymbolIcon(SymbolIcon, symbol),
+      releaseProjected,
+    )
+  const categoryItem = (
+    definition: GalleryNavigationCategory,
+  ) => {
+    const routeId =
+      galleryCategoryRouteIds.get(definition.category)
+    const pages = galleryPages.filter(
+      (page) => page.category === definition.category,
+    )
+    if (pages.length === 0) {
+      throw new Error(
+        `Gallery navigation category '${definition.category}' has no pages.`,
+      )
+    }
+    return {
+      ...(routeId
+        ? { routeId }
+        : { name: `category-${definition.name}` }),
+      label: definition.category,
+      icon: ownedIcon(definition.symbol),
+      automationId:
+        `Gallery${definition.name}CategoryNavItem`,
+      children: pages.map((page) => ({
+        routeId: page.id,
+        label: page.title,
+        automationId: `Gallery${page.id}NavItem`,
+      })),
+    }
+  }
+  const navigationShell =
+    createRouterNavigationViewShell({
+      router,
+      bindings: {
+        NavigationViewItem,
+        TextBlock,
+        AutomationProperties,
+      },
+      items: [
+        {
+          routeId: 'home',
+          label: 'Home',
+          icon: ownedIcon(Symbol.Home),
+          automationId: 'GalleryHomeNavItem',
+        },
+        ...primaryNavigationCategories.map(categoryItem),
+        {
+          name: 'controls-header',
+          label: 'Controls',
+          automationId: 'GalleryControlsHeader',
+        },
+        {
+          name: 'all-controls',
+          label: 'All',
+          icon: ownedIcon(Symbol.AllApps),
+          automationId: 'GalleryAllControlsNavItem',
+        },
+        ...controlNavigationCategories.map(categoryItem),
+      ],
+      footerItems: [
+        {
+          routeId: 'diagnostics',
+          label: 'Diagnostics',
+          icon: ownedIcon(Symbol.Repair),
+          automationId: 'GalleryDiagnosticsNavItem',
+        },
+      ],
+      settingsRouteId: 'settings',
+      preservePaneOpenOnSelection: true,
+      enqueue: (callback) =>
+        context.window.dispatcherQueue.tryEnqueue(
+          DispatcherQueuePriority.Low,
+          callback,
+        ),
+      releaseProjected,
+    })
+  onCleanup(navigationShell.dispose)
 
   return (
     <ThemeControllerContext.Provider value={themeController}>
@@ -582,7 +326,7 @@ export function Shell(context: AppContext) {
             }
           }}
           onPaneToggleRequested={() => {
-            const current = navigation.current
+            const current = navigationShell.navigation
             if (current) {
               current.isPaneOpen = !current.isPaneOpen
             }
@@ -602,12 +346,7 @@ export function Shell(context: AppContext) {
           />
         </UI.TitleBar>
         <Navigation
-          ref={(value) => {
-            navigation.current = value
-            if (value) {
-              navigationHost.synchronizeSelection()
-            }
-          }}
+          ref={navigationShell.ref}
           gridRow={1}
           automationId="GalleryNavigation"
           requestedTheme={themeController.requestedTheme}
@@ -617,28 +356,13 @@ export function Shell(context: AppContext) {
           }
           isPaneToggleButtonVisible={false}
           alwaysShowHeader={false}
-          menuItems={navigationItems}
-          footerMenuItems={[diagnosticsItem]}
+          menuItems={navigationShell.menuItems}
+          footerMenuItems={navigationShell.footerMenuItems}
           isSettingsVisible
-          onSelectionChanged={(_sender, args) => {
-            if (args.isSettingsSelected) {
-              navigationHost.requestNativeNavigation('settings')
-              return
-            }
-            const selectedContainer =
-              args.selectedItemContainer
-            if (!selectedContainer) {
-              return
-            }
-            const route =
-              selectedContainer.name as GalleryRoute
-            if (isGalleryRoute(route)) {
-              navigationHost.requestNativeNavigation(route)
-            }
-          }}
+          onSelectionChanged={navigationShell.onSelectionChanged}
         >
           <RouterProvider router={router}>
-            {navigationHost.render(() => (
+            {navigationShell.render(() => (
               <ErrorBoundary
                 reset={computed(
                   () =>

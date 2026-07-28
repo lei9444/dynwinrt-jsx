@@ -653,6 +653,11 @@ test('router NavigationView shell owns items and selection', () => {
         render: () => null,
       },
       {
+        id: 'work',
+        path: '/work',
+        render: () => null,
+      },
+      {
         id: 'tasks',
         path: '/tasks',
         render: () => null,
@@ -686,9 +691,8 @@ test('router NavigationView shell owns items and selection', () => {
         label: 'Home',
       },
       {
-        name: 'work',
+        routeId: 'work',
         label: 'Work',
-        selectable: false,
         children: [
           {
             routeId: 'tasks',
@@ -698,6 +702,7 @@ test('router NavigationView shell owns items and selection', () => {
       },
     ],
     settingsRouteId: 'settings',
+    preservePaneOpenOnSelection: true,
     enqueue(callback) {
       queue.push(callback)
       return true
@@ -715,6 +720,7 @@ test('router NavigationView shell owns items and selection', () => {
   const navigation = {
     selectedItem: null,
     settingsItem,
+    isPaneOpen: false,
   }
 
   shell.ref(navigation)
@@ -749,14 +755,34 @@ test('router NavigationView shell owns items and selection', () => {
   queue.shift()()
   assert.equal(router.routeId.value, 'home')
 
+  navigation.isPaneOpen = true
+  navigation.selectedItem = shell.itemForRoute('work')
+  shell.onSelectionChanged(navigation, {
+    isSettingsSelected: false,
+    selectedItemContainer: shell.itemForRoute('work'),
+  })
+  navigation.isPaneOpen = false
+  queue.shift()()
+  queue.shift()()
+  queue.shift()()
+  assert.equal(router.routeId.value, 'work')
+  assert.equal(navigation.isPaneOpen, false)
+  queue.shift()()
+  assert.equal(navigation.isPaneOpen, true)
+
+  navigation.isPaneOpen = true
   navigation.selectedItem = settingsItem
   shell.onSelectionChanged(navigation, {
     isSettingsSelected: true,
     selectedItemContainer: settingsItem,
   })
+  navigation.isPaneOpen = false
   queue.shift()()
   queue.shift()()
   assert.equal(router.routeId.value, 'settings')
+  queue.shift()()
+  queue.shift()()
+  assert.equal(navigation.isPaneOpen, true)
   assert.equal(navigation.selectedItem, settingsItem)
 
   assert.throws(
@@ -766,6 +792,7 @@ test('router NavigationView shell owns items and selection', () => {
   assert.equal(shell.disposed, false)
   shell.dispose()
   assert.equal(shell.disposed, true)
+  shell.ref(null)
   assert.equal(
     releases.filter((value) => value === tasksItem).length,
     2,
