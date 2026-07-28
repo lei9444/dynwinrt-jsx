@@ -5,6 +5,7 @@ param(
     [string]$WinAppPath,
     [int]$TimeoutMilliseconds = 10000,
     [switch]$SkipKeyboardInput,
+    [switch]$RouterOnly,
     [switch]$ClipboardOnly,
     [switch]$SystemOnly,
     [switch]$ShellOnly,
@@ -238,10 +239,13 @@ $inspectorExportPath = Join-Path $evidenceRoot "inspector-snapshot.json"
 Remove-Item -Path $smokeStatePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $heartbeatEvidencePath -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
-[IO.File]::WriteAllText(
-    $smokeStatePath,
+$smokeInitialState = if ($RouterOnly) {
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"route":"toggle-switch","recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
+}
+else {
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
-)
+}
+[IO.File]::WriteAllText($smokeStatePath, $smokeInitialState)
 $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
 $env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
@@ -314,6 +318,101 @@ try {
         $migratedState.favoritePageIds -contains "icons"
     ) {
         throw "Legacy Gallery page IDs were not migrated."
+    }
+
+    if ($RouterOnly) {
+        Invoke-WinApp @(
+            "ui", "wait-for", "ToggleSwitchPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Ensure-NavigationItem $windowHandle "GalleryBasicInputCategoryNavItem"
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryBasicInputCategoryNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "BasicInputCategoryPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "Open ToggleSwitch",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "ToggleSwitchPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryBasicInputCategoryNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "BasicInputCategoryPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "set-value", "TextBox", "multiple windows xaml",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GallerySearchHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "set-value", "TextBox", "",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryHomeHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryDiagnosticsNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "DiagnosticsPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$windowHandle")
+        Invoke-WinApp @(
+            "ui", "wait-for", "SettingsPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryHomeNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryHomeHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @("ui", "invoke", "Close", "-w", "$windowHandle")
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after Router smoke."
+        }
+        $windowHandle = 0
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery Router smoke exited with code $($appProcess.ExitCode)."
+        }
+        $stdout = Get-Content $stdoutPath -Raw
+        if ($stdout -notmatch "renderer disposed cleanly") {
+            throw "The Gallery Router smoke did not report clean renderer disposal."
+        }
+        if (Test-Path $heartbeatEvidencePath) {
+            throw "The Gallery Router smoke produced heartbeat timeout evidence."
+        }
+        Write-Host "Gallery Router smoke passed. Evidence: $evidenceRoot"
+        return
     }
 
     if (-not ($ClipboardOnly -or $SystemOnly -or $ShellOnly)) {

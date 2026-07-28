@@ -18,7 +18,8 @@ param(
     [ValidateRange(3, 100)]
     [int]$MinimumTrendCycles = 5,
     [switch]$UseExistingWinAppCli,
-    [switch]$SkipRestore
+    [switch]$SkipRestore,
+    [switch]$SkipDesktopInput
 )
 
 Set-StrictMode -Version Latest
@@ -28,6 +29,7 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $dashboardRoot = Join-Path $repoRoot "examples\dashboard"
 $prepareScript = Join-Path $PSScriptRoot "run-dashboard-local.ps1"
 $smokeScript = Join-Path $PSScriptRoot "smoke-dashboard-ui.ps1"
+$hangCaptureScript = Join-Path $PSScriptRoot "capture-process-hang.ps1"
 if (-not $WorkRoot) {
     $WorkRoot = Split-Path $repoRoot -Parent
 }
@@ -297,6 +299,7 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
     $process = $null
     $failure = $null
     $cleanupFailure = $null
+    $hangCapture = $null
     try {
         Write-Host "[$cycleName] Launching dashboard..." -ForegroundColor Cyan
         $oldStatePath = $env:DYNWINRT_JSX_STATE_PATH
@@ -316,12 +319,19 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
         [IO.File]::WriteAllText($pidPath, "$($process.Id)`n")
         Wait-DashboardReady $process $stdoutPath $stderrPath
 
-        & $smokeScript `
-            -WorkRoot $WorkRoot `
-            -WinAppPath $WinAppPath `
-            -ExpectedProcessId $process.Id `
-            -OutputDirectory $cycleDirectory `
-            -KeepOpen
+        $smokeArgs = @{
+            WorkRoot = $WorkRoot
+            WinAppPath = $WinAppPath
+            ExpectedProcessId = $process.Id
+            OutputDirectory = $cycleDirectory
+            DiagnosticsEvidencePath =
+                (Join-Path $cycleDirectory "diagnostics-evidence.json")
+            KeepOpen = $true
+        }
+        if ($SkipDesktopInput) {
+            $smokeArgs.SkipDesktopInput = $true
+        }
+        & $smokeScript @smokeArgs
         if ($LASTEXITCODE -ne 0) {
             throw "UI smoke failed with code $LASTEXITCODE."
         }
@@ -352,6 +362,11 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
         if ($process.ExitCode -ne 0) {
             throw "Dashboard exited with code $($process.ExitCode)."
         }
+        & $WinAppPath ui status -a "$($process.Id)" --json 2>$null |
+            Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw "Dashboard left an orphan UIA window after process exit."
+        }
 
         $stdout = Read-SharedText $stdoutPath
         $diagnosticMatch = [regex]::Match(
@@ -361,6 +376,40 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
         if (-not $diagnosticMatch.Success) {
             throw "Renderer diagnostics were not found in dashboard output."
         }
+        $routeEvidencePath = Join-Path $cycleDirectory "route-smoke.json"
+        $diagnosticsEvidencePath =
+            Join-Path $cycleDirectory "diagnostics-evidence.json"
+        $finalEvidencePath = Join-Path $cycleDirectory "final-evidence.json"
+        foreach ($evidencePath in @(
+            $routeEvidencePath,
+            $diagnosticsEvidencePath,
+            $finalEvidencePath
+        )) {
+            if (-not (Test-Path $evidencePath)) {
+                throw "Expected evidence file was not written: $evidencePath"
+            }
+        }
+        $routeEvidence =
+            [IO.File]::ReadAllText($routeEvidencePath) |
+                ConvertFrom-Json
+        if (-not $routeEvidence.passed) {
+            throw "Route smoke evidence did not pass."
+        }
+        $finalEvidence =
+            [IO.File]::ReadAllText($finalEvidencePath) |
+                ConvertFrom-Json
+        if (-not $finalEvidence.rendererIdle.idle) {
+            throw "Final renderer inspection was not idle."
+        }
+        $finalEvidence |
+            Add-Member `
+                -NotePropertyName routes `
+                -NotePropertyValue $routeEvidence.routes `
+                -Force
+        [IO.File]::WriteAllText(
+            $finalEvidencePath,
+            "$($finalEvidence | ConvertTo-Json -Depth 100)`n"
+        )
 
         Copy-Item $stdoutPath (Join-Path $cycleDirectory "dashboard.stdout.log") -Force
         Copy-Item $stderrPath (Join-Path $cycleDirectory "dashboard.stderr.log") -Force
@@ -374,6 +423,9 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
             )
             diagnostics = $diagnosticMatch.Groups[1].Value | ConvertFrom-Json
             resources = $resources
+            routeEvidence = $routeEvidencePath
+            diagnosticsEvidence = $diagnosticsEvidencePath
+            finalEvidence = $finalEvidencePath
             artifacts = $cycleDirectory
         })
     }
@@ -383,6 +435,16 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
     finally {
         if ($process) {
             $process.Refresh()
+            if ($failure -and -not $process.HasExited) {
+                try {
+                    $hangCapture = & $hangCaptureScript `
+                        -ProcessId $process.Id `
+                        -OutputDirectory (Join-Path $cycleDirectory "hang-capture")
+                }
+                catch {
+                    $hangCapture = $_.Exception.Message
+                }
+            }
             if (-not $process.HasExited) {
                 try {
                     Stop-Process -Id $process.Id -Force -ErrorAction Stop
@@ -419,6 +481,7 @@ for ($cycle = 1; $cycle -le $Cycles; $cycle += 1) {
                 else {
                     $null
                 }
+                hangCapture = $hangCapture
                 artifacts = $cycleDirectory
             })
         }

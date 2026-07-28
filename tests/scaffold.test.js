@@ -34,6 +34,20 @@ function generatedClasses(manifest, namespace) {
 }
 
 function assertLifetimeTeardownSource(workerSource) {
+  if (/defineWinUIApp/.test(workerSource)) {
+    assert.match(workerSource, /bindings: WinUIBindings/)
+    assert.match(workerSource, /beforeClose\(\)/)
+    assert.match(workerSource, /disposeAfterRender\(\)/)
+    assert.match(
+      workerSource,
+      /disposeBeforeRender\(\) \{[\s\S]*hotReloadController\?\.dispose\(\)/s,
+    )
+    assert.match(
+      workerSource,
+      /onDiagnostics\(diagnostics\) \{[\s\S]*type: 'diagnostics'/s,
+    )
+    return
+  }
   assert.match(workerSource, /createProjectedLifetimeScope/)
   if (/runWinUIWorkerApp/.test(workerSource)) {
     assert.match(workerSource, /createProjectionScope\(\)/)
@@ -112,16 +126,22 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   )
   assertLifetimeTeardownSource(workerSource)
   assert.match(workerSource, /import \* as WinUIBindings/)
-  assert.match(workerSource, /createWinUIRendererPreset/)
-  assert.match(workerSource, /winuiRendererPreset\.createRenderer\(\{/)
-  assert.match(workerSource, /releaseNative: releaseProjected/)
-  assert.match(workerSource, /releaseProjectedValue/)
+  assert.match(workerSource, /defineWinUIApp/)
+  assert.match(workerSource, /bindings: WinUIBindings/)
+  assert.match(workerSource, /createDiagnosticChannel/)
+  assert.match(workerSource, /diagnostics,/)
+  assert.doesNotMatch(
+    workerSource,
+    /releaseNative: releaseProjected/,
+  )
   const appSource = fs.readFileSync(
     path.join(target, 'src', 'app.tsx'),
     'utf8',
   )
   assert.match(appSource, /styles\.heading/)
-  assert.match(appSource, /createNavigationHost/)
+  assert.match(appSource, /createRouter/)
+  assert.match(appSource, /createRouterNavigationHost/)
+  assert.match(appSource, /<RouterProvider router=\{router\}>/)
   assert.match(appSource, /styles\.button/)
   assert.match(appSource, /tokens\.spacing/)
   assert.match(appSource, /createWinUIThemeController/)
@@ -351,6 +371,86 @@ test('repository keeps the real WinUI native selftest wired', () => {
       ),
     ),
   )
+})
+
+test('repository keeps structured debug automation wired', () => {
+  const capturePath = path.join(
+    __dirname,
+    '..',
+    'scripts',
+    'capture-process-hang.ps1',
+  )
+  const repeatSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'scripts',
+      'repeat-dashboard-smoke.ps1',
+    ),
+    'utf8',
+  )
+  const smokeSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'scripts',
+      'smoke-dashboard-ui.ps1',
+    ),
+    'utf8',
+  )
+
+  assert.ok(fs.existsSync(capturePath))
+  assert.match(repeatSource, /capture-process-hang\.ps1/)
+  assert.match(smokeSource, /dynwinrt-jsx\.route-smoke/)
+  assert.match(smokeSource, /DiagnosticsEvidencePath/)
+  assert.match(smokeSource, /Assert-SingleDashboardWindow/)
+})
+
+test('Gallery uses the signal-native router', () => {
+  const galleryShell = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'src',
+      'gallery-shell.tsx',
+    ),
+    'utf8',
+  )
+
+  assert.match(galleryShell, /createRouter(?:<|\()/)
+  assert.match(galleryShell, /createRouterNavigationHost/)
+  assert.match(galleryShell, /<RouterProvider router=\{router\}>/)
+  assert.match(galleryShell, /<Outlet \/>/)
+  assert.match(galleryShell, /createGalleryRoutes/)
+  assert.doesNotMatch(galleryShell, /createNavigationHost/)
+  assert.doesNotMatch(galleryShell, /renderSamplePage/)
+  assert.doesNotMatch(
+    galleryShell,
+    /\.\/pages\/basic-input\/button/,
+  )
+  assert.doesNotMatch(
+    galleryShell,
+    /currentPage\?\.category ===/,
+  )
+  for (const directory of [
+    'basic-input',
+    'collections',
+    'fundamentals',
+    'styles',
+  ]) {
+    assert.ok(fs.existsSync(path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'src',
+      'pages',
+      directory,
+      'routes.tsx',
+    )))
+  }
 })
 
 test('CI covers pinned Windows and ARM64 source matrices', () => {

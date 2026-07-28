@@ -10,6 +10,12 @@
       "dynwinrt-jsx": [
         "./src/index.ts"
       ],
+      "dynwinrt-jsx/host": [
+        "./src/host.ts"
+      ],
+      "dynwinrt-jsx/worker": [
+        "./src/worker.ts"
+      ],
       "dynwinrt-jsx/jsx-runtime": [
         "./src/jsx-runtime.ts"
       ],

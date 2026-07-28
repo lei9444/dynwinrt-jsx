@@ -12,6 +12,7 @@ test('host entry avoids renderer and WinUI modules', () => {
     require.resolve('../dist/runtime/bridge.js'),
     require.resolve('../dist/runtime/capability.js'),
     require.resolve('../dist/runtime/diagnostics.js'),
+    require.resolve('../dist/runtime/diagnostic-evidence.js'),
     require.resolve('../dist/runtime/persistence.js'),
     require.resolve('../dist/runtime/heartbeat.js'),
   ]) {
@@ -22,7 +23,17 @@ test('host entry avoids renderer and WinUI modules', () => {
   assert.equal(typeof host.createMessageTransport, 'function')
   assert.equal(typeof host.capabilityAvailable, 'function')
   assert.equal(typeof host.createStateBridge, 'function')
+  assert.equal(typeof host.createDiagnosticChannel, 'function')
+  assert.equal(typeof host.createDiagnosticBuffer, 'function')
+  assert.equal(
+    typeof host.createDiagnosticEvidenceBundle,
+    'function',
+  )
   assert.equal(typeof host.createDiagnosticRecord, 'function')
+  assert.equal(
+    typeof host.isDiagnosticProtocolRecord,
+    'function',
+  )
   assert.equal(typeof host.createJsonStateStore, 'function')
 
   for (const modulePath of [

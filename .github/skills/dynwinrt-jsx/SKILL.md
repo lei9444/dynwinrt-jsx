@@ -89,18 +89,20 @@ adoption map.
 | WinUI resources, converters, attached props | `src/winui/winui.ts`, `src/winui/winui-resources.ts` |
 | URI, image, brush, font, icon, and nullable values | `src/winui/values.ts`, `src/winui/icons.ts` |
 | Grid and navigation helpers | `src/winui/grid.ts`, `src/winui/navigation.ts` |
+| Signal-native routing | `src/core/router.ts`, `src/core/router-path.ts`, `src/core/router-matcher.ts`, `src/core/router-registry.ts`, `src/winui/router.ts` |
 | ListView, ComboBox, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/selector.ts` |
 | SelectorBar ownership and ScrollViewer state | `src/winui/selector-bar.ts`, `src/winui/scroll-viewer.ts` |
 | Native ItemsRepeater/ItemsView virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, Popup, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
 | Theme resources, tokens, and recipes | `src/winui/resource.ts`, `src/winui/theme.ts`, `src/winui/style.ts` |
 | Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
-| Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/heartbeat.ts` |
+| Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/diagnostic-evidence.ts`, `src/runtime/heartbeat.ts` |
 | Worker Window lifecycle and file hot reload | `src/worker.ts` |
 | Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
 | Representative native app | `examples/dashboard` |
+| Gallery route modules | `examples/gallery/src/pages/routes.tsx`, `examples/gallery/src/pages/*/routes.tsx` |
 | Runtime and type contracts | `tests` |
 
 ## Required invariants
@@ -189,6 +191,9 @@ The built-in WinUI layer currently provides:
 - Grid row, column, and span attached setters.
 - Typed Grid row and column definitions through `createGridControl()`.
 - NavigationView menu/footer collections through `createNavigationViewControl()`.
+- Nested route definitions, signal params/query/state, owned `Outlet` scopes,
+  typed route registries, logical-parent `up()`, in-memory history, and
+  NavigationView route-ID/target integration.
 - Scoped ContentDialog rendering, native icon factories, and focus targets.
 - ListView item/slot adapters with controlled selection helpers.
 - ComboBox items/header ownership with mounted controlled selection.
@@ -221,6 +226,8 @@ The built-in WinUI layer currently provides:
   snapshots without property or signal values.
 - Optional DispatcherQueue heartbeats send recent inspector snapshots to a Host
   monitor that detects startup hangs, UI-thread timeouts, and recovery.
+- Bounded diagnostic buffers and versioned evidence bundles combine lifecycle,
+  route, renderer, heartbeat, UIA, and final-idle evidence.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters
@@ -319,6 +326,9 @@ Use `run-native-selftest.ps1` for real WinUI property, event, keyed identity,
 error propagation, automation, focus, cleanup, and Worker failure evidence.
 Use `run-accessibility-matrix.ps1 -IncludeUIA` for reversible High Contrast,
 150% text scale, reduced-motion, keyboard, and full dashboard UIA evidence.
+Use `repeat-dashboard-smoke.ps1 -SkipDesktopInput` for lock-safe route,
+diagnostics-export, heartbeat, orphan-window, and final-idle evidence. Failed
+live processes are captured with `capture-process-hang.ps1` before cleanup.
 
 Create an application from sibling repositories:
 

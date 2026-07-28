@@ -2,12 +2,15 @@
 
 const assert = require('node:assert/strict')
 const test = require('node:test')
+const { native } = require('../dist/index.js')
 
 const workerPath = require.resolve('../dist/worker.js')
 assert.equal(require.resolve('dynwinrt-jsx/worker'), workerPath)
 const {
+  createDiagnosticChannel,
   createFileHotReloadController,
   createRendererHeartbeatController,
+  defineWinUIApp,
   installWinUIWindowLifecycle,
   runWinUIWorkerApp: runWinUIWorkerAppRuntime,
 } = require('dynwinrt-jsx/worker')
@@ -180,6 +183,57 @@ test('window lifecycle disposes owned work in deterministic order', () => {
     'closed-unsubscribe',
     'application-exit',
   ])
+})
+
+test('window lifecycle rejects non-idle inspector state', () => {
+  const harness = createWindowHarness()
+  const errors = []
+  const exitCodes = []
+  installWinUIWindowLifecycle({
+    application: {
+      current: { exit() {} },
+    },
+    window: harness.window,
+    appWindow: harness.appWindow,
+    renderer: {
+      diagnostics: idleDiagnostics,
+      inspector: {
+        snapshot() {
+          return {
+            timestamp: 1,
+            diagnostics: idleDiagnostics,
+            nodes: [{
+              id: 1,
+              kind: 'native',
+              label: 'Button',
+              scopeId: 1,
+            }],
+            reactive: {
+              rootScopeIds: [],
+              scopes: [],
+              observers: [],
+              dependencies: [],
+            },
+            subscriptions: [],
+            operations: [],
+          }
+        },
+      },
+    },
+    disposeRender() {},
+    onError(error) {
+      errors.push(error)
+    },
+    getRequestedExitCode: () => 0,
+    setExitCode(value) {
+      exitCodes.push(value)
+    },
+  })
+
+  harness.close()
+
+  assert.equal(exitCodes.at(-1), 1)
+  assert.match(errors[0].message, /is not idle/)
 })
 
 test('window lifecycle cancels projection failure and permits retry', () => {
@@ -1710,6 +1764,301 @@ test('worker app reports renderer creation failure without starting', async () =
   assert.equal(exitCode, 1)
   assert.equal(started, false)
   assert.deepEqual(errors, [failure])
+})
+
+function createDefinedAppHarness() {
+  const order = []
+  const released = []
+  const scopes = []
+  let applicationStartCount = 0
+
+  class TextBlock {
+    text = ''
+  }
+
+  class Window {
+    content = null
+    closing
+    closed
+    appWindow = {
+      onClosing: (callback) => {
+        this.closing = callback
+        return () => order.push('closing-unsubscribe')
+      },
+    }
+
+    onClosed(callback) {
+      this.closed = callback
+      return () => order.push('closed-unsubscribe')
+    }
+
+    activate() {
+      order.push('window-activate')
+    }
+
+    close() {
+      order.push('window-close')
+      const args = { cancel: false }
+      this.closing(undefined, args)
+      if (!args.cancel) {
+        this.closed()
+      }
+    }
+  }
+
+  const current = {
+    exit() {
+      order.push('application-exit')
+    },
+  }
+  const bindings = {
+    Application: {
+      current,
+      startScheduled(callback) {
+        applicationStartCount += 1
+        order.push('application-start')
+        callback()
+        return Promise.resolve()
+      },
+      create(callback) {
+        order.push('application-create')
+        callback()
+      },
+    },
+    Window,
+    TextBlock,
+    createProjectedLifetimeScope() {
+      const scope = {
+        disposed: false,
+        dispose() {
+          order.push('projection-dispose')
+          scope.disposed = true
+        },
+      }
+      scopes.push(scope)
+      return scope
+    },
+    releaseProjected(value) {
+      released.push(value)
+    },
+  }
+
+  return {
+    bindings,
+    order,
+    released,
+    scopes,
+    get applicationStartCount() {
+      return applicationStartCount
+    },
+  }
+}
+
+test('defined app owns generated renderer and lifetime wiring', async () => {
+  const harness = createDefinedAppHarness()
+  const Text = native(harness.bindings.TextBlock)
+  const records = []
+  const errors = []
+  let overriddenReleaseCount = 0
+  const diagnostics = createDiagnosticChannel({
+    source: 'defined-app-test',
+    onRecord(record) {
+      records.push(record)
+    },
+  })
+  const app = defineWinUIApp({
+    bindings: harness.bindings,
+    diagnostics,
+    initializeRuntime() {
+      harness.order.push('runtime-initialize')
+    },
+    rendererOptions: {
+      releaseNative() {
+        overriddenReleaseCount += 1
+      },
+    },
+    configureWindow({
+      bindings,
+      capabilities,
+      releaseProjected,
+    }) {
+      assert.equal(bindings, harness.bindings)
+      assert.equal(capabilities.text, true)
+      assert.equal(
+        releaseProjected,
+        harness.bindings.releaseProjected,
+      )
+      harness.order.push('window-configure')
+    },
+    mount({ bindings, diagnostics: mountedDiagnostics }) {
+      assert.equal(bindings, harness.bindings)
+      assert.equal(mountedDiagnostics, diagnostics)
+      return {
+        child: Text({ text: 'Hello' }),
+        afterActivate({ window }) {
+          window.close()
+        },
+      }
+    },
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(app.started, false)
+  assert.equal(app.capabilities.text, true)
+  const exitCode = await app.run()
+
+  assert.equal(exitCode, 0)
+  assert.equal(app.started, true)
+  assert.equal(harness.applicationStartCount, 1)
+  assert.equal(harness.scopes.length, 1)
+  assert.equal(harness.scopes[0].disposed, true)
+  assert.equal(overriddenReleaseCount, 0)
+  assert.equal(
+    harness.released.some(
+      (value) => value instanceof harness.bindings.TextBlock,
+    ),
+    true,
+  )
+  assert.deepEqual(errors, [])
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'lifecycle' &&
+        record.payload.target === 'window' &&
+        record.payload.state === 'active',
+    ),
+  )
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'ownership' &&
+        record.payload.resource === 'projection-scope' &&
+        record.payload.action === 'released',
+    ),
+  )
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'snapshot' &&
+        record.payload.name === 'renderer-final',
+    ),
+  )
+  await assert.rejects(
+    app.run(),
+    /can only run once/,
+  )
+})
+
+test('defined app reports runtime initialization failure', async () => {
+  const harness = createDefinedAppHarness()
+  const errors = []
+  const records = []
+  const app = defineWinUIApp({
+    bindings: harness.bindings,
+    initializeRuntime() {
+      throw new Error('runtime init failed')
+    },
+    mount() {
+      throw new Error('mount should not run')
+    },
+    diagnostics: createDiagnosticChannel({
+      source: 'defined-app-test',
+      onRecord(record) {
+        records.push(record)
+      },
+    }),
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(await app.run(), 1)
+  assert.equal(harness.applicationStartCount, 0)
+  assert.match(errors[0].message, /runtime init failed/)
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'error' &&
+        record.payload.operation === 'worker-starting',
+    ),
+  )
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'lifecycle' &&
+        record.payload.target === 'worker' &&
+        record.payload.state === 'failed',
+    ),
+  )
+})
+
+test('defined app does not report pre-activation failures as closed', async () => {
+  const harness = createDefinedAppHarness()
+  const errors = []
+  const records = []
+  const app = defineWinUIApp({
+    bindings: harness.bindings,
+    configureWindow() {
+      throw new Error('window configuration failed')
+    },
+    mount() {
+      throw new Error('mount should not run')
+    },
+    diagnostics: createDiagnosticChannel({
+      source: 'defined-app-test',
+      onRecord(record) {
+        records.push(record)
+      },
+    }),
+    onError(error) {
+      errors.push(error)
+    },
+  })
+
+  assert.equal(await app.run(), 1)
+  assert.match(
+    errors[0].message,
+    /window configuration failed/,
+  )
+  assert.ok(
+    records.some(
+      (record) =>
+        record.kind === 'lifecycle' &&
+        record.payload.target === 'window' &&
+        record.payload.state === 'failed',
+    ),
+  )
+  assert.equal(
+    records.some(
+      (record) =>
+        record.kind === 'lifecycle' &&
+        record.payload.target === 'window' &&
+        record.payload.state === 'closed',
+    ),
+    false,
+  )
+})
+
+test('defined app requires the new generated binding contract', () => {
+  const harness = createDefinedAppHarness()
+  assert.throws(
+    () => defineWinUIApp({
+      bindings: {
+        ...harness.bindings,
+        Application: {
+          current: harness.bindings.Application.current,
+          create: harness.bindings.Application.create,
+        },
+      },
+      mount() {
+        return { child: null }
+      },
+      onError() {},
+    }),
+    /Application\.startScheduled/,
+  )
 })
 
 test('file hot reload controller applies versions and disposes once', async () => {

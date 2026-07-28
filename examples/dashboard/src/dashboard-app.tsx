@@ -1,6 +1,8 @@
 import {
   ErrorBoundary,
   For,
+  Outlet,
+  RouterProvider,
   Show,
   computed,
   createContext,
@@ -11,15 +13,16 @@ import {
   createGridControl,
   createItemsRepeaterControl,
   createListViewControl,
-  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
+  createRouter,
+  createRouterNavigationHost,
   createSymbolIcon,
   createWinUIThemeController,
+  effect,
   formatRendererDiagnostics,
   gridLength,
   onCleanup,
-  onMount,
   showContentDialog,
   showFlyout,
   signal,
@@ -28,6 +31,7 @@ import {
   tokens,
   useContext,
   type Child,
+  type DiagnosticChannel,
   type ReadonlySignal,
   type RefObject,
   type Renderer,
@@ -135,8 +139,10 @@ export interface DashboardAppContext {
   readonly model: DashboardModel
   readonly renderer: Renderer
   readonly window: Window
+  readonly diagnostics: DiagnosticChannel
   getXamlRoot(): XamlRoot
   refreshDiagnostics(): void
+  exportDiagnostics(): void
 }
 
 interface PageProps {
@@ -150,6 +156,7 @@ interface PageProps {
 interface TaskRowProps {
   readonly context: DashboardAppContext
   readonly task: DashboardTask
+  readonly beforeRemove: () => void
   readonly afterRemoveFocus: () => void
 }
 
@@ -414,6 +421,18 @@ function DashboardPage(context: DashboardAppContext) {
               )}
             />
             <UI.TextBlock
+              automationId="StructuredDiagnosticsStatus"
+              text={context.model.diagnosticSummary}
+            />
+            <UI.TextBlock
+              automationId="HeartbeatStatus"
+              text={context.model.heartbeatSummary}
+            />
+            <UI.TextBlock
+              automationId="DiagnosticsExportStatus"
+              text={context.model.diagnosticExportStatus}
+            />
+            <UI.TextBlock
               automationId="PersistenceStatus"
               text={computed(() =>
                 context.model.persistenceError.value
@@ -493,6 +512,7 @@ function deferFocus(window: Window, focus: () => boolean): void {
 async function confirmRemove(
   context: DashboardAppContext,
   task: DashboardTask,
+  beforeRemove: () => void,
   cancelFocus: () => void,
   afterRemoveFocus: () => void,
 ): Promise<void> {
@@ -513,6 +533,7 @@ async function confirmRemove(
     {
       onClosed(result) {
         if (result === ContentDialogResult.Primary) {
+          beforeRemove()
           context.model.removeTask(task.id)
         }
       },
@@ -571,6 +592,7 @@ function TaskRow(props: TaskRowProps) {
             void confirmRemove(
               props.context,
               props.task,
+              props.beforeRemove,
               () => {
                 deferFocus(
                   props.context.window,
@@ -599,6 +621,12 @@ function TasksPage(context: DashboardAppContext) {
     FocusState.Programmatic,
   )
   const selectedTaskIndex = signal(-1)
+  effect(() => {
+    const count = context.model.tasks.value.length
+    if (selectedTaskIndex.value >= count) {
+      selectedTaskIndex.value = -1
+    }
+  })
   const addTask = () => {
     const textBox = input.current
     if (!textBox) {
@@ -683,6 +711,9 @@ function TasksPage(context: DashboardAppContext) {
               <TaskRow
                 context={context}
                 task={task}
+                beforeRemove={() => {
+                  selectedTaskIndex.value = -1
+                }}
                 afterRemoveFocus={() => {
                   deferFocus(
                     context.window,
@@ -744,6 +775,12 @@ function DiagnosticsPage(context: DashboardAppContext) {
             onClick={context.refreshDiagnostics}
           >
             Refresh diagnostics
+          </UI.Button>
+          <UI.Button
+            automationId="ExportDiagnosticsButton"
+            onClick={context.exportDiagnostics}
+          >
+            Export diagnostics
           </UI.Button>
         </UI.StackPanel>
       </Card>
@@ -822,22 +859,6 @@ function SettingsPage(context: DashboardAppContext) {
   )
 }
 
-function renderRoute(
-  context: DashboardAppContext,
-  route: DashboardRoute,
-): Child {
-  switch (route) {
-    case 'tasks':
-      return <TasksPage {...context} />
-    case 'diagnostics':
-      return <DiagnosticsPage {...context} />
-    case 'settings':
-      return <SettingsPage {...context} />
-    default:
-      return <DashboardPage {...context} />
-  }
-}
-
 function ApplicationShell(context: DashboardAppContext) {
   const navigation: RefObject<NavigationViewInstance> = {
     current: null,
@@ -853,6 +874,44 @@ function ApplicationShell(context: DashboardAppContext) {
   })
   onCleanup(themeController.dispose)
   const teachingTip: RefObject<TeachingTip> = { current: null }
+  let unsubscribeTeachingTipProperty:
+    | (() => void)
+    | undefined
+  const setTeachingTip = (value: TeachingTip | null) => {
+    if (teachingTip.current === value) {
+      return
+    }
+    if (unsubscribeTeachingTipProperty) {
+      unsubscribeTeachingTipProperty()
+      unsubscribeTeachingTipProperty = undefined
+    }
+    teachingTip.current = value
+    if (!value) {
+      return
+    }
+    const property = TeachingTip.isOpenProperty
+    let token: bigint
+    try {
+      token = value.registerPropertyChangedCallback(
+        property,
+        () => {
+          if (!value.isOpen) {
+            teachingTipOpen.value = false
+          }
+        },
+      )
+    }
+    catch (error) {
+      teachingTip.current = null
+      throw error
+    }
+    unsubscribeTeachingTipProperty = () => {
+      value.unregisterPropertyChangedCallback(
+        property,
+        token,
+      )
+    }
+  }
   const teachingTipOpen = signal(false)
   let teachingTipTarget: ButtonInstance | null = null
   let teachingTipTimer:
@@ -890,24 +949,6 @@ function ApplicationShell(context: DashboardAppContext) {
       teachingTipTimer.start()
     },
   }
-  onMount(() => {
-    const tip = teachingTip.current
-    if (!tip) {
-      throw new Error('TeachingTip did not mount before onMount.')
-    }
-    const property = TeachingTip.isOpenProperty
-    const token = tip.registerPropertyChangedCallback(
-      property,
-      () => {
-        if (!tip.isOpen) {
-          teachingTipOpen.value = false
-        }
-      },
-    )
-    return () => {
-      tip.unregisterPropertyChangedCallback(property, token)
-    }
-  })
   const itemBindings = {
     NavigationViewItem,
     TextBlock,
@@ -940,26 +981,63 @@ function ApplicationShell(context: DashboardAppContext) {
     automationPositionInSet: 3,
     automationSizeOfSet: 3,
   })
-  const routeItems = new Map<DashboardRoute, NavigationViewItem>([
+  const routeItems = new Map<string, NavigationViewItem>([
     ['dashboard', dashboardItem],
     ['tasks', tasksItem],
     ['diagnostics', diagnosticsItem],
   ])
-  const navigationHost = createNavigationHost({
-    route: context.model.route,
-    navigate(route) {
-      context.model.route.value = route
-    },
+  const routePaths: Readonly<Record<DashboardRoute, string>> = {
+    dashboard: '/',
+    tasks: '/tasks',
+    diagnostics: '/diagnostics',
+    settings: '/settings',
+  }
+  const router = createRouter({
+    routes: [
+      {
+        id: 'dashboard',
+        path: '/',
+        render: () => <DashboardPage {...context} />,
+      },
+      {
+        id: 'tasks',
+        path: '/tasks',
+        render: () => <TasksPage {...context} />,
+      },
+      {
+        id: 'diagnostics',
+        path: '/diagnostics',
+        render: () => <DiagnosticsPage {...context} />,
+      },
+      {
+        id: 'settings',
+        path: '/settings',
+        render: () => <SettingsPage {...context} />,
+      },
+    ],
+    initialEntries: [
+      routePaths[context.model.route.peek()],
+    ],
+    diagnostics: context.diagnostics,
+  })
+  onCleanup(router.dispose)
+  router.routeId.subscribe((routeId) => {
+    if (Object.hasOwn(routePaths, routeId)) {
+      context.model.route.value =
+        routeId as DashboardRoute
+    }
+  })
+  const navigationHost = createRouterNavigationHost(router, {
     enqueue: (callback) =>
       context.window.dispatcherQueue.tryEnqueue(
         DispatcherQueuePriority.Low,
         callback,
       ),
-    selectRoute(route) {
+    selectRoute(routeId) {
       const current = navigation.current
-      const item = route === 'settings'
+      const item = routeId === 'settings'
         ? current?.settingsItem
-        : routeItems.get(route)
+        : routeItems.get(routeId)
       if (current && item) {
         current.selectedItem = item
       }
@@ -1008,11 +1086,11 @@ function ApplicationShell(context: DashboardAppContext) {
           }}
         >
           <UI.Grid>
-            {navigationHost.render(
-              (route) => renderRoute(context, route),
-            )}
+            <RouterProvider router={router}>
+              {navigationHost.render(() => <Outlet />)}
+            </RouterProvider>
             <UI.TeachingTip
-              ref={teachingTip}
+              ref={setTeachingTip}
               isLightDismissEnabled
               isOpen={teachingTipOpen}
             >
@@ -1048,22 +1126,30 @@ export function renderDashboardApp(
   return (
     <ErrorBoundary
       reset={context.model.hotVersion}
-      fallback={(error) => (
-        <UI.StackPanel padding={thickness(24)} spacing={12}>
-          <UI.TextBlock
-            {...styles.heading({ level: 'subtitle' })}
-            text="Dashboard render failed"
-          />
-          <UI.TextBlock
-            text={
-              error instanceof Error
-                ? error.stack ?? error.message
-                : String(error)
-            }
-            textWrapping={1}
-          />
-        </UI.StackPanel>
-      )}
+      fallback={(error) => {
+        context.diagnostics.error({
+          category: 'renderer',
+          operation: 'dashboard-root-boundary',
+          error,
+          detail: 'message',
+        })
+        return (
+          <UI.StackPanel padding={thickness(24)} spacing={12}>
+            <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
+              text="Dashboard render failed"
+            />
+            <UI.TextBlock
+              text={
+                error instanceof Error
+                  ? error.stack ?? error.message
+                  : String(error)
+              }
+              textWrapping={1}
+            />
+          </UI.StackPanel>
+        )
+      }}
     >
       <ApplicationShell {...context} />
     </ErrorBoundary>

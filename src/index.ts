@@ -75,6 +75,11 @@ export {
 } from './winui/navigation'
 
 export {
+  createRouterNavigationHost,
+  type RouterNavigationHostOptions,
+} from './winui/router'
+
+export {
   createSecondaryWindowManager,
   type OpenSecondaryAppWindowOptions,
   type OpenSecondaryXamlWindowOptions,
@@ -193,13 +198,64 @@ export {
 
 export {
   assertRendererIdle,
+  createDiagnosticChannel,
   createDiagnosticRecord,
+  createRendererOwnershipCounts,
+  describeDiagnosticError,
+  diagnosticProtocolName,
+  diagnosticProtocolVersion,
   formatDiagnosticRecord,
+  formatDiagnosticProtocolRecord,
   formatRendererDiagnostics,
   hasActiveRendererRecords,
+  isDiagnosticProtocolRecord,
+  type DiagnosticChannel,
+  type DiagnosticChannelOptions,
+  type DiagnosticErrorDescription,
+  type DiagnosticErrorDetail,
+  type DiagnosticErrorEvent,
+  type DiagnosticErrorInput,
+  type DiagnosticLifecycleEvent,
+  type DiagnosticLifecycleStateMap,
+  type DiagnosticLifecycleTarget,
   type DiagnosticLevel,
+  type DiagnosticNativeOwnership,
+  type DiagnosticOwnershipAction,
+  type DiagnosticOwnershipEvent,
+  type DiagnosticProtocolEnvelope,
+  type DiagnosticProtocolKind,
+  type DiagnosticProtocolRecord,
+  type DiagnosticProtocolRecordFor,
   type DiagnosticRecord,
+  type DiagnosticRouteAction,
+  type DiagnosticRouteEvent,
+  type DiagnosticRoutePhase,
+  type DiagnosticRouteTrigger,
+  type DiagnosticSnapshotEvent,
+  type RendererOwnershipCounts,
 } from './runtime/diagnostics'
+
+export {
+  assertRendererInspectionIdle,
+  createDiagnosticBuffer,
+  createDiagnosticEvidenceBundle,
+  diagnosticEvidenceProtocolName,
+  diagnosticEvidenceProtocolVersion,
+  formatDiagnosticEvidenceBundle,
+  formatDiagnosticProtocolRecordSummary,
+  hasActiveRendererInspection,
+  summarizeDiagnosticProtocolRecord,
+  summarizeRendererInspectionIdle,
+  type DiagnosticBuffer,
+  type DiagnosticBufferOptions,
+  type DiagnosticBufferSnapshot,
+  type DiagnosticEvidenceBundle,
+  type DiagnosticEvidenceBundleOptions,
+  type DiagnosticHeartbeatEvidence,
+  type DiagnosticProtocolRecordSummary,
+  type DiagnosticRouteSmokeResult,
+  type RendererInspectionIdleSummary,
+} from './runtime/diagnostic-evidence'
 
 export type {
   ReactiveDependencyInspection,
@@ -287,6 +343,47 @@ export {
   type Context,
   type ContextProviderProps,
 } from './core/context'
+
+export {
+  Outlet,
+  RouterProvider,
+  createRouter,
+  parseRouterQuery,
+  stringifyRouterQuery,
+  useRoute,
+  useRouteParams,
+  useRouteQuery,
+  useRouteState,
+  useRouter,
+  type OutletProps,
+  type RouteDefinition,
+  type RouteMatch,
+  type RouteRenderContext,
+  type Router,
+  type RouterHistorySnapshot,
+  type RouterInitialEntry,
+  type RouterLocation,
+  type RouterNavigationOptions,
+  type RouterOptions,
+  type RouterParams,
+  type RouterPathTarget,
+  type RouterProviderProps,
+  type RouterQuery,
+  type RouterQueryInput,
+  type RouterQueryInputValue,
+  type RouterQueryValue,
+  type RouterTarget,
+  type RouterUpOptions,
+} from './core/router'
+
+export {
+  defineRouteRegistry,
+  type RouteParamsForPath,
+  type RoutePathParameterNames,
+  type RouteRegistry,
+  type RouteRegistryDefinitionMap,
+  type RouteRegistryEntry,
+} from './core/router-registry'
 
 export {
   createMessageTransport,

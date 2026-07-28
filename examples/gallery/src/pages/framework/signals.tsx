@@ -1,6 +1,6 @@
 import { For, Show, computed, signal, styles } from 'dynwinrt-jsx'
-import { type AppContext, UI } from '../gallery-ui'
-import { Page, SampleCard } from '../components/gallery-components'
+import { type AppContext, UI } from '../../gallery-ui'
+import { Page, SampleCard } from '../../components/gallery-components'
 
 export function SignalsPage(context: AppContext) {
   const count = signal(0)

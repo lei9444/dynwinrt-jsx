@@ -447,6 +447,9 @@ scope is active are released from `AppWindow.Closing` before XAML core teardown.
 - [x] Verify text scaling, High Contrast, and reduced motion.
 - [ ] Complete the manual Narrator/screen-reader pass.
 - [x] Add actionable application startup and failure logging.
+- [x] Export bounded structured diagnostics, heartbeat timeout evidence,
+      route/UIA smoke results, final renderer-idle snapshots, CDB hang stacks,
+      and orphan-window/process assertions.
 
 The accessibility matrix temporarily applies High Contrast, 150% text scale,
 and reduced motion, runs native and UIA verification, then restores the
@@ -491,6 +494,9 @@ identity, and manifest dependencies in a provenance document.
 - [x] Add a typed `runWinUIWorkerApp()` API that owns
       `Application.start/create`, Window setup, renderer/model composition,
       startup errors, activation, and exit.
+- [x] Add `defineWinUIApp()` as the preferred generated-binding host for
+      renderer creation, native release, projection scope, Window lifecycle,
+      diagnostics, and error forwarding.
 - [x] Split `src/renderer/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,
@@ -557,6 +563,12 @@ identity, and manifest dependencies in a provenance document.
       coding agents.
 - [x] Add optional UI-thread heartbeat, Host timeout/recovery monitoring, and
       last-snapshot evidence export.
+- [x] Add a versioned structured diagnostics protocol for lifecycle state,
+      ownership counts, route transitions, errors, and snapshots.
+- [x] Add a signal-native nested router with owned outlets, params/query/state,
+      in-memory history, diagnostics, and NavigationView integration.
+- [x] Consolidate diagnostics UI/export and automated route/UIA/heartbeat/hang
+      evidence around the versioned evidence bundle.
 - [ ] Add multi-Window renderer and projection scopes with independent state,
       errors, closing, and secondary-window lifecycle.
 

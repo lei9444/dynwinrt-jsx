@@ -1,6 +1,12 @@
 import {
   assertRendererIdle,
+  createRendererOwnershipCounts,
+  type DiagnosticChannel,
+  type DiagnosticLifecycleEvent,
 } from './runtime/diagnostics'
+import {
+  assertRendererInspectionIdle,
+} from './runtime/diagnostic-evidence'
 import {
   createHotReloadSession,
   type HotReloadSession,
@@ -10,10 +16,74 @@ import type {
   Renderer,
   RendererDiagnostics,
 } from './renderer/renderer'
+import type {
+  RendererInspectionSnapshot,
+} from './renderer/inspector'
 import type { Child } from './core/vnode'
 import type {
   RendererHeartbeat,
 } from './runtime/heartbeat'
+import {
+  createWinUIRendererPreset,
+  type WinUIBindings,
+  type WinUIRendererCapabilities,
+  type WinUIRendererOptions,
+} from './winui/winui'
+
+export {
+  createDiagnosticChannel,
+  createRendererOwnershipCounts,
+  describeDiagnosticError,
+  diagnosticProtocolName,
+  diagnosticProtocolVersion,
+  formatDiagnosticProtocolRecord,
+  isDiagnosticProtocolRecord,
+  type DiagnosticChannel,
+  type DiagnosticChannelOptions,
+  type DiagnosticErrorDescription,
+  type DiagnosticErrorDetail,
+  type DiagnosticErrorEvent,
+  type DiagnosticErrorInput,
+  type DiagnosticLifecycleEvent,
+  type DiagnosticLifecycleStateMap,
+  type DiagnosticLifecycleTarget,
+  type DiagnosticLevel,
+  type DiagnosticNativeOwnership,
+  type DiagnosticOwnershipAction,
+  type DiagnosticOwnershipEvent,
+  type DiagnosticProtocolEnvelope,
+  type DiagnosticProtocolKind,
+  type DiagnosticProtocolRecord,
+  type DiagnosticProtocolRecordFor,
+  type DiagnosticRouteAction,
+  type DiagnosticRouteEvent,
+  type DiagnosticRoutePhase,
+  type DiagnosticRouteTrigger,
+  type DiagnosticSnapshotEvent,
+  type RendererOwnershipCounts,
+} from './runtime/diagnostics'
+
+export {
+  assertRendererInspectionIdle,
+  createDiagnosticBuffer,
+  createDiagnosticEvidenceBundle,
+  diagnosticEvidenceProtocolName,
+  diagnosticEvidenceProtocolVersion,
+  formatDiagnosticEvidenceBundle,
+  formatDiagnosticProtocolRecordSummary,
+  hasActiveRendererInspection,
+  summarizeDiagnosticProtocolRecord,
+  summarizeRendererInspectionIdle,
+  type DiagnosticBuffer,
+  type DiagnosticBufferOptions,
+  type DiagnosticBufferSnapshot,
+  type DiagnosticEvidenceBundle,
+  type DiagnosticEvidenceBundleOptions,
+  type DiagnosticHeartbeatEvidence,
+  type DiagnosticProtocolRecordSummary,
+  type DiagnosticRouteSmokeResult,
+  type RendererInspectionIdleSummary,
+} from './runtime/diagnostic-evidence'
 
 export type {
   RendererHeartbeat,
@@ -131,6 +201,14 @@ export interface WinUIWorkerMountedApp<
   ) => void
 }
 
+export type WinUIWorkerStage =
+  | 'renderer-created'
+  | 'application-starting'
+  | 'window-created'
+  | 'projection-created'
+  | 'tree-rendered'
+  | 'window-activated'
+
 export interface RunWinUIWorkerAppOptions<
   Window extends WinUIWorkerActivatableWindow<AppWindow>,
   AppWindow extends WinUIWorkerAppWindow,
@@ -169,15 +247,525 @@ export interface RunWinUIWorkerAppOptions<
     diagnostics: RendererDiagnostics,
   ) => void
   readonly onError: (error: unknown) => void
-  readonly onStage?: (
-    stage:
-      | 'renderer-created'
-      | 'application-starting'
-      | 'window-created'
-      | 'projection-created'
-      | 'tree-rendered'
-      | 'window-activated',
+  readonly onStage?: (stage: WinUIWorkerStage) => void
+}
+
+export interface WinUIProjectedLifetimeScope {
+  readonly disposed: boolean
+  dispose(): void
+}
+
+type WinUIAppApplicationBinding =
+  WinUIWorkerApplicationHost &
+  NonNullable<WinUIBindings['Application']>
+
+export interface WinUIAppBindingNamespace
+  extends WinUIBindings {
+  readonly Application: WinUIAppApplicationBinding
+  readonly Window: new () =>
+    WinUIWorkerActivatableWindow<WinUIWorkerAppWindow>
+  readonly createProjectedLifetimeScope:
+    () => WinUIProjectedLifetimeScope
+  readonly releaseProjected: (value: object) => void
+}
+
+type WinUIAppWindow<
+  Bindings extends WinUIAppBindingNamespace,
+> = InstanceType<Bindings['Window']>
+
+type WinUIAppAppWindow<
+  Bindings extends WinUIAppBindingNamespace,
+> = WinUIAppWindow<Bindings>['appWindow']
+
+type WinUIAppProjectionScope<
+  Bindings extends WinUIAppBindingNamespace,
+> = ReturnType<Bindings['createProjectedLifetimeScope']>
+
+export type DefinedWinUIAppContext<
+  Bindings extends WinUIAppBindingNamespace,
+> = WinUIWorkerAppContext<
+  WinUIAppWindow<Bindings>,
+  WinUIAppAppWindow<Bindings>,
+  WinUIAppProjectionScope<Bindings>
+> & {
+  readonly bindings: Bindings
+  readonly capabilities: WinUIRendererCapabilities
+  readonly releaseProjected: Bindings['releaseProjected']
+  readonly diagnostics: DiagnosticChannel | undefined
+}
+
+export type DefinedWinUIAppRenderedContext<
+  Bindings extends WinUIAppBindingNamespace,
+> = WinUIWorkerRenderedContext<
+  WinUIAppWindow<Bindings>,
+  WinUIAppAppWindow<Bindings>,
+  WinUIAppProjectionScope<Bindings>
+> & {
+  readonly bindings: Bindings
+  readonly capabilities: WinUIRendererCapabilities
+  readonly releaseProjected: Bindings['releaseProjected']
+  readonly diagnostics: DiagnosticChannel | undefined
+}
+
+export interface DefinedWinUIAppMountedApp<
+  Bindings extends WinUIAppBindingNamespace,
+> {
+  readonly child: Child
+  readonly beforeClose?: () => void
+  readonly beforeCloseAsync?: (
+  ) => void | WinUIAsyncCloseOperation
+  readonly disposeAfterRender?: () => void
+  readonly onProjectionDisposed?: () => void
+  readonly afterRender?: (
+    context: DefinedWinUIAppRenderedContext<Bindings>,
+  ) => WinUIWorkerRenderedHooks | void
+  readonly afterActivate?: (
+    context: DefinedWinUIAppRenderedContext<Bindings>,
   ) => void
+}
+
+export interface DefineWinUIAppOptions<
+  Bindings extends WinUIAppBindingNamespace,
+> {
+  readonly bindings: Bindings
+  readonly initializeRuntime?: () => void
+  readonly rendererOptions?: Omit<
+    WinUIRendererOptions,
+    'releaseNative'
+  >
+  readonly createWindow?: (
+    bindings: Bindings,
+  ) => WinUIAppWindow<Bindings>
+  readonly configureWindow?: (
+    context: DefinedWinUIAppContext<Bindings>,
+  ) => void
+  readonly mount: (
+    context: DefinedWinUIAppContext<Bindings>,
+  ) => DefinedWinUIAppMountedApp<Bindings>
+  readonly diagnostics?: DiagnosticChannel
+  readonly onDiagnostics?: (
+    diagnostics: RendererDiagnostics,
+  ) => void
+  readonly onError: (error: unknown) => void
+  readonly onStage?: (stage: WinUIWorkerStage) => void
+}
+
+export interface DefinedWinUIApp<
+  Bindings extends WinUIAppBindingNamespace,
+> {
+  readonly bindings: Bindings
+  readonly capabilities: WinUIRendererCapabilities
+  readonly started: boolean
+  run(): Promise<number>
+}
+
+function requireWinUIAppBindings(
+  bindings: WinUIAppBindingNamespace,
+): void {
+  if (
+    typeof bindings !== 'object' ||
+    bindings === null
+  ) {
+    throw new TypeError(
+      'defineWinUIApp bindings must be a generated binding namespace.',
+    )
+  }
+  if (
+    typeof bindings.Application?.startScheduled !==
+      'function' ||
+    typeof bindings.Application?.create !== 'function'
+  ) {
+    throw new TypeError(
+      'defineWinUIApp requires generated Application.startScheduled() and Application.create(). Regenerate the WinUI bindings.',
+    )
+  }
+  if (typeof bindings.Window !== 'function') {
+    throw new TypeError(
+      'defineWinUIApp requires a generated Window constructor.',
+    )
+  }
+  if (
+    typeof bindings.createProjectedLifetimeScope !==
+      'function'
+  ) {
+    throw new TypeError(
+      'defineWinUIApp requires generated createProjectedLifetimeScope().',
+    )
+  }
+  if (typeof bindings.releaseProjected !== 'function') {
+    throw new TypeError(
+      'defineWinUIApp requires generated releaseProjected().',
+    )
+  }
+}
+
+export function defineWinUIApp<
+  Bindings extends WinUIAppBindingNamespace,
+>(
+  options: DefineWinUIAppOptions<Bindings>,
+): DefinedWinUIApp<Bindings> {
+  requireWinUIAppBindings(options.bindings)
+  const {
+    bindings,
+    diagnostics,
+  } = options
+  const rendererPreset =
+    createWinUIRendererPreset(bindings)
+  let started = false
+
+  return {
+    bindings,
+    capabilities: rendererPreset.capabilities,
+    get started() {
+      return started
+    },
+    async run() {
+      if (started) {
+        throw new Error(
+          'A defined WinUI application can only run once.',
+        )
+      }
+      started = true
+      let lastStage = 'worker-starting'
+      let workerFailed = false
+      let renderer: Renderer | undefined
+      let applicationStarted = false
+      let windowCreated = false
+      let windowActivated = false
+      let projectionScope:
+        | WinUIAppProjectionScope<Bindings>
+        | undefined
+
+      const emitLifecycle = (
+        event: DiagnosticLifecycleEvent,
+      ) => {
+        diagnostics?.lifecycle(event)
+      }
+      const emitOwnershipSnapshot = (
+        name: string,
+        inspection?: RendererInspectionSnapshot,
+      ) => {
+        if (!renderer || !diagnostics) {
+          return
+        }
+        const ownershipEnabled =
+          diagnostics.isEnabled('ownership')
+        const snapshotEnabled =
+          diagnostics.isEnabled('snapshot')
+        if (!ownershipEnabled && !snapshotEnabled) {
+          return
+        }
+        const snapshot =
+          inspection ?? renderer.inspector.snapshot()
+        if (ownershipEnabled) {
+          const counts =
+            createRendererOwnershipCounts(snapshot)
+          diagnostics.ownership({
+            owner: 'app-host',
+            resource: 'renderer-native-tree',
+            ownership: 'owned',
+            action: 'snapshot',
+            activeCount: counts.activeNative,
+            counts,
+          })
+        }
+        if (snapshotEnabled) {
+          diagnostics.snapshot({
+            name,
+            data: snapshot,
+          })
+        }
+      }
+      const reportError = (error: unknown) => {
+        if (!workerFailed) {
+          workerFailed = true
+          emitLifecycle({
+            target: 'worker',
+            state: 'failed',
+            stage: lastStage,
+          })
+        }
+        diagnostics?.error({
+          category: 'app-host',
+          operation: lastStage,
+          error,
+        })
+        options.onError(error)
+      }
+      const reportStage = (stage: WinUIWorkerStage) => {
+        lastStage = stage
+        switch (stage) {
+          case 'renderer-created':
+            emitLifecycle({
+              target: 'renderer',
+              state: 'created',
+              stage,
+            })
+            diagnostics?.ownership({
+              owner: 'app-host',
+              resource: 'renderer',
+              ownership: 'owned',
+              action: 'acquired',
+              activeCount: 1,
+            })
+            break
+          case 'application-starting':
+            applicationStarted = true
+            emitLifecycle({
+              target: 'application',
+              state: 'starting',
+              stage,
+            })
+            break
+          case 'window-created':
+            windowCreated = true
+            emitLifecycle({
+              target: 'application',
+              state: 'created',
+              stage: 'application-created',
+            })
+            emitLifecycle({
+              target: 'window',
+              state: 'created',
+              stage,
+            })
+            break
+          case 'projection-created':
+            emitLifecycle({
+              target: 'projection',
+              state: 'active',
+              stage,
+            })
+            diagnostics?.ownership({
+              owner: 'app-host',
+              resource: 'projection-scope',
+              ownership: 'owned',
+              action: 'acquired',
+              activeCount: 1,
+            })
+            break
+          case 'tree-rendered':
+            emitLifecycle({
+              target: 'renderer',
+              state: 'mounted',
+              stage,
+            })
+            emitOwnershipSnapshot('renderer-mounted')
+            break
+          case 'window-activated':
+            windowActivated = true
+            emitLifecycle({
+              target: 'window',
+              state: 'active',
+              stage,
+            })
+            emitLifecycle({
+              target: 'application',
+              state: 'running',
+              stage,
+            })
+            emitLifecycle({
+              target: 'worker',
+              state: 'running',
+              stage,
+            })
+            break
+        }
+        options.onStage?.(stage)
+      }
+
+      emitLifecycle({
+        target: 'worker',
+        state: 'starting',
+        stage: lastStage,
+      })
+      try {
+        options.initializeRuntime?.()
+      }
+      catch (error) {
+        reportError(error)
+        emitLifecycle({
+          target: 'worker',
+          state: 'stopped',
+          stage: 'worker-stopped',
+        })
+        return 1
+      }
+
+      const exitCode = await runWinUIWorkerApp<
+        WinUIAppWindow<Bindings>,
+        WinUIAppAppWindow<Bindings>,
+        WinUIAppProjectionScope<Bindings>
+      >({
+        application: bindings.Application,
+        releaseProjectedValue: bindings.releaseProjected,
+        createRenderer() {
+          renderer = rendererPreset.createRenderer({
+            ...options.rendererOptions,
+            releaseNative: bindings.releaseProjected,
+          })
+          return renderer
+        },
+        createWindow() {
+          return options.createWindow
+            ? options.createWindow(bindings)
+            : new bindings.Window() as
+                WinUIAppWindow<Bindings>
+        },
+        configureWindow(context) {
+          options.configureWindow?.({
+            ...context,
+            bindings,
+            capabilities: rendererPreset.capabilities,
+            releaseProjected: bindings.releaseProjected,
+            diagnostics,
+          })
+        },
+        createProjectionScope() {
+          const created =
+            bindings.createProjectedLifetimeScope() as
+              WinUIAppProjectionScope<Bindings>
+          if (
+            typeof created !== 'object' ||
+            created === null ||
+            typeof created.dispose !== 'function' ||
+            typeof created.disposed !== 'boolean'
+          ) {
+            throw new TypeError(
+              'createProjectedLifetimeScope() must return a scope with disposed and dispose().',
+            )
+          }
+          projectionScope = created
+          return created
+        },
+        mount(context) {
+          const mounted = options.mount({
+            ...context,
+            bindings,
+            capabilities: rendererPreset.capabilities,
+            releaseProjected: bindings.releaseProjected,
+            diagnostics,
+          })
+          return {
+            child: mounted.child,
+            beforeClose: mounted.beforeClose,
+            beforeCloseAsync: mounted.beforeCloseAsync,
+            disposeAfterRender:
+              mounted.disposeAfterRender,
+            onProjectionDisposed:
+              mounted.onProjectionDisposed,
+            afterRender(renderedContext) {
+              return mounted.afterRender?.({
+                ...renderedContext,
+                bindings,
+                capabilities:
+                  rendererPreset.capabilities,
+                releaseProjected:
+                  bindings.releaseProjected,
+                diagnostics,
+              })
+            },
+            afterActivate(renderedContext) {
+              mounted.afterActivate?.({
+                ...renderedContext,
+                bindings,
+                capabilities:
+                  rendererPreset.capabilities,
+                releaseProjected:
+                  bindings.releaseProjected,
+                diagnostics,
+              })
+            },
+          }
+        },
+        onDiagnostics: options.onDiagnostics,
+        onError: reportError,
+        onStage: reportStage,
+      })
+
+      const finalInspection =
+        renderer?.inspector.snapshot()
+      if (finalInspection) {
+        emitOwnershipSnapshot(
+          'renderer-final',
+          finalInspection,
+        )
+      }
+      if (renderer) {
+        const counts = createRendererOwnershipCounts(
+          finalInspection ??
+            renderer.inspector.snapshot(),
+        )
+        const active =
+          counts.activeNative +
+          counts.activeComponents +
+          counts.reactiveScopes +
+          counts.reactiveObservers +
+          counts.subscriptions
+        emitLifecycle({
+          target: 'renderer',
+          state: active === 0 ? 'idle' : 'failed',
+          stage: 'renderer-final',
+        })
+        diagnostics?.ownership({
+          owner: 'app-host',
+          resource: 'renderer',
+          ownership: 'owned',
+          action: active === 0
+            ? 'released'
+            : 'release-failed',
+          activeCount: active,
+        })
+      }
+      if (projectionScope) {
+        emitLifecycle({
+          target: 'projection',
+          state: projectionScope.disposed
+            ? 'disposed'
+            : 'failed',
+          stage: 'projection-final',
+        })
+        diagnostics?.ownership({
+          owner: 'app-host',
+          resource: 'projection-scope',
+          ownership: 'owned',
+          action: projectionScope.disposed
+            ? 'released'
+            : 'release-failed',
+          activeCount: projectionScope.disposed ? 0 : 1,
+        })
+      }
+      if (windowCreated) {
+        const windowClosed =
+          windowActivated || !workerFailed
+        emitLifecycle({
+          target: 'window',
+          state: windowClosed ? 'closed' : 'failed',
+          stage: windowClosed
+            ? 'window-closed'
+            : 'window-failed',
+        })
+      }
+      if (applicationStarted) {
+        const applicationExited = windowCreated
+        emitLifecycle({
+          target: 'application',
+          state: applicationExited
+            ? 'exited'
+            : 'failed',
+          stage: applicationExited
+            ? 'application-exited'
+            : 'application-failed',
+        })
+      }
+      emitLifecycle({
+        target: 'worker',
+        state: 'stopped',
+        stage: 'worker-stopped',
+      })
+      return exitCode
+    },
+  }
 }
 
 export async function runWinUIWorkerApp<
@@ -534,7 +1122,9 @@ export interface WinUIWindowLifecycleOptions {
   readonly releaseWindow?: () => void
   readonly window: WinUIWorkerWindow
   readonly appWindow: WinUIWorkerAppWindow
-  readonly renderer: Pick<Renderer, 'diagnostics'>
+  readonly renderer:
+    Pick<Renderer, 'diagnostics'> &
+    Partial<Pick<Renderer, 'inspector'>>
   readonly beforeClose?: () => void
   readonly beforeCloseAsync?: (
   ) => void | WinUIAsyncCloseOperation
@@ -645,6 +1235,14 @@ export function installWinUIWindowLifecycle(
     const diagnostics = options.renderer.diagnostics
     attempt(() => {
       assertRendererIdle(diagnostics)
+    })
+    attempt(() => {
+      if (options.renderer.inspector) {
+        assertRendererInspectionIdle(
+          options.renderer.inspector.snapshot(),
+          'Renderer disposal',
+        )
+      }
     })
     attempt(() => {
       options.onDiagnostics?.(diagnostics)

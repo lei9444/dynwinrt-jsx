@@ -1,22 +1,23 @@
 import {
-  createWinUIRendererPreset,
+  createDiagnosticBuffer,
+  createDiagnosticChannel,
+  createDiagnosticEvidenceBundle,
   type Child,
 } from 'dynwinrt-jsx'
 import type { StateBridge } from 'dynwinrt-jsx/host'
 import {
-  runWinUIWorkerApp,
+  createRendererHeartbeatController,
+  defineWinUIApp,
+  getRendererHeartbeatSharedState,
+  rendererHeartbeatSharedStateIndex,
   type FileHotReloadFileSystem,
+  type RendererHeartbeat,
 } from 'dynwinrt-jsx/worker'
 import * as WinUIBindings from '#winapp/bindings'
 import {
-  Application,
   ApplicationTheme,
-  MicaBackdrop,
   TitleBarTheme,
-  Window,
   XamlRoot,
-  createProjectedLifetimeScope,
-  releaseProjected,
 } from '#winapp/bindings'
 import type {
   DashboardAppContext,
@@ -56,9 +57,6 @@ declare const performance: {
   now(): number
 }
 
-const winuiRendererPreset =
-  createWinUIRendererPreset(WinUIBindings)
-
 export function runDashboardApplication(
   options: RunDashboardApplicationOptions,
 ): Promise<number> {
@@ -70,20 +68,32 @@ export function runDashboardApplication(
   } = options
   const loader = createDashboardAppLoader()
   const fileSystem = require('node:fs') as FileHotReloadFileSystem
-
-  return runWinUIWorkerApp({
-    application: Application,
-    releaseProjectedValue: releaseProjected,
-    createRenderer() {
-      return winuiRendererPreset.createRenderer({
-        releaseNative: releaseProjected,
+  const diagnosticBuffer = createDiagnosticBuffer({
+    maxRecords: 500,
+  })
+  const diagnostics = createDiagnosticChannel({
+    source: 'dashboard-worker',
+    onRecord(record) {
+      diagnosticBuffer.append(record)
+      parentPort.postMessage({
+        type: 'diagnostic',
+        value: record,
       })
     },
-    createWindow() {
-      return new Window()
-    },
-    configureWindow({ window }) {
-      const application = Application.current
+  })
+  const heartbeatState = getRendererHeartbeatSharedState(
+    workerData.heartbeatState,
+  )
+
+  const app = defineWinUIApp({
+    bindings: WinUIBindings,
+    diagnostics,
+    configureWindow({
+      bindings,
+      releaseProjected,
+      window,
+    }) {
+      const application = bindings.Application.current
       try {
         application.requestedTheme =
           workerData.initialState.darkTheme
@@ -111,15 +121,83 @@ export function runDashboardApplication(
         releaseProjected(configuredAppWindow)
       }
     },
-    createProjectionScope() {
-      return createProjectedLifetimeScope()
-    },
-    mount({ window, renderer }) {
-      window.systemBackdrop = new MicaBackdrop()
+    mount({ bindings, window, renderer }) {
+      window.systemBackdrop = new bindings.MicaBackdrop()
       const model = createDashboardModel(
         stateBridge,
         workerData.initialState,
       )
+      const updateDiagnosticSummary = (
+        kind?: string,
+      ) => {
+        const last =
+          kind ??
+          diagnosticBuffer.snapshot().records.at(-1)?.kind ??
+          'none'
+        model.diagnosticSummary.value =
+          `${diagnosticBuffer.size} structured events; ` +
+          `${diagnosticBuffer.droppedRecords} dropped; last ${last}.`
+      }
+      updateDiagnosticSummary()
+      const unsubscribeDiagnostics =
+        diagnosticBuffer.subscribe((record) => {
+          updateDiagnosticSummary(record.kind)
+        })
+      if (!workerData.heartbeatEnabled) {
+        model.heartbeatSummary.value =
+          'UI heartbeat is disabled.'
+      }
+      let lastTimeoutCount = 0n
+      let lastExportRevision = 0n
+      const refreshHostDiagnostics = () => {
+        const timeoutCount = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutCount,
+        )
+        const timeoutAt = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutAt,
+        )
+        if (
+          timeoutCount > lastTimeoutCount &&
+          timeoutAt > 0n
+        ) {
+          lastTimeoutCount = timeoutCount
+          model.heartbeatSummary.value =
+            `UI heartbeat timed out ${timeoutCount} time(s).`
+        }
+        const acknowledgedSequence = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.acknowledgedSequence,
+        )
+        const acknowledgedAt = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.acknowledgedAt,
+        )
+        if (
+          acknowledgedSequence > 0n &&
+          acknowledgedAt >= timeoutAt
+        ) {
+          model.heartbeatSummary.value =
+            `UI heartbeat ${acknowledgedSequence} acknowledged.` +
+            (timeoutCount > 0n ? ' Recovered.' : '')
+        }
+        const exportRevision = Atomics.load(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.exportRevision,
+        )
+        if (exportRevision > lastExportRevision) {
+          lastExportRevision = exportRevision
+          const exportStatus = Atomics.load(
+            heartbeatState,
+            rendererHeartbeatSharedStateIndex.exportStatus,
+          )
+          model.diagnosticExportStatus.value =
+            exportStatus === 1n
+              ? `Diagnostics exported: ${workerData.diagnosticsExportPath}`
+              : 'Diagnostics export failed in the Host.'
+        }
+      }
       parentPort.postMessage({
         type: 'state-initialized',
         value: {
@@ -136,12 +214,34 @@ export function runDashboardApplication(
         model,
         renderer,
         window,
+        diagnostics,
         getXamlRoot() {
           xamlRoot ??= window.content.xamlRoot
           return xamlRoot
         },
         refreshDiagnostics() {
           model.diagnostics.value = renderer.diagnostics
+          updateDiagnosticSummary()
+          refreshHostDiagnostics()
+        },
+        exportDiagnostics() {
+          model.diagnosticExportStatus.value =
+            `Export requested: ${workerData.diagnosticsExportPath}`
+          Atomics.store(
+            heartbeatState,
+            rendererHeartbeatSharedStateIndex.exportStatus,
+            0n,
+          )
+          parentPort.postMessage({
+            type: 'diagnostics-export',
+            value: createDiagnosticEvidenceBundle({
+              diagnostics: diagnosticBuffer.snapshot(),
+              renderer: renderer.inspector.snapshot(),
+              metadata: {
+                source: 'dashboard-worker',
+              },
+            }),
+          })
         },
       }
 
@@ -192,7 +292,22 @@ export function runDashboardApplication(
           stateBridge.set(model.snapshot('closed'))
         },
         disposeAfterRender() {
-          model.dispose()
+          let firstError: unknown
+          try {
+            unsubscribeDiagnostics()
+          }
+          catch (error) {
+            firstError = error
+          }
+          try {
+            model.dispose()
+          }
+          catch (error) {
+            firstError ??= error
+          }
+          if (firstError !== undefined) {
+            throw firstError
+          }
         },
         onProjectionDisposed() {
           xamlRoot = undefined
@@ -215,9 +330,108 @@ export function runDashboardApplication(
           if (hotReloadController) {
             postStartupStage('hot-session-created')
           }
+          let statusTimer:
+            | ReturnType<
+                typeof window.dispatcherQueue.createTimer
+              >
+            | undefined
+          let statusTimerSubscription:
+            | (() => void)
+            | undefined
+          let statusTimerStopped = false
+          let statusTimerUnsubscribed = false
+          if (!workerData.heartbeatEnabled) {
+            statusTimer =
+              window.dispatcherQueue.createTimer()
+            statusTimer.interval = { duration: 2_500_000n }
+            statusTimer.isRepeating = true
+            statusTimerSubscription =
+              statusTimer.onTick(refreshHostDiagnostics)
+            try {
+              statusTimer.start()
+            }
+            catch (error) {
+              statusTimerSubscription()
+              throw error
+            }
+          }
+          const heartbeatController =
+            workerData.heartbeatEnabled
+              ? createRendererHeartbeatController({
+                  dispatcherQueue:
+                    window.dispatcherQueue,
+                  renderer,
+                  onHeartbeat(
+                    heartbeat: RendererHeartbeat,
+                  ) {
+                    model.heartbeatSummary.value =
+                      `UI heartbeat ${heartbeat.sequence} sent.`
+                    refreshHostDiagnostics()
+                    parentPort.postMessage({
+                      type: 'heartbeat',
+                      value: heartbeat,
+                    })
+                  },
+                  onError(error) {
+                    const message =
+                      error instanceof Error
+                        ? error.stack ?? error.message
+                        : String(error)
+                    model.lastError.value = message
+                    parentPort.postMessage({
+                      type: 'heartbeat-error',
+                      message,
+                    })
+                  },
+                })
+              : undefined
           return {
             disposeBeforeRender() {
-              hotReloadController?.dispose()
+              parentPort.postMessage({
+                type: 'heartbeat-suspend',
+              })
+              let firstError: unknown
+              const attempt = (dispose: () => void) => {
+                try {
+                  dispose()
+                }
+                catch (error) {
+                  firstError ??= error
+                }
+              }
+              attempt(() => hotReloadController?.dispose())
+              if (statusTimer && !statusTimerStopped) {
+                try {
+                  statusTimer.stop()
+                  statusTimerStopped = true
+                }
+                catch (error) {
+                  firstError ??= error
+                }
+              }
+              if (
+                statusTimerSubscription &&
+                !statusTimerUnsubscribed
+              ) {
+                try {
+                  statusTimerSubscription()
+                  statusTimerUnsubscribed = true
+                }
+                catch (error) {
+                  firstError ??= error
+                }
+              }
+              if (
+                statusTimerStopped &&
+                statusTimerUnsubscribed
+              ) {
+                statusTimer = undefined
+                statusTimerSubscription = undefined
+              }
+              attempt(() => heartbeatController?.dispose())
+              if (firstError !== undefined) {
+                throw firstError
+              }
             },
           }
         },
@@ -265,4 +479,5 @@ export function runDashboardApplication(
       }
     },
   })
+  return app.run()
 }

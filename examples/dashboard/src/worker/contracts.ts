@@ -20,6 +20,9 @@ export interface DashboardWorkerStatePort {
 export interface DashboardWorkerData {
   readonly statePort: DashboardWorkerStatePort
   readonly hotStatePath: string | null
+  readonly heartbeatEnabled: boolean
+  readonly heartbeatState: SharedArrayBuffer
+  readonly diagnosticsExportPath: string
   readonly initialState: DashboardState
   readonly selfTest: boolean
   readonly selfTestFailure: string | null

@@ -1,13 +1,16 @@
 import {
   ErrorBoundary,
+  Outlet,
+  RouterProvider,
   Show,
   computed,
   createContext,
   createControls,
   createFocusTarget,
-  createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
+  createRouter,
+  createRouterNavigationHost,
   createSymbolIcon,
   createWinUIThemeController,
   formatRendererDiagnostics,
@@ -223,17 +226,6 @@ function SettingsPage(context: AppContext) {
   )
 }
 
-function renderRoute(context: AppContext, route: AppRoute): Child {
-  switch (route) {
-    case 'diagnostics':
-      return <DiagnosticsPage {...context} />
-    case 'settings':
-      return <SettingsPage {...context} />
-    default:
-      return <HomePage {...context} />
-  }
-}
-
 function Shell(context: AppContext) {
   const navigation: RefObject<NavigationInstance> = { current: null }
   const themeController = createWinUIThemeController({
@@ -267,25 +259,54 @@ function Shell(context: AppContext) {
     automationPositionInSet: 2,
     automationSizeOfSet: 2,
   })
-  const routeItems = new Map<AppRoute, NavigationViewItem>([
+  const routeItems = new Map<string, NavigationViewItem>([
     ['home', homeItem],
     ['diagnostics', diagnosticsItem],
   ])
-  const navigationHost = createNavigationHost({
-    route: context.model.route,
-    navigate(route) {
-      context.model.route.value = route
-    },
+  const routePaths: Readonly<Record<AppRoute, string>> = {
+    home: '/',
+    diagnostics: '/diagnostics',
+    settings: '/settings',
+  }
+  const router = createRouter({
+    routes: [
+      {
+        id: 'home',
+        path: '/',
+        render: () => <HomePage {...context} />,
+      },
+      {
+        id: 'diagnostics',
+        path: '/diagnostics',
+        render: () => <DiagnosticsPage {...context} />,
+      },
+      {
+        id: 'settings',
+        path: '/settings',
+        render: () => <SettingsPage {...context} />,
+      },
+    ],
+    initialEntries: [
+      routePaths[context.model.route.peek()],
+    ],
+  })
+  onCleanup(router.dispose)
+  router.routeId.subscribe((routeId) => {
+    if (Object.hasOwn(routePaths, routeId)) {
+      context.model.route.value = routeId as AppRoute
+    }
+  })
+  const navigationHost = createRouterNavigationHost(router, {
     enqueue: (callback) =>
       context.window.dispatcherQueue.tryEnqueue(
         DispatcherQueuePriority.Low,
         callback,
       ),
-    selectRoute(route) {
+    selectRoute(routeId) {
       const current = navigation.current
-      const item = route === 'settings'
+      const item = routeId === 'settings'
         ? current?.settingsItem
-        : routeItems.get(route)
+        : routeItems.get(routeId)
       if (current && item) {
         current.selectedItem = item
       }
@@ -324,9 +345,9 @@ function Shell(context: AppContext) {
           }
         }}
       >
-        {navigationHost.render(
-          (route) => renderRoute(context, route),
-        )}
+        <RouterProvider router={router}>
+          {navigationHost.render(() => <Outlet />)}
+        </RouterProvider>
       </Navigation>
     </ThemeControllerContext.Provider>
   )

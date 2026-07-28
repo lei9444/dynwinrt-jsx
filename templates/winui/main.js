@@ -13,6 +13,8 @@ const {
   createDiagnosticRecord,
   createJsonStateStore,
   formatDiagnosticRecord,
+  formatDiagnosticProtocolRecordSummary,
+  isDiagnosticProtocolRecord,
 } = require('dynwinrt-jsx/host')
 const {
   createDefaultPersistedAppState,
@@ -204,7 +206,16 @@ bridge.state.subscribe((state) => {
   }
 })
 worker.on('message', (message) => {
-  if (message?.type === 'error') {
+  if (message?.type === 'diagnostic') {
+    if (!isDiagnosticProtocolRecord(message.value)) {
+      console.error('The WinUI Worker sent an invalid diagnostic record.')
+      process.exitCode = 1
+      return
+    }
+    console.log(
+      formatDiagnosticProtocolRecordSummary(message.value),
+    )
+  } else if (message?.type === 'error') {
     console.error(message.message)
     console.error(formatDiagnosticRecord(createDiagnosticRecord(
       'app-worker',

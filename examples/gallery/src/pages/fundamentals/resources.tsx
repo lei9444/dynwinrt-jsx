@@ -18,14 +18,14 @@ import {
   type AppContext,
   type BorderInstance,
   UI,
-} from '../gallery-ui'
-import { Page, SampleCard } from '../components/gallery-components'
-import { loadGalleryBitmap } from '../gallery-assets'
+} from '../../gallery-ui'
+import { Page, SampleCard } from '../../components/gallery-components'
+import { loadGalleryBitmap } from '../../gallery-assets'
 import {
   BulletList,
   GuidanceSection,
   GuidanceText,
-} from './fundamentals/shared'
+} from './shared'
 
 export function ResourcesPage(context: AppContext) {
   const primaryBrush = createSolidColorBrush(

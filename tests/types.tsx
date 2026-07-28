@@ -1,7 +1,9 @@
 import {
   ErrorBoundary,
   For,
+  Outlet,
   Portal,
+  RouterProvider,
   Show,
   VirtualFor,
   adapter,
@@ -14,6 +16,9 @@ import {
   cornerRadius,
   createBitmapIcon,
   createBitmapImage,
+  createDiagnosticBuffer,
+  createDiagnosticChannel,
+  createDiagnosticEvidenceBundle,
   createContext,
   createComboBoxControl,
   createCapabilityOwner,
@@ -30,7 +35,11 @@ import {
   createNavigationItem,
   createNavigationViewControl,
   createReferenceBoxing,
+  createRendererOwnershipCounts,
   createRelativeUri,
+  createRouter,
+  createRouterNavigationHost,
+  defineRouteRegistry,
   createScrollViewerController,
   createSecondaryWindowManager,
   createSelectorBarControl,
@@ -55,8 +64,14 @@ import {
   thickness,
   tokens,
   useContext,
+  useRouteParams,
+  useRouteQuery,
+  useRouteState,
+  useRouter,
   type Child,
   type Capability,
+  type DiagnosticProtocolRecord,
+  type DiagnosticRouteSmokeResult,
   type MaybeSignal,
   type NativePropertyPhase,
   type ReadonlySignal,
@@ -64,9 +79,17 @@ import {
   type RendererInspectionSnapshot,
   type RendererInspectorOptions,
   type ScrollViewerController,
+  type RouteDefinition,
+  type RouterLocation,
   type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
+import {
+  defineWinUIApp,
+  type DefinedWinUIAppContext,
+  type WinUIAppBindingNamespace,
+  type WinUIWorkerStage,
+} from 'dynwinrt-jsx/worker'
 
 class TypeVector {
   readonly values: unknown[] = []
@@ -493,6 +516,213 @@ const inspectionSnapshot: RendererInspectionSnapshot =
 void inspectorOptions
 void inspectionSnapshot.reactive.observers
 void inspectedRenderer.inspector.getOperations()
+const diagnosticRecords: DiagnosticProtocolRecord[] = []
+const diagnostics = createDiagnosticChannel({
+  source: 'type-worker',
+  onRecord(record) {
+    diagnosticRecords.push(record)
+  },
+})
+const diagnosticBuffer = createDiagnosticBuffer({
+  maxRecords: 100,
+})
+diagnostics.lifecycle({
+  target: 'window',
+  state: 'active',
+  stage: 'window-activated',
+})
+diagnostics.ownership({
+  owner: 'renderer',
+  resource: 'native-tree',
+  ownership: 'owned',
+  action: 'snapshot',
+  activeCount: inspectionSnapshot.diagnostics.activeNative,
+  counts: createRendererOwnershipCounts(inspectionSnapshot),
+})
+diagnostics.route({
+  transitionId: 'route-1',
+  phase: 'requested',
+  action: 'push',
+  trigger: 'programmatic',
+  fromRoute: null,
+  toRoute: 'home',
+})
+diagnostics.error({
+  category: 'hosting',
+  operation: 'Window.activate',
+  error: new Error('failed'),
+})
+diagnostics.snapshot({
+  name: 'renderer',
+  data: inspectionSnapshot,
+})
+const routeSmokeResults: readonly DiagnosticRouteSmokeResult[] = [
+  {
+    routeId: 'home',
+    path: '/',
+    status: 'passed',
+    durationMs: 10,
+  },
+]
+const diagnosticEvidence = createDiagnosticEvidenceBundle({
+  diagnostics: diagnosticBuffer.snapshot(),
+  renderer: inspectionSnapshot,
+  routes: routeSmokeResults,
+})
+void diagnosticEvidence.rendererIdle?.idle
+void diagnosticRecords
+declare const typeWinUIAppBindings: WinUIAppBindingNamespace
+const definedWinUIApp = defineWinUIApp({
+  bindings: typeWinUIAppBindings,
+  initializeRuntime() {},
+  rendererOptions: {
+    inspector: {
+      maxOperations: 64,
+    },
+  },
+  configureWindow(context) {
+    const typedContext:
+      DefinedWinUIAppContext<WinUIAppBindingNamespace> =
+        context
+    void typedContext.bindings
+    void typedContext.capabilities
+  },
+  mount({ bindings, releaseProjected }) {
+    void bindings
+    void releaseProjected
+    return {
+      child: null,
+      afterActivate({ setExitCode }) {
+        setExitCode(0)
+      },
+    }
+  },
+  onError() {},
+  onStage(stage) {
+    const typedStage: WinUIWorkerStage = stage
+    void typedStage
+  },
+})
+void definedWinUIApp.capabilities
+void definedWinUIApp.run()
+interface TypeRouteState {
+  readonly source: string
+}
+interface TypeRouteHandle {
+  readonly navigationLabel: string
+}
+const typeRoutes: readonly RouteDefinition<
+  TypeRouteState,
+  TypeRouteHandle
+>[] = [
+  {
+    id: 'root',
+    path: '/',
+    handle: { navigationLabel: 'Root' },
+    render: () => <Outlet />,
+    children: [
+      {
+        id: 'home',
+        index: true,
+        handle: { navigationLabel: 'Home' },
+        render: () => <UI.TextBlock text="Home" />,
+      },
+      {
+        id: 'task',
+        path: 'tasks/:taskId',
+        handle: { navigationLabel: 'Task' },
+        render: () => <TypeRoutePage />,
+      },
+    ],
+  },
+]
+const typeRouteRegistry = defineRouteRegistry({
+  home: {
+    path: '/',
+    render: () => <UI.TextBlock text="Home" />,
+  },
+  task: {
+    path: '/tasks/:taskId',
+    parentId: 'home',
+    navigationId: 'tasks',
+    render: () => <TypeRoutePage />,
+  },
+  files: {
+    path: '/files/*',
+    render: () => null,
+  },
+})
+const registeredRouter = createRouter({
+  routes: typeRouteRegistry.routes,
+})
+typeRouteRegistry.target('home')
+typeRouteRegistry.target('task', {
+  params: { taskId: 1 },
+})
+typeRouteRegistry.target('files', {
+  params: { '*': 'a/b' },
+})
+typeRouteRegistry.pathFor(registeredRouter, 'task', {
+  params: { taskId: 2 },
+})
+// @ts-expect-error Parameterized routes require params.
+typeRouteRegistry.target('task')
+// @ts-expect-error Route params are inferred from the path.
+typeRouteRegistry.target('task', { params: { id: 1 } })
+// @ts-expect-error Registry IDs are a closed set.
+typeRouteRegistry.target('missing')
+const typeRouter = createRouter<
+  TypeRouteState,
+  TypeRouteHandle
+>({
+  routes: typeRoutes,
+  initialEntries: [{
+    path: '/tasks/1?tab=detail',
+    state: { source: 'type-test' },
+  }],
+})
+function TypeRoutePage() {
+  const router = useRouter<
+    TypeRouteState,
+    TypeRouteHandle
+  >()
+  const params = useRouteParams()
+  const query = useRouteQuery()
+  const state = useRouteState<TypeRouteState>()
+  const location: ReadonlySignal<
+    RouterLocation<TypeRouteState>
+  > = router.location
+  void params.value.taskId
+  void query.value.tab
+  void state.value?.source
+  void location.value.pathname
+  return <UI.TextBlock text="Task" />
+}
+const typeRouterTree = (
+  <RouterProvider router={typeRouter}>
+    <Outlet fallback={<UI.TextBlock text="Missing" />} />
+  </RouterProvider>
+)
+const typeRouterNavigationHost =
+  createRouterNavigationHost(typeRouter, {
+    enqueue() {
+      return true
+    },
+    selectRoute(routeId) {
+      void routeId
+    },
+  })
+void typeRouter.pathFor('task', { taskId: 2 })
+void typeRouter.navigationRouteId.value
+void typeRouter.canGoUp.value
+void typeRouter.up()
+void typeRouter.navigate({
+  routeId: 'task',
+  params: { taskId: 3 },
+  query: { tab: 'activity' },
+})
+void typeRouterTree
+void typeRouterNavigationHost
 const VirtualizedTypeList = createItemsRepeaterControl({
   ItemsRepeater: TypeItemsRepeater,
   ContentControl: TypeContentControl,

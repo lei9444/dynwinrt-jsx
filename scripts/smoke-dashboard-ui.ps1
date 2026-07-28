@@ -7,7 +7,9 @@ param(
     [string]$App = "DynWinRT JSX Workspace",
     [int]$ExpectedProcessId,
     [string]$OutputDirectory,
+    [string]$DiagnosticsEvidencePath,
     [int]$TimeoutMilliseconds = 10000,
+    [switch]$SkipDesktopInput,
     [switch]$KeepOpen
 )
 
@@ -256,6 +258,13 @@ function Assert-AccessibleInteractiveElements($Inspection) {
     }
 }
 
+function Assert-SingleDashboardWindow($Inspection) {
+    $windows = @($Inspection.windows)
+    if ($windows.Count -ne 1) {
+        throw "Expected one dashboard window, found $($windows.Count)."
+    }
+}
+
 function Wait-ForProcessExit([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
     while ([DateTime]::UtcNow -lt $deadline) {
@@ -318,6 +327,7 @@ if (-not (Get-Process -Id $dashboardPid -ErrorAction SilentlyContinue)) {
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $inspectionPath = Join-Path $OutputDirectory "interactive-elements.json"
 $layoutEvidencePath = Join-Path $OutputDirectory "grid-layout.json"
+$routeEvidencePath = Join-Path $OutputDirectory "route-smoke.json"
 $initialScreenshot = Join-Path $OutputDirectory "dashboard-initial.png"
 $taskScreenshot = Join-Path $OutputDirectory "dashboard-task-added.png"
 $dialogScreenshot = Join-Path $OutputDirectory "dashboard-dialog.png"
@@ -325,11 +335,17 @@ $settingsScreenshot = Join-Path $OutputDirectory "dashboard-settings.png"
 Remove-Item @(
     $inspectionPath,
     $layoutEvidencePath,
+    $routeEvidencePath,
     $initialScreenshot,
     $taskScreenshot,
     $dialogScreenshot,
     $settingsScreenshot
 ) -Force -ErrorAction SilentlyContinue
+if ($DiagnosticsEvidencePath) {
+    Remove-Item $DiagnosticsEvidencePath -Force -ErrorAction SilentlyContinue
+}
+$routeResults = [System.Collections.Generic.List[object]]::new()
+$routeRunStarted = [DateTime]::UtcNow
 
 $cleanupError = $null
 try {
@@ -338,6 +354,14 @@ try {
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $routeResults.Add([pscustomobject]@{
+        routeId = "dashboard"
+        headingAutomationId = "DashboardPageHeading"
+        status = "passed"
+        durationMs = [int](
+            ([DateTime]::UtcNow - $routeRunStarted).TotalMilliseconds
+        )
+    })
 
     $inspection = Invoke-WinApp @(
         "ui", "inspect",
@@ -347,6 +371,7 @@ try {
     ) -Capture
     [IO.File]::WriteAllText($inspectionPath, "$inspection`n")
     $inspectionObject = $inspection | ConvertFrom-Json
+    Assert-SingleDashboardWindow $inspectionObject
     Assert-AccessibleInteractiveElements $inspectionObject
     $dashboardSelector = Require-AutomationSelector $inspectionObject "DashboardNavItem"
     $tasksSelector = Require-AutomationSelector $inspectionObject "TasksNavItem"
@@ -455,18 +480,28 @@ try {
         "--timeout", "$TimeoutMilliseconds"
     )
 
+    $routeStarted = [DateTime]::UtcNow
     Invoke-WinApp @("ui", "invoke", $tasksSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "TasksPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $routeResults.Add([pscustomobject]@{
+        routeId = "tasks"
+        headingAutomationId = "TasksPageHeading"
+        status = "passed"
+        durationMs = [int](
+            ([DateTime]::UtcNow - $routeStarted).TotalMilliseconds
+        )
+    })
     $taskInspection = Invoke-WinApp @(
         "ui", "inspect",
         "-w", "$WindowHandle",
         "--interactive",
         "--json"
     ) -Capture | ConvertFrom-Json
+    Assert-SingleDashboardWindow $taskInspection
     Assert-AccessibleInteractiveElements $taskInspection
     $inputSelector = Require-AutomationSelector $taskInspection "TaskInput"
     $addTaskSelector = Require-AutomationSelector $taskInspection "AddTaskButton"
@@ -478,11 +513,19 @@ try {
         "ui", "focus", $inputSelector,
         "-w", "$WindowHandle"
     )
-    Invoke-WinApp @(
-        "ui", "send-keys", "tab",
-        "-w", "$WindowHandle",
-        "--via", "send-input"
-    )
+    if ($SkipDesktopInput) {
+        Invoke-WinApp @(
+            "ui", "focus", $addTaskSelector,
+            "-w", "$WindowHandle"
+        )
+    }
+    else {
+        Invoke-WinApp @(
+            "ui", "send-keys", "tab",
+            "-w", "$WindowHandle",
+            "--via", "send-input"
+        )
+    }
     Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
     Invoke-WinApp @(
         "ui", "set-value", $inputSelector, "UI automation task",
@@ -535,7 +578,9 @@ try {
         "--output", $dialogScreenshot
     )
     Invoke-WinApp @("ui", "invoke", "Cancel", "-w", "$WindowHandle")
-    Wait-ForFocusedElement -Name "Remove UI automation task" | Out-Null
+    if (-not $SkipDesktopInput) {
+        Wait-ForFocusedElement -Name "Remove UI automation task" | Out-Null
+    }
     Invoke-WinApp @(
         "ui", "invoke", "Remove UI automation task",
         "-w", "$WindowHandle"
@@ -573,14 +618,25 @@ try {
     if ($removedTask.Count -ne 0) {
         throw "Confirmed task removal left the added task in the UIA tree."
     }
-    Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
+    if (-not $SkipDesktopInput) {
+        Wait-ForFocusedElement -AutomationId "AddTaskButton" | Out-Null
+    }
 
+    $routeStarted = [DateTime]::UtcNow
     Invoke-WinApp @("ui", "invoke", $diagnosticsSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "DiagnosticsPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $routeResults.Add([pscustomobject]@{
+        routeId = "diagnostics"
+        headingAutomationId = "DiagnosticsPageHeading"
+        status = "passed"
+        durationMs = [int](
+            ([DateTime]::UtcNow - $routeStarted).TotalMilliseconds
+        )
+    })
     Invoke-WinApp @(
         "ui", "wait-for", "HotReloadStatus",
         "-w", "$WindowHandle",
@@ -592,20 +648,58 @@ try {
         "--interactive",
         "--json"
     ) -Capture | ConvertFrom-Json
+    Assert-SingleDashboardWindow $diagnosticsInspection
     Assert-AccessibleInteractiveElements $diagnosticsInspection
+    Invoke-WinApp @(
+        "ui", "invoke", "ExportDiagnosticsButton",
+        "-w", "$WindowHandle"
+    )
+    if ($DiagnosticsEvidencePath) {
+        $exportDeadline = [DateTime]::UtcNow.AddMilliseconds(
+            $TimeoutMilliseconds
+        )
+        while (
+            [DateTime]::UtcNow -lt $exportDeadline -and
+            -not (Test-Path $DiagnosticsEvidencePath)
+        ) {
+            Start-Sleep -Milliseconds 100
+        }
+        if (-not (Test-Path $DiagnosticsEvidencePath)) {
+            throw "Diagnostics evidence was not exported to $DiagnosticsEvidencePath."
+        }
+        $diagnosticEvidence =
+            [IO.File]::ReadAllText($DiagnosticsEvidencePath) |
+                ConvertFrom-Json
+        if (
+            $diagnosticEvidence.protocol -ne "dynwinrt-jsx.evidence" -or
+            -not $diagnosticEvidence.renderer
+        ) {
+            throw "Diagnostics evidence did not contain the expected protocol and renderer snapshot."
+        }
+    }
 
+    $routeStarted = [DateTime]::UtcNow
     Invoke-WinApp @("ui", "invoke", "Settings", "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "SettingsPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
     )
+    $routeResults.Add([pscustomobject]@{
+        routeId = "settings"
+        headingAutomationId = "SettingsPageHeading"
+        status = "passed"
+        durationMs = [int](
+            ([DateTime]::UtcNow - $routeStarted).TotalMilliseconds
+        )
+    })
     $settingsInspection = Invoke-WinApp @(
         "ui", "inspect",
         "-w", "$WindowHandle",
         "--interactive",
         "--json"
     ) -Capture | ConvertFrom-Json
+    Assert-SingleDashboardWindow $settingsInspection
     Assert-AccessibleInteractiveElements $settingsInspection
     $themeSelector = Require-AutomationSelector $settingsInspection "ThemeToggle"
     $initialTheme = Get-ToggleState $themeSelector
@@ -623,11 +717,32 @@ try {
         "--output", $settingsScreenshot
     )
 
+    $routeStarted = [DateTime]::UtcNow
     Invoke-WinApp @("ui", "invoke", $dashboardSelector, "-w", "$WindowHandle")
     Invoke-WinApp @(
         "ui", "wait-for", "DashboardPageHeading",
         "-w", "$WindowHandle",
         "--timeout", "$TimeoutMilliseconds"
+    )
+    $routeResults.Add([pscustomobject]@{
+        routeId = "dashboard"
+        headingAutomationId = "DashboardPageHeading"
+        status = "passed"
+        durationMs = [int](
+            ([DateTime]::UtcNow - $routeStarted).TotalMilliseconds
+        )
+    })
+    [IO.File]::WriteAllText(
+        $routeEvidencePath,
+        "$([ordered]@{
+            protocol = "dynwinrt-jsx.route-smoke"
+            version = 1
+            generatedAt = [DateTime]::UtcNow.ToString("o")
+            processId = $dashboardPid
+            windowHandle = $WindowHandle
+            passed = $true
+            routes = $routeResults
+        } | ConvertTo-Json -Depth 6)`n"
     )
 }
 finally {

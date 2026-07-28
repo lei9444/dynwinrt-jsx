@@ -169,6 +169,19 @@ application exits and lets the current Node callback unwind before
 this method and returns `Promise<number>`; await its result before disposing
 Worker ports or terminating the process. Regenerate bindings before upgrading.
 
+## Generated-binding application host
+
+Prefer `defineWinUIApp()` for normal Worker applications. Pass the complete
+generated binding namespace once; the host creates the renderer preset, injects
+`releaseProjected` for renderer-owned native values, creates the generated
+Window and projection scope, and delegates deterministic teardown to
+`runWinUIWorkerApp()`.
+
+`runWinUIWorkerApp()` remains available when an application intentionally owns
+a custom renderer, Window factory, or projection-scope strategy. Existing
+low-level callers can migrate incrementally without changing their mount and
+close hooks.
+
 ## Renderer-owned native release
 
 Pass generated `releaseProjected` to
@@ -278,6 +291,46 @@ until a later `dispose()` succeeds.
 heartbeat controller, and `dynwinrt-jsx/host` exports its timeout monitor and
 shared acknowledgement state. Applications decide whether to enable it and
 where timeout or inspector JSON evidence is written.
+
+## Structured diagnostics protocol
+
+Use `createDiagnosticChannel()` when diagnostics are consumed by Host tooling,
+automation, or an in-app diagnostics surface. It emits versioned records for
+lifecycle state, native ownership, route transitions, errors, and snapshots.
+The older `createDiagnosticRecord()` helper remains available for unversioned
+application-specific logs.
+
+Structured errors are type-only by default. Opt into `message` or `stack`
+detail only for a suitably protected local sink because those fields can
+contain paths and application data. Error context, custom snapshots, route
+IDs, and route reason codes remain caller-provided and should be privacy-safe.
+
+Use `createDiagnosticBuffer()` and `createDiagnosticEvidenceBundle()` for
+bounded export files that combine protocol records with renderer, heartbeat,
+and route-smoke evidence. Replace raw `activeNative`/`activeComponents` checks
+with `assertRendererInspectionIdle()` when a full inspector snapshot is
+available.
+
+## Signal-native router
+
+Applications can replace route signals plus manual switch statements with
+`createRouter()`, `RouterProvider`, and `Outlet`. Route definitions support
+nested layouts, index routes, static segments, `:params`, and a final `*`
+segment. Router location, params, query, state, matches, route ID, and history
+are signals.
+
+Use `createRouterNavigationHost()` for `NavigationView` selection so native
+selection transactions retain the existing separate disposal and mount turns.
+`createNavigationHost()` remains available for non-router state machines.
+
+`defineRouteRegistry()` provides inferred route IDs and path params.
+`parentId` plus `router.up()` replaces application-specific parent/back
+switches, while `navigationId` and `targetForRoute()` support stable
+NavigationView selection for detail and parameterized routes.
+
+The router owns in-memory history only; it does not add browser history or
+React-style component rerenders. A route with the same ID remains mounted when
+only params, query, or state change.
 
 ## New subtree primitives
 

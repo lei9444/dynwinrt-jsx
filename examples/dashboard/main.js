@@ -36,9 +36,20 @@ const hostApiStartedAt = performance.now()
 const {
   createMessageTransport,
   createStateBridge,
+  assertRendererInspectionIdle,
+  createDiagnosticBuffer,
+  createDiagnosticEvidenceBundle,
   createDiagnosticRecord,
   createJsonStateStore,
+  createRendererHeartbeatMonitor,
+  createRendererHeartbeatSharedState,
+  diagnosticEvidenceProtocolName,
   formatDiagnosticRecord,
+  formatDiagnosticProtocolRecordSummary,
+  getRendererHeartbeatSharedState,
+  isDiagnosticProtocolRecord,
+  rendererHeartbeatSharedStateIndex,
+  summarizeRendererHeartbeatTimeout,
 } = require('dynwinrt-jsx/host')
 recordStartup('host-api.loaded', {
   durationMs: Math.round(
@@ -89,6 +100,55 @@ const statePath =
     'dynwinrt-jsx',
     'dashboard-state.json',
   )
+const diagnosticsExportPath =
+  process.env.DYNWINRT_JSX_DIAGNOSTICS_PATH ??
+  path.join(
+    path.dirname(statePath),
+    'diagnostics-evidence.json',
+  )
+const heartbeatEvidencePath =
+  process.env.DYNWINRT_JSX_HEARTBEAT_PATH ??
+  path.join(
+    path.dirname(statePath),
+    'heartbeat-timeout.json',
+  )
+const finalEvidencePath =
+  process.env.DYNWINRT_JSX_FINAL_EVIDENCE_PATH ??
+  path.join(
+    path.dirname(statePath),
+    'final-evidence.json',
+  )
+const heartbeatEnabled =
+  process.env.DYNWINRT_JSX_HEARTBEAT !== '0'
+const heartbeatTimeoutCandidate = Number(
+  process.env.DYNWINRT_JSX_HEARTBEAT_TIMEOUT_MS,
+)
+const heartbeatTimeoutMs =
+  Number.isInteger(heartbeatTimeoutCandidate) &&
+  heartbeatTimeoutCandidate >= 1_000
+    ? heartbeatTimeoutCandidate
+    : 5_000
+
+function writeJsonAtomic(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), {
+    recursive: true,
+  })
+  const temporaryPath =
+    `${filePath}.${process.pid}.${Date.now()}.tmp`
+  try {
+    fs.writeFileSync(
+      temporaryPath,
+      `${JSON.stringify(value, null, 2)}\n`,
+    )
+    fs.renameSync(temporaryPath, filePath)
+  }
+  finally {
+    fs.rmSync(temporaryPath, {
+      force: true,
+    })
+  }
+}
+
 const stateStore = createJsonStateStore({
   path: statePath,
   defaultState: createDefaultPersistedDashboardState,
@@ -121,6 +181,15 @@ if (loadedState.error) {
 }
 
 const { port1, port2 } = new MessageChannel()
+const diagnosticBuffer = createDiagnosticBuffer({
+  maxRecords: 1_000,
+})
+const heartbeatStateBuffer =
+  createRendererHeartbeatSharedState()
+const heartbeatState =
+  getRendererHeartbeatSharedState(
+    heartbeatStateBuffer,
+  )
 const stateBridge = createStateBridge(
   createMessageTransport(port1),
   {
@@ -151,6 +220,9 @@ const worker = new Worker(
     workerData: {
       statePort: port2,
       hotStatePath: hotEnabled ? hotStatePath : null,
+      heartbeatEnabled,
+      heartbeatState: heartbeatStateBuffer,
+      diagnosticsExportPath,
       initialState,
       selfTest: selfTestEnabled,
       selfTestFailure,
@@ -159,6 +231,66 @@ const worker = new Worker(
     transferList: [port2],
   },
 )
+const heartbeatMonitor = heartbeatEnabled
+  ? createRendererHeartbeatMonitor({
+      timeoutMs: heartbeatTimeoutMs,
+      schedule(callback, intervalMs) {
+        const timer = setInterval(callback, intervalMs)
+        timer.unref()
+        return () => clearInterval(timer)
+      },
+      onTimeout(status) {
+        const detectedAt = Date.now()
+        Atomics.store(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutAt,
+          BigInt(detectedAt),
+        )
+        Atomics.store(
+          heartbeatState,
+          rendererHeartbeatSharedStateIndex.timeoutCount,
+          BigInt(status.timeoutCount),
+        )
+        const timeoutSummary =
+          summarizeRendererHeartbeatTimeout(status)
+        try {
+          writeJsonAtomic(
+            heartbeatEvidencePath,
+            createDiagnosticEvidenceBundle({
+              diagnostics: diagnosticBuffer.snapshot(),
+              ...(status.lastHeartbeat
+                ? {
+                    renderer:
+                      status.lastHeartbeat.snapshot,
+                  }
+                : {}),
+              heartbeat: {
+                status,
+                timeoutSummary,
+              },
+              metadata: {
+                processId: process.pid,
+                workerThreadId: worker.threadId,
+                detectedAt,
+              },
+            }),
+          )
+          console.error(
+            `Dashboard UI heartbeat timed out; evidence: ${heartbeatEvidencePath}`,
+          )
+        }
+        catch (error) {
+          console.error(error)
+          process.exitCode = 1
+        }
+      },
+      onRecovered(status) {
+        console.log(
+          `Dashboard UI heartbeat recovered at sequence ${status.lastSequence}.`,
+        )
+      },
+    })
+  : undefined
 recordStartup('worker.created', {
   durationMs: Math.round(
     (performance.now() - workerCreationStartedAt) * 10,
@@ -265,7 +397,17 @@ stateBridge.state.subscribe((state) => {
 })
 
 worker.on('message', (message) => {
-  if (message?.type === 'error') {
+  if (message?.type === 'diagnostic') {
+    if (!isDiagnosticProtocolRecord(message.value)) {
+      console.error('Dashboard Worker sent an invalid diagnostic record.')
+      process.exitCode = 1
+      return
+    }
+    diagnosticBuffer.append(message.value)
+    console.log(
+      formatDiagnosticProtocolRecordSummary(message.value),
+    )
+  } else if (message?.type === 'error') {
     console.error(message.message)
     console.error(formatDiagnosticRecord(createDiagnosticRecord(
       'dashboard-worker',
@@ -318,6 +460,67 @@ worker.on('message', (message) => {
       `startup.${message.stage}`,
       message.value ?? {},
     )))
+  } else if (message?.type === 'heartbeat') {
+    if (heartbeatMonitor?.receive(message.value)) {
+      const status = heartbeatMonitor.snapshot()
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedAt,
+        BigInt(status.lastReceivedAt),
+      )
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.acknowledgedSequence,
+        BigInt(status.lastSequence),
+      )
+    }
+  } else if (message?.type === 'heartbeat-error') {
+    console.error(message.message)
+    process.exitCode = 1
+  } else if (message?.type === 'heartbeat-suspend') {
+    heartbeatMonitor?.dispose()
+  } else if (message?.type === 'diagnostics-export') {
+    try {
+      if (
+        message.value?.protocol !==
+          diagnosticEvidenceProtocolName
+      ) {
+        throw new Error(
+          'Dashboard Worker sent invalid diagnostic evidence.',
+        )
+      }
+      writeJsonAtomic(
+        diagnosticsExportPath,
+        message.value,
+      )
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportStatus,
+        1n,
+      )
+      Atomics.add(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportRevision,
+        1n,
+      )
+      console.log(
+        `Dashboard diagnostics exported: ${diagnosticsExportPath}`,
+      )
+    }
+    catch (error) {
+      console.error(error)
+      Atomics.store(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportStatus,
+        -1n,
+      )
+      Atomics.add(
+        heartbeatState,
+        rendererHeartbeatSharedStateIndex.exportRevision,
+        1n,
+      )
+      process.exitCode = 1
+    }
   }
 })
 
@@ -332,8 +535,57 @@ worker.on('exit', (code) => {
   }
   stateBridge.dispose()
   port1.close()
+  heartbeatMonitor?.dispose()
   if (hotEnabled) {
     fs.rmSync(hotStatePath, { force: true })
   }
-  process.exit(code)
+  let finalCode = code !== 0
+    ? code
+    : Number(process.exitCode ?? 0)
+  try {
+    const diagnostics = diagnosticBuffer.snapshot()
+    const finalSnapshotRecord =
+      [...diagnostics.records]
+        .reverse()
+        .find(
+          (record) =>
+            record.kind === 'snapshot' &&
+            record.payload.name === 'renderer-final',
+        )
+    const renderer = finalSnapshotRecord?.payload.data
+    if (code === 0 && !renderer) {
+      throw new Error(
+        'Dashboard exited without a final renderer snapshot.',
+      )
+    }
+    if (renderer) {
+      assertRendererInspectionIdle(
+        renderer,
+        'Dashboard final renderer',
+      )
+    }
+    writeJsonAtomic(
+      finalEvidencePath,
+      createDiagnosticEvidenceBundle({
+        diagnostics,
+        ...(renderer ? { renderer } : {}),
+        ...(heartbeatMonitor
+          ? {
+              heartbeat: {
+                status: heartbeatMonitor.snapshot(),
+              },
+            }
+          : {}),
+        metadata: {
+          processId: process.pid,
+          workerExitCode: code,
+        },
+      }),
+    )
+  }
+  catch (error) {
+    console.error(error)
+    finalCode = 1
+  }
+  process.exit(finalCode)
 })

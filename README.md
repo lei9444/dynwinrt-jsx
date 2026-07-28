@@ -107,20 +107,47 @@ reload without copying the lifecycle implementation:
 ```ts
 import {
   createFileHotReloadController,
+  defineWinUIApp,
   installWinUIWindowLifecycle,
   runWinUIWorkerApp,
 } from 'dynwinrt-jsx/worker'
 ```
 
-Applications still provide their generated `Application`, `Window`,
-projection-scope factory, renderer, model, and render callbacks.
-`runWinUIWorkerApp()` is the preferred high-level path; the lower-level
-lifecycle and hot-reload helpers remain available for custom hosts.
-Generated bindings must provide `Application.startScheduled()`.
-`runWinUIWorkerApp()` returns `Promise<number>` after the application exits.
-Pass the generated `releaseProjected` function as `releaseProjectedValue`.
-Also pass it as the renderer's `releaseNative` option so renderer-created
-controls are released and untracked when their mounted records are disposed.
+`defineWinUIApp()` is the preferred generated-binding host:
+
+```ts
+const app = defineWinUIApp({
+  bindings: WinUIBindings,
+  initializeRuntime() {
+    roInitialize(0)
+  },
+  configureWindow({ window }) {
+    window.title = 'My WinUI app'
+  },
+  mount({ bindings, renderer, window }) {
+    window.systemBackdrop = new bindings.MicaBackdrop()
+    return {
+      child: renderApp({ renderer, window }),
+    }
+  },
+  onError: reportWorkerError,
+})
+
+void app.run()
+```
+
+The binding namespace must provide generated `Application.startScheduled()`,
+`Window`, `createProjectedLifetimeScope()`, and `releaseProjected()`.
+The host creates the WinUI renderer preset, forces renderer-owned native
+release through `releaseProjected`, creates the Window and projection scope,
+installs deterministic close handling, and returns `Promise<number>` after the
+application exits. The app definition is one-shot and exposes detected renderer
+capabilities. Configure, mount, close, post-render, and post-activation hooks
+remain available through typed contexts containing the binding namespace,
+release function, renderer, Window, AppWindow, and optional diagnostic channel.
+`runWinUIWorkerApp()` remains the lower-level escape hatch for custom renderer,
+Window, or projection ownership.
+
 The Worker caches `Application.current`, `Window`, and `AppWindow` before the
 projection scope is created, then releases those root wrappers from
 `Window.Closed` after ordinary renderer/projection teardown.
@@ -149,6 +176,7 @@ an independently consumable framework.
 - Deterministic signals, computed values, effects, batching, roots, and scoped cleanup
 - Function components, refs, `onMount()`, and `onCleanup()`
 - Context providers scoped to native subtrees
+- Signal-native nested routing with owned outlets and in-memory history
 - `Show`, stable keyed `For`, fixed-height `VirtualFor`, and native
   `ItemsRepeater`/`ItemsView` virtualization
 - `ErrorBoundary` for mount and reactive update failures
@@ -549,6 +577,143 @@ Queue rejection throws and leaves the controller retryable. `render()` creates
 the single owned route outlet and deactivates the host before the current page
 is disposed during whole-shell teardown. Keep `onCleanup(navigationHost.dispose)`
 as an idempotent fallback if mounting fails before the outlet is attached.
+
+For application routing, prefer `createRouter()` with `RouterProvider` and
+`Outlet`. Routes are matched by stable IDs and path patterns; nested layouts
+remain mounted while only the changed outlet subtree is disposed:
+
+```tsx
+const router = createRouter({
+  routes: [
+    {
+      id: 'root',
+      path: '/',
+      render: () => <AppLayout />,
+      children: [
+        {
+          id: 'home',
+          index: true,
+          render: () => <HomePage />,
+        },
+        {
+          id: 'task',
+          path: 'tasks/:taskId',
+          render: () => <TaskPage />,
+        },
+      ],
+    },
+  ],
+})
+onCleanup(router.dispose)
+
+function AppLayout() {
+  return (
+    <UI.Grid>
+      <AppNavigation />
+      <Outlet />
+    </UI.Grid>
+  )
+}
+
+function TaskPage() {
+  const params = useRouteParams()
+  const query = useRouteQuery()
+  return (
+    <UI.TextBlock
+      text={computed(() =>
+        `Task ${params.value.taskId}; tab ${String(query.value.tab)}`,
+      )}
+    />
+  )
+}
+
+<RouterProvider router={router}>
+  <Outlet />
+</RouterProvider>
+```
+
+`navigate()`, `replace()`, `back()`, `forward()`, and `go()` update an in-memory
+history. Targets can be path strings or `{ routeId, params, query, hash }`
+objects, and `pathFor()` generates a path from a route ID. Location, params,
+query, state, matches, route ID, and history are readonly signals. Changing
+params, query, or state for the same route updates those signals without
+remounting the route component; changing a route ID releases the old native
+subtree and reactive scope exactly once.
+
+Use `defineRouteRegistry()` when route IDs and paths are known statically. IDs
+are inferred from object keys and `:params`/`*` are inferred from each path:
+
+```ts
+const routes = defineRouteRegistry({
+  home: {
+    path: '/',
+    render: () => <HomePage />,
+  },
+  task: {
+    path: '/tasks/:taskId',
+    parentId: 'home',
+    navigationId: 'tasks',
+    render: () => <TaskPage />,
+  },
+})
+const router = createRouter({ routes: routes.routes })
+
+router.navigate(routes.target('task', {
+  params: { taskId: 42 },
+  query: { tab: 'activity' },
+}))
+```
+
+Parameterized registry targets require their inferred params at compile time.
+`parentId` enables `router.up()`: it returns to a matching previous parent
+entry or replaces the current entry with the logical parent. `navigationId`
+lets parameterized/detail routes keep a stable NavigationView selection.
+
+Use `createRouterNavigationHost()` when a native `NavigationView` drives the
+router. It adapts stable route IDs to `createNavigationHost()`, retaining the
+separate DispatcherQueue turns for old-page disposal and target mounting:
+
+```tsx
+const navigationHost = createRouterNavigationHost(router, {
+  enqueue: (callback) =>
+    window.dispatcherQueue.tryEnqueue(
+      DispatcherQueuePriority.Low,
+      callback,
+    ),
+  selectRoute(routeId) {
+    navigation.selectedItem = routeItems.get(routeId)
+  },
+  targetForRoute(routeId) {
+    return routeId === 'tasks'
+      ? routes.target('task', {
+          params: { taskId: selectedTaskId.value },
+        })
+      : { routeId }
+  },
+})
+onCleanup(navigationHost.dispose)
+
+<Navigation onSelectionChanged={(_sender, args) => {
+  navigationHost.requestNativeNavigation(
+    args.selectedItemContainer.name,
+  )
+}}>
+  <RouterProvider router={router}>
+    {navigationHost.render(() => <Outlet />)}
+  </RouterProvider>
+</Navigation>
+```
+
+The router is not React Router and does not use browser history. Route render
+functions mount once per matched route identity; application changes flow
+through signals. Transition diagnostics contain stable route IDs and reason
+codes, not path parameters or query values.
+
+The generated template, Dashboard, and Gallery use this path. Gallery builds
+its root route tree from `pages/*/routes.tsx`; each category folder owns its
+category fallback and sample child routes. The persisted route remains the
+hot-reload seed, and structural parents plus `up()` provide generic
+sample-to-category back navigation instead of category-specific branches.
 
 Use one application-scoped `createSecondaryWindowManager()` when pages create
 additional XAML `Window` or raw `AppWindow` instances. Each page owns a scope,
@@ -1152,6 +1317,79 @@ callbacks are paused inside the native WinUI loop.
 `createDiagnosticRecord()` and `formatDiagnosticRecord()` produce structured
 JSON events for startup, Worker failures, hot reload, and disposal evidence.
 
+For machine-readable framework diagnostics, use the versioned protocol channel:
+
+```ts
+const diagnostics = createDiagnosticChannel({
+  source: 'app-worker',
+  onRecord(record) {
+    parentPort.postMessage({
+      type: 'diagnostic',
+      record,
+    })
+  },
+})
+
+diagnostics.lifecycle({
+  target: 'worker',
+  state: 'starting',
+  stage: 'bootstrap',
+})
+diagnostics.ownership(() => {
+  const snapshot = renderer.inspector.snapshot()
+  const counts = createRendererOwnershipCounts(snapshot)
+  return {
+    owner: 'renderer',
+    resource: 'native-tree',
+    ownership: 'owned',
+    action: 'snapshot',
+    activeCount: counts.activeNative,
+    counts,
+  }
+})
+```
+
+Every emitted record includes the `dynwinrt-jsx.diagnostics` protocol name,
+version `1`, a per-channel sequence, timestamp, source, kind, level, and typed
+payload. Categories cover lifecycle state, native ownership, route
+transitions, structured errors, and snapshots. `isEnabled(kind)` and lazy
+payload callbacks let disabled snapshot categories avoid inspector work.
+Error records include only the stable error type, code, and HRESULT by default;
+message and stack capture require explicit `detail` opt-in because they can
+contain paths or application data. `createDiagnosticRecord()` remains the
+unversioned helper for application-specific ad hoc logs. Keep error context
+and custom snapshot payloads privacy-safe, and use stable route IDs and reason
+codes rather than URLs or text containing user data.
+
+Use `createDiagnosticBuffer()` to retain a bounded cross-process event tail,
+then combine it with renderer, heartbeat, and route-smoke evidence:
+
+```ts
+const buffer = createDiagnosticBuffer({ maxRecords: 500 })
+const diagnostics = createDiagnosticChannel({
+  source: 'app-worker',
+  onRecord(record) {
+    buffer.append(record)
+    parentPort.postMessage({ type: 'diagnostic', value: record })
+  },
+})
+
+const evidence = createDiagnosticEvidenceBundle({
+  diagnostics: buffer.snapshot(),
+  renderer: renderer.inspector.snapshot(),
+  routes: routeSmokeResults,
+})
+```
+
+`assertRendererInspectionIdle()` is the strong teardown gate: it checks native
+and component counts plus inspector nodes, reactive scopes/observers/
+dependencies, subscriptions, and failed subscription cleanup. The Dashboard
+Diagnostics page exports the same `dynwinrt-jsx.evidence` format used by
+heartbeat timeouts and final process-exit evidence.
+Use `formatDiagnosticProtocolRecordSummary()` for console logs so full
+inspector snapshot payloads remain in evidence files instead of flooding
+stdout.
+
 `createJsonStateStore()` provides validated atomic JSON load/save behavior:
 
 ```ts
@@ -1272,6 +1510,18 @@ repositories without installing npm packages:
   -DotNetPath C:\path\to\dotnet.exe `
   -TypeScriptPath C:\path\to\typescript\bin\tsc
 ```
+
+Add `-SkipDesktopInput` when running in a locked or non-interactive session.
+This skips only SendInput and post-dialog keyboard-focus assertions; UIA
+patterns, route transitions, accessibility-tree checks, diagnostics export,
+single-window checks, close, process exit, and renderer-idle evidence still
+run. Each cycle writes:
+
+- `route-smoke.json` with stable route IDs and timings;
+- `diagnostics-evidence.json` from the in-app export;
+- `final-evidence.json` with the final idle renderer snapshot;
+- `heartbeat-timeout.json` only when the UI thread times out; and
+- `hang-capture/` with CDB thread stacks when a live process fails a cycle.
 
 The preparation script builds the local dynwinrt runtime and code generator,
 publishes the x64 winapp CLI, uses winapp's normal restore/codegen pipeline,

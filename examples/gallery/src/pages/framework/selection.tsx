@@ -5,8 +5,8 @@ import {
   GalleryComboBox,
   GalleryListView,
   UI,
-} from '../gallery-ui'
-import { Page, SampleCard } from '../components/gallery-components'
+} from '../../gallery-ui'
+import { Page, SampleCard } from '../../components/gallery-components'
 
 export function SelectionPage(context: AppContext) {
   const options = [

@@ -124,6 +124,7 @@ test('mounts native controls, props, children, refs, and events', () => {
 
 test('releases renderer-owned native instances after subtree cleanup', () => {
   const released = []
+  let buttonRefCleared = false
   const renderer = createRenderer({
     releaseNative(value) {
       if (value instanceof FakePanel) {
@@ -131,6 +132,7 @@ test('releases renderer-owned native instances after subtree cleanup', () => {
       }
       if (value instanceof FakeButton) {
         assert.equal(value.listeners.size, 0)
+        assert.equal(buttonRefCleared, true)
       }
       released.push(value)
     },
@@ -140,6 +142,11 @@ test('releases renderer-owned native instances after subtree cleanup', () => {
     jsx(Controls.Panel, {
       children: jsx(Controls.Button, {
         onClick() {},
+        ref(value) {
+          if (value === null) {
+            buttonRefCleared = true
+          }
+        },
       }),
     }),
     window,

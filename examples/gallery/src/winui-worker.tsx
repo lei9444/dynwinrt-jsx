@@ -2,16 +2,15 @@ import {
   createControls,
   createMessageTransport,
   createStateBridge,
-  createWinUIRendererPreset,
   thickness,
   type Child,
 } from 'dynwinrt-jsx'
 import {
   createFileHotReloadController,
   createRendererHeartbeatController,
+  defineWinUIApp,
   getRendererHeartbeatSharedState,
   rendererHeartbeatSharedStateIndex,
-  runWinUIWorkerApp,
   type FileHotReloadFileSystem,
   type FileHotReloadMessage,
   type RendererHeartbeat,
@@ -19,19 +18,14 @@ import {
 import { roInitialize } from '@microsoft/dynwinrt'
 import * as WinUIBindings from '#winapp/bindings'
 import {
-  Application,
   ApplicationTheme,
   AppNotificationManager,
   DispatcherQueuePriority,
-  MicaBackdrop,
   StackPanel,
   TextBlock,
   TextWrapping,
   TitleBarHeightOption,
   TitleBarTheme,
-  Window,
-  createProjectedLifetimeScope,
-  releaseProjected,
 } from '#winapp/bindings'
 import {
   createAppModel,
@@ -89,10 +83,6 @@ if (!parentPort) {
   throw new Error('The WinUI entry point must run in a Worker.')
 }
 
-roInitialize(0)
-const winuiRendererPreset =
-  createWinUIRendererPreset(WinUIBindings)
-
 const bridge = createStateBridge<AppState>(
   createMessageTransport(workerData.statePort),
   {
@@ -130,20 +120,18 @@ const errorTree = (error: unknown): Child => (
   </FallbackUI.StackPanel>
 )
 
-void runWinUIWorkerApp({
-  application: Application,
-  releaseProjectedValue: releaseProjected,
-  createRenderer() {
-    return winuiRendererPreset.createRenderer({
-      releaseNative: releaseProjected,
-    })
+const app = defineWinUIApp({
+  bindings: WinUIBindings,
+  initializeRuntime() {
+    roInitialize(0)
   },
-  createWindow() {
-    return new Window()
-  },
-  configureWindow({ window }) {
+  configureWindow({
+    bindings,
+    releaseProjected,
+    window,
+  }) {
     window.extendsContentIntoTitleBar = true
-    const application = Application.current
+    const application = bindings.Application.current
     try {
       application.requestedTheme =
         workerData.initialState.darkTheme
@@ -177,11 +165,8 @@ void runWinUIWorkerApp({
       releaseProjected(configuredAppWindow)
     }
   },
-  createProjectionScope() {
-    return createProjectedLifetimeScope()
-  },
-  mount({ window, renderer }) {
-    window.systemBackdrop = new MicaBackdrop()
+  mount({ bindings, window, renderer }) {
+    window.systemBackdrop = new bindings.MicaBackdrop()
     const appNotifications = createAppNotificationOwner({
       getManager: () => AppNotificationManager.default_,
     })
@@ -592,7 +577,9 @@ void runWinUIWorkerApp({
           : String(error),
     })
   },
-}).then((exitCode) => {
+})
+
+void app.run().then((exitCode) => {
   bridge.dispose()
   workerData.statePort.close()
   process.exit(exitCode)

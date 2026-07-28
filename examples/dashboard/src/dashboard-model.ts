@@ -47,6 +47,9 @@ export interface DashboardModel {
   readonly hotVersion: Signal<number>
   readonly lastError: Signal<string | null>
   readonly diagnostics: Signal<RendererDiagnostics>
+  readonly diagnosticSummary: Signal<string>
+  readonly diagnosticExportStatus: Signal<string>
+  readonly heartbeatSummary: Signal<string>
   updateTask(id: number, completed: boolean): void
   removeTask(id: number): void
   addTask(title: string): void
@@ -99,6 +102,15 @@ export function createDashboardModel(
     const hotVersion = signal(0)
     const lastError = signal<string | null>(null)
     const diagnostics = signal(idleDiagnostics)
+    const diagnosticSummary = signal(
+      'No structured diagnostics received.',
+    )
+    const diagnosticExportStatus = signal(
+      'Diagnostics have not been exported.',
+    )
+    const heartbeatSummary = signal(
+      'UI heartbeat is waiting.',
+    )
     const snapshot = (
       nextStatus = status.value,
     ): DashboardState => ({
@@ -136,6 +148,9 @@ export function createDashboardModel(
       hotVersion,
       lastError,
       diagnostics,
+      diagnosticSummary,
+      diagnosticExportStatus,
+      heartbeatSummary,
       updateTask(id, completed) {
         batch(() => {
           tasks.value = tasks.value.map((task) =>

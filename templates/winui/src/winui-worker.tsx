@@ -1,29 +1,24 @@
 import {
   createControls,
+  createDiagnosticChannel,
   createMessageTransport,
   createStateBridge,
-  createWinUIRendererPreset,
   thickness,
   type Child,
 } from 'dynwinrt-jsx'
 import {
   createFileHotReloadController,
-  runWinUIWorkerApp,
+  defineWinUIApp,
   type FileHotReloadFileSystem,
   type FileHotReloadMessage,
 } from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
 import * as WinUIBindings from '#winapp/bindings'
 import {
-  Application,
   ApplicationTheme,
-  MicaBackdrop,
   StackPanel,
   TextBlock,
   TitleBarTheme,
-  Window,
-  createProjectedLifetimeScope,
-  releaseProjected,
 } from '#winapp/bindings'
 import {
   createAppModel,
@@ -73,10 +68,6 @@ if (!parentPort) {
   throw new Error('The WinUI entry point must run in a Worker.')
 }
 
-roInitialize(0)
-const winuiRendererPreset =
-  createWinUIRendererPreset(WinUIBindings)
-
 const bridge = createStateBridge<AppState>(
   createMessageTransport(workerData.statePort),
   {
@@ -92,6 +83,15 @@ const FallbackUI = createControls({
 const moduleId = './app.js'
 const modulePath = require.resolve(moduleId)
 const fileSystem = require('node:fs') as FileHotReloadFileSystem
+const diagnostics = createDiagnosticChannel({
+  source: 'app-worker',
+  onRecord(record) {
+    parentPort.postMessage({
+      type: 'diagnostic',
+      value: record,
+    })
+  },
+})
 
 const loadApp = (invalidate: boolean): AppModule => {
   if (invalidate) {
@@ -111,19 +111,18 @@ const errorTree = (error: unknown): Child => (
   </FallbackUI.StackPanel>
 )
 
-void runWinUIWorkerApp({
-  application: Application,
-  releaseProjectedValue: releaseProjected,
-  createRenderer() {
-    return winuiRendererPreset.createRenderer({
-      releaseNative: releaseProjected,
-    })
+const app = defineWinUIApp({
+  bindings: WinUIBindings,
+  diagnostics,
+  initializeRuntime() {
+    roInitialize(0)
   },
-  createWindow() {
-    return new Window()
-  },
-  configureWindow({ window }) {
-    const application = Application.current
+  configureWindow({
+    bindings,
+    releaseProjected,
+    window,
+  }) {
+    const application = bindings.Application.current
     try {
       application.requestedTheme =
         workerData.initialState.darkTheme
@@ -151,11 +150,8 @@ void runWinUIWorkerApp({
       releaseProjected(configuredAppWindow)
     }
   },
-  createProjectionScope() {
-    return createProjectedLifetimeScope()
-  },
-  mount({ window, renderer }) {
-    window.systemBackdrop = new MicaBackdrop()
+  mount({ bindings, window, renderer }) {
+    window.systemBackdrop = new bindings.MicaBackdrop()
     const model = createAppModel(
       bridge,
       workerData.initialState,
@@ -268,7 +264,9 @@ void runWinUIWorkerApp({
           : String(error),
     })
   },
-}).then((exitCode) => {
+})
+
+void app.run().then((exitCode) => {
   bridge.dispose()
   workerData.statePort.close()
   process.exit(exitCode)
