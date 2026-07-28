@@ -208,6 +208,37 @@ function Ensure-NavigationItem(
     )
 }
 
+function Invoke-GalleryRoute(
+    [int64]$WindowHandle,
+    [string]$Selector,
+    [string]$Heading,
+    [string]$ParentSelector = ""
+) {
+    for ($attempt = 1; $attempt -le 2; $attempt += 1) {
+        & $WinAppPath ui wait-for $Selector `
+            -w "$WindowHandle" `
+            --timeout 100 *> $null
+        if ($LASTEXITCODE -ne 0 -and $ParentSelector) {
+            Invoke-WinApp @(
+                "ui", "invoke", $ParentSelector,
+                "-w", "$WindowHandle"
+            )
+        }
+        Ensure-NavigationItem $WindowHandle $Selector
+        Invoke-WinApp @(
+            "ui", "invoke", $Selector,
+            "-w", "$WindowHandle"
+        )
+        & $WinAppPath ui wait-for $Heading `
+            -w "$WindowHandle" `
+            --timeout "$TimeoutMilliseconds" *> $null
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+    }
+    throw "Gallery route '$Selector' did not show '$Heading' after two attempts."
+}
+
 $evidenceRoot = Join-Path $galleryRoot ".winapp\smoke"
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $stdoutPath = Join-Path $evidenceRoot "gallery.stdout.log"
@@ -250,6 +281,10 @@ $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
 $env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
 
+& npm.cmd --prefix $galleryRoot run build:dynwinrt
+if ($LASTEXITCODE -ne 0) {
+    throw "Gallery dynwinrt preparation failed."
+}
 & npm.cmd --prefix $galleryRoot run build
 if ($LASTEXITCODE -ne 0) {
     throw "Gallery build failed."
@@ -354,6 +389,40 @@ try {
             "-w", "$windowHandle",
             "--timeout", "$TimeoutMilliseconds"
         )
+        Ensure-NavigationItem $windowHandle "GalleryFundamentalsCategoryNavItem"
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryFundamentalsCategoryNavItem",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "FundamentalsCategoryPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        for ($cycle = 1; $cycle -le 5; $cycle += 1) {
+            Invoke-GalleryRoute `
+                $windowHandle `
+                "GallerybindingNavItem" `
+                "BindingPageHeading" `
+                "GalleryFundamentalsCategoryNavItem"
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryRenderError",
+                "-w", "$windowHandle",
+                "--gone",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+            Invoke-GalleryRoute `
+                $windowHandle `
+                "GallerytemplatesNavItem" `
+                "TemplatesPageHeading" `
+                "GalleryFundamentalsCategoryNavItem"
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryRenderError",
+                "-w", "$windowHandle",
+                "--gone",
+                "--timeout", "$TimeoutMilliseconds"
+            )
+        }
         Invoke-WinApp @(
             "ui", "set-value", "TextBox", "multiple windows xaml",
             "-w", "$windowHandle"

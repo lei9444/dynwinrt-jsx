@@ -453,6 +453,61 @@ test('Gallery uses the signal-native router', () => {
   }
 })
 
+test('Gallery keeps local dynwinrt runtime and codegen aligned', () => {
+  const manifest = readManifest(path.join(
+    __dirname,
+    '..',
+    'examples',
+    'gallery',
+  ))
+  const buildScript = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'scripts',
+      'build-local-dynwinrt.js',
+    ),
+    'utf8',
+  )
+  const codegenWrapper = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'tools',
+      'local-codegen',
+      'cli.js',
+    ),
+    'utf8',
+  )
+
+  assert.match(
+    manifest.scripts.generate,
+    /build:dynwinrt/,
+  )
+  assert.match(
+    manifest.scripts.dev,
+    /build:dynwinrt/,
+  )
+  assert.match(
+    manifest.scripts.start,
+    /build:dynwinrt/,
+  )
+  assert.match(buildScript, /-p',\s*'jswinrt_rs'/)
+  assert.match(buildScript, /-p',\s*'dynwinrt-codegen'/)
+  assert.match(
+    buildScript,
+    /dynwinrt\.win32-x64-msvc\.node/,
+  )
+  assert.match(
+    codegenWrapper,
+    /\.winapp[\s\S]*tools[\s\S]*dynwinrt-codegen\.exe/,
+  )
+})
+
 test('CI covers pinned Windows and ARM64 source matrices', () => {
   const workflow = fs.readFileSync(
     path.join(__dirname, '..', '.github', 'workflows', 'ci.yml'),

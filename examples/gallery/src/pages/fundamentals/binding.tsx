@@ -3,7 +3,6 @@ import {
   cornerRadius,
   createUri,
   gridLength,
-  onMount,
   signal,
   theme,
   thickness,
@@ -64,28 +63,45 @@ function DetailListItem(props: {
   readonly index: number
   readonly onSelected: () => void
 }) {
-  const itemRef: RefObject<ListViewItem> = { current: null }
-  onMount(() => {
-    const item = itemRef.current
+  let currentItem: ListViewItem | null = null
+  let unsubscribeSelected:
+    | (() => void)
+    | undefined
+  const setItemRef = (item: ListViewItem | null) => {
+    if (currentItem === item) {
+      return
+    }
+    if (unsubscribeSelected) {
+      unsubscribeSelected()
+      unsubscribeSelected = undefined
+    }
+    currentItem = item
     if (!item) {
-      throw new Error('Binding detail item did not mount.')
+      return
     }
     const property = SelectorItem.isSelectedProperty
-    const token = item.registerPropertyChangedCallback(
-      property,
-      () => {
-        if (item.isSelected) {
-          props.onSelected()
-        }
-      },
-    )
-    return () => {
+    let token: bigint
+    try {
+      token = item.registerPropertyChangedCallback(
+        property,
+        () => {
+          if (item.isSelected) {
+            props.onSelected()
+          }
+        },
+      )
+    }
+    catch (error) {
+      currentItem = null
+      throw error
+    }
+    unsubscribeSelected = () => {
       item.unregisterPropertyChangedCallback(property, token)
     }
-  })
+  }
   return (
     <UI.ListViewItem
-      ref={itemRef}
+      ref={setItemRef}
       automationId={`GalleryBindingDetailItem${props.index}`}
     >
       <UI.StackPanel padding={thickness(4)} spacing={2}>

@@ -5,13 +5,24 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-const executable = path.resolve(
+const preparedExecutable = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  '.winapp',
+  'tools',
+  'dynwinrt-codegen.exe',
+)
+const fallbackExecutable = path.resolve(
   __dirname,
   "../../../../../dynwinrt",
   'target',
   'release',
   'dynwinrt-codegen.exe',
 )
+const executable = fs.existsSync(preparedExecutable)
+  ? preparedExecutable
+  : fallbackExecutable
 
 if (!fs.existsSync(executable)) {
   throw new Error(

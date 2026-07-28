@@ -6,14 +6,15 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "setup": "npm run build:codegen && node scripts/setup.js",
-    "generate": "winapp node generate-bindings",
+    "setup": "npm run build:dynwinrt && node scripts/setup.js",
+    "generate": "npm run build:dynwinrt && winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
-    "dev": "node dev.js",
-    "start": "npm run build && node main.js",
+    "dev": "npm run build:dynwinrt && node dev.js",
+    "start": "npm run build:dynwinrt && npm run build && node main.js",
     "smoke:ui": "pwsh -NoProfile -File scripts/smoke-ui.ps1",
     "test:lifecycle": "npm run build && node --test tests/*.test.js",
-    "build:codegen": "cargo build --release -p dynwinrt-codegen --manifest-path \"../../../dynwinrt/Cargo.toml\""
+    "build:dynwinrt": "node scripts/build-local-dynwinrt.js",
+    "build:codegen": "npm run build:dynwinrt"
   },
   "engines": {
     "node": ">=20"
