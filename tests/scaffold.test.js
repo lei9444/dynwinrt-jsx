@@ -37,6 +37,19 @@ function assertLifetimeTeardownSource(workerSource) {
   if (/defineWinUIApp/.test(workerSource)) {
     assert.match(workerSource, /bindings: WinUIBindings/)
     assert.match(workerSource, /beforeClose\(\)/)
+    if (/createWinUIWorkerRuntime/.test(workerSource)) {
+      assert.match(workerSource, /disposeAfterRender/)
+      assert.match(
+        workerSource,
+        /runtime\.createRenderedHooks/,
+      )
+      assert.match(
+        workerSource,
+        /\.\.\.runtime\.appCallbacks/,
+      )
+      assert.match(workerSource, /runtime\.run\(app\)/)
+      return
+    }
     assert.match(workerSource, /disposeAfterRender\(\)/)
     assert.match(
       workerSource,
@@ -129,6 +142,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.match(workerSource, /defineWinUIApp/)
   assert.match(workerSource, /bindings: WinUIBindings/)
   assert.match(workerSource, /createDiagnosticChannel/)
+  assert.match(workerSource, /createWinUIWorkerRuntime/)
   assert.match(workerSource, /diagnostics,/)
   assert.doesNotMatch(
     workerSource,
@@ -458,6 +472,37 @@ test('Gallery uses the signal-native router', () => {
   assert.match(galleryMain, /evidence:\s*\{/)
   assert.doesNotMatch(galleryMain, /new MessageChannel/)
   assert.doesNotMatch(galleryMain, /initWinappsdk/)
+  const galleryWorker = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'src',
+      'winui-worker.tsx',
+    ),
+    'utf8',
+  )
+  assert.match(
+    galleryWorker,
+    /createWinUIWorkerRuntime/,
+  )
+  assert.match(
+    galleryWorker,
+    /createWinUIAsyncCleanup/,
+  )
+  assert.match(
+    galleryWorker,
+    /runtime\.createRenderedHooks/,
+  )
+  assert.doesNotMatch(
+    galleryWorker,
+    /createStateBridge/,
+  )
+  assert.doesNotMatch(
+    galleryWorker,
+    /createRendererHeartbeatController/,
+  )
   const galleryUi = fs.readFileSync(
     path.join(
       __dirname,

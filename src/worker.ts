@@ -33,6 +33,12 @@ import {
   createProjectedOwnership,
   type ProjectedOwnership,
 } from './runtime/projected-owner'
+import {
+  createWinUIWorkerRuntimeBase,
+  type CreateWinUIWorkerRuntimeOptions,
+  type WinUIWorkerRuntime,
+  type WinUIWorkerRuntimeData,
+} from './runtime/worker-session'
 
 export {
   createDiagnosticChannel,
@@ -96,6 +102,25 @@ export {
   type ProjectedOwnership,
   type ProjectedValueOwner,
 } from './runtime/projected-owner'
+
+export {
+  createWinUIAsyncCleanup,
+  createWinUICleanup,
+  type WinUIAsyncCleanup,
+  type WinUIAsyncCleanupOperation,
+  type WinUICleanup,
+} from './runtime/cleanup'
+
+export type {
+  CreateWinUIWorkerRuntimeOptions,
+  WinUIWorkerHostStatus,
+  WinUIWorkerRenderedRuntimeOptions,
+  WinUIWorkerRuntime,
+  WinUIWorkerRuntimeData,
+  WinUIWorkerRuntimeDispatcherQueue,
+  WinUIWorkerRuntimeHotReloadMessage,
+  WinUIWorkerStatePort,
+} from './runtime/worker-session'
 
 export type {
   RendererHeartbeat,
@@ -1884,9 +1909,30 @@ export function createFileHotReloadController(
           firstError ??= error
         }
       }
+
       if (firstError !== undefined) {
         throw firstError
       }
     },
   }
+}
+
+export function createWinUIWorkerRuntime<
+  State,
+  Extra extends object = Record<string, never>,
+>(
+  options: CreateWinUIWorkerRuntimeOptions,
+): WinUIWorkerRuntime<
+  State,
+  WinUIWorkerRuntimeData<State> & Extra
+> {
+  return createWinUIWorkerRuntimeBase<
+    State,
+    Extra
+  >(options, {
+    createHotReload:
+      createFileHotReloadController,
+    createHeartbeat:
+      createRendererHeartbeatController,
+  })
 }

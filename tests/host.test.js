@@ -225,3 +225,79 @@ test('defined WinUI Host terminates a failed startup Worker', async (t) => {
   assert.equal(host.worker, null)
   assert.equal(host.bridge, null)
 })
+
+test('Worker runtime owns bridge, module loading, and exit', async (t) => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'dynwinrt-jsx-runtime-'),
+  )
+  t.after(() => {
+    fs.rmSync(directory, {
+      recursive: true,
+      force: true,
+    })
+  })
+  const messages = []
+  let heartbeatSuspends = 0
+  const { defineWinUIHost } =
+    require('../dist/host.js')
+  const host = defineWinUIHost({
+    rootDirectory: path.join(__dirname, '..'),
+    workerPath: path.join(
+      __dirname,
+      'fixtures',
+      'worker-runtime-worker.js',
+    ),
+    bootstrap: false,
+    state: {
+      channel: 'runtime-state',
+      path: path.join(directory, 'state.json'),
+      defaultState: () => ({
+        version: 1,
+        count: 3,
+      }),
+      validate(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          Number.isInteger(value.count)
+        )
+      },
+      initialize: (loaded) => ({
+        ...loaded.state,
+        status: 'starting',
+      }),
+      persist: (state) => ({
+        version: 1,
+        count: state.count,
+      }),
+    },
+    onWorkerMessage(message) {
+      if (message?.type === 'runtime-test') {
+        messages.push(message.value)
+      }
+      else if (message?.type === 'heartbeat-suspend') {
+        heartbeatSuspends += 1
+      }
+    },
+  })
+
+  assert.equal(await host.run(), 0)
+  assert.deepEqual(messages, [{
+    module: 42,
+    cleanupAttempts: 2,
+  }])
+  assert.equal(heartbeatSuspends, 1)
+  assert.deepEqual(
+    JSON.parse(
+      fs.readFileSync(
+        path.join(directory, 'state.json'),
+        'utf8',
+      ),
+    ),
+    {
+      version: 1,
+      count: 4,
+    },
+  )
+})

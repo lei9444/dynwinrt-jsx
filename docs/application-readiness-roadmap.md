@@ -511,6 +511,11 @@ identity, and manifest dependencies in a provenance document.
       component-scope disposal.
 - [x] Bind projected owner/create helpers to `defineWinUIApp()` contexts so
       applications do not import or thread generated release callbacks.
+- [x] Add a standard Worker runtime for Host worker data, state bridges,
+      application-root module loading, hot reload, heartbeat/shared state,
+      message forwarding, and deterministic process/port cleanup.
+- [x] Add retryable synchronous and asynchronous cleanup composition so Window
+      close cancellation and cleanup ordering are framework-owned.
 - [x] Split `src/renderer/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,

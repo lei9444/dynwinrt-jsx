@@ -93,6 +93,9 @@ import {
   defineWinUIHost,
 } from 'dynwinrt-jsx/host'
 import {
+  createWinUIAsyncCleanup,
+  createWinUICleanup,
+  createWinUIWorkerRuntime,
   defineWinUIApp,
   type DefinedWinUIAppContext,
   type WinUIAppBindingNamespace,
@@ -629,6 +632,22 @@ const definedWinUIApp = defineWinUIApp({
 })
 void definedWinUIApp.capabilities
 void definedWinUIApp.run()
+const typeSyncCleanup = createWinUICleanup([
+  () => {},
+])
+const typeAsyncCleanup = createWinUIAsyncCleanup([
+  async () => {},
+])
+void typeSyncCleanup
+void typeAsyncCleanup
+const typeWorkerRuntime =
+  createWinUIWorkerRuntime<{
+    readonly count: number
+  }>({
+    moduleId: './dist/app.js',
+  })
+void typeWorkerRuntime.workerData.rootDirectory
+void typeWorkerRuntime.createRenderedHooks
 interface TypeRouteState {
   readonly source: string
 }

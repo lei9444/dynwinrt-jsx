@@ -655,6 +655,8 @@ export function defineWinUIHost<State, PersistedState>(
               statePort: port2,
               hotStatePath,
               initialState,
+              rootDirectory:
+                options.rootDirectory,
             },
             transferList: [port2],
           },

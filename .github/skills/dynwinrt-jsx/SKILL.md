@@ -98,6 +98,7 @@ adoption map.
 | Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
 | Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/diagnostic-evidence.ts`, `src/runtime/heartbeat.ts`, `src/runtime/host-evidence.ts` |
 | Worker Window lifecycle and file hot reload | `src/worker.ts` |
+| Worker runtime and cleanup composition | `src/runtime/worker-session.ts`, `src/runtime/cleanup.ts` |
 | Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
@@ -231,6 +232,10 @@ The built-in WinUI layer currently provides:
 - Main-process Host evidence presets own heartbeat shared state, inspector and
   diagnostics exports, timeout capture, and optional final-idle evidence.
 - `defineWinUIApp()` contexts expose app-bound projected owner/create helpers.
+- `createWinUIWorkerRuntime()` owns Host worker data, state bridge, hot reload,
+  heartbeat/shared state, standard messages, and Worker exit cleanup.
+- Synchronous and asynchronous cleanup stacks continue after failures and
+  retry only incomplete actions on the next close attempt.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters

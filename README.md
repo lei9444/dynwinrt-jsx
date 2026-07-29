@@ -202,6 +202,58 @@ const app = defineWinUIApp({
 void app.run()
 ```
 
+For the standard Node Worker entry, create one
+`createWinUIWorkerRuntime()` session. It reads Host worker data, owns the state
+bridge, resolves hot modules from the application root, forwards standard
+messages, manages heartbeat/Host shared state, and closes the state port:
+
+```ts
+const runtime = createWinUIWorkerRuntime<AppState>({
+  channel: 'app-state',
+  moduleId: './dist/app.js',
+})
+
+const app = defineWinUIApp({
+  bindings: WinUIBindings,
+  mount({ renderer, window }) {
+    const model = createAppModel(
+      runtime.bridge,
+      runtime.workerData.initialState,
+    )
+    return {
+      child: runtime.loadModule<AppModule>().renderApp({
+        model,
+        renderer,
+        window,
+      }),
+      beforeClose() {
+        runtime.bridge.set(model.snapshot('closed'))
+      },
+      disposeAfterRender: model.dispose,
+      afterRender({ renderHandle }) {
+        return runtime.createRenderedHooks({
+          dispatcherQueue: window.dispatcherQueue,
+          renderer,
+          renderHandle,
+          load: () =>
+            runtime.loadModule<AppModule>(true)
+              .renderApp({ model, renderer, window }),
+        })
+      },
+    }
+  },
+  ...runtime.appCallbacks,
+})
+
+void runtime.run(app)
+```
+
+`createWinUICleanup()` and `createWinUIAsyncCleanup()` compose owned services.
+Successful actions run once; failed actions remain retryable; all remaining
+actions still run before the first or aggregate error is reported. The Window
+lifecycle cancels the initial close while asynchronous cleanup runs and only
+re-closes after it succeeds.
+
 The binding namespace must provide generated `Application.startScheduled()`,
 `Window`, `createProjectedLifetimeScope()`, and `releaseProjected()`.
 The host creates the WinUI renderer preset, forces renderer-owned native

@@ -1,16 +1,13 @@
 import {
   createControls,
   createDiagnosticChannel,
-  createMessageTransport,
-  createStateBridge,
   thickness,
   type Child,
 } from 'dynwinrt-jsx'
 import {
-  createFileHotReloadController,
+  createWinUIWorkerRuntime,
   defineWinUIApp,
-  type FileHotReloadFileSystem,
-  type FileHotReloadMessage,
+  type WinUIWorkerRuntimeHotReloadMessage,
 } from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
 import * as WinUIBindings from '#winapp/bindings'
@@ -26,86 +23,54 @@ import {
 } from './app-model'
 import type { AppContext } from './app'
 
-interface ParentPort {
-  postMessage(message: unknown): void
-}
-
-interface StatePort {
-  postMessage(message: unknown): void
-  on(type: 'message', listener: (message: unknown) => void): unknown
-  off(type: 'message', listener: (message: unknown) => void): unknown
-  close(): void
-}
-
-interface NodeRequire {
-  (id: string): unknown
-  readonly cache: Record<string, unknown>
-  resolve(id: string): string
-}
-
 interface AppModule {
   renderApp(context: AppContext): Child
 }
 
-declare const require: NodeRequire
-declare const process: {
-  exit(code?: number): never
-}
-
-const {
-  parentPort,
-  workerData,
-} = require('node:worker_threads') as {
-  parentPort: ParentPort | null
-  workerData: {
-    statePort: StatePort
-    hotStatePath: string | null
-    initialState: AppState
-  }
-}
-
-if (!parentPort) {
-  throw new Error('The WinUI entry point must run in a Worker.')
-}
-
-const bridge = createStateBridge<AppState>(
-  createMessageTransport(workerData.statePort),
-  {
-    role: 'client',
+const runtime =
+  createWinUIWorkerRuntime<AppState>({
     channel: 'app-state',
-    initial: workerData.initialState,
-  },
-)
+    moduleId: './dist/app.js',
+  })
+const {
+  bridge,
+  workerData,
+} = runtime
 const FallbackUI = createControls({
   StackPanel,
   TextBlock,
 })
-const moduleId = './app.js'
-const modulePath = require.resolve(moduleId)
-const fileSystem = require('node:fs') as FileHotReloadFileSystem
 const diagnostics = createDiagnosticChannel({
   source: 'app-worker',
   onRecord(record) {
-    parentPort.postMessage({
+    runtime.postMessage({
       type: 'diagnostic',
       value: record,
     })
   },
 })
 
-const loadApp = (invalidate: boolean): AppModule => {
-  if (invalidate) {
-    delete require.cache[modulePath]
-  }
-  return require(moduleId) as AppModule
-}
+const loadApp = (
+  invalidate: boolean,
+): AppModule =>
+  runtime.loadModule<AppModule>(invalidate)
 
 const errorTree = (error: unknown): Child => (
-  <FallbackUI.StackPanel padding={thickness(24)} spacing={12}>
-    <FallbackUI.TextBlock text="Hot reload failed" fontSize={24} />
+  <FallbackUI.StackPanel
+    padding={thickness(24)}
+    spacing={12}
+  >
+    <FallbackUI.TextBlock
+      text="Hot reload failed"
+      fontSize={24}
+    />
     <FallbackUI.TextBlock
       automationId="HotReloadError"
-      text={error instanceof Error ? error.stack ?? error.message : String(error)}
+      text={
+        error instanceof Error
+          ? error.stack ?? error.message
+          : String(error)
+      }
       textWrapping={1}
     />
   </FallbackUI.StackPanel>
@@ -158,7 +123,8 @@ const app = defineWinUIApp({
     ownProjected,
     createProjected,
   }) {
-    window.systemBackdrop = new bindings.MicaBackdrop()
+    window.systemBackdrop =
+      new bindings.MicaBackdrop()
     const model = createAppModel(
       bridge,
       workerData.initialState,
@@ -171,7 +137,8 @@ const app = defineWinUIApp({
       ownProjected,
       createProjected,
       refreshDiagnostics() {
-        model.diagnostics.value = renderer.diagnostics
+        model.diagnostics.value =
+          renderer.diagnostics
       },
     }
 
@@ -188,96 +155,55 @@ const app = defineWinUIApp({
       beforeClose() {
         bridge.set(model.snapshot('closed'))
       },
-      disposeAfterRender() {
-        model.dispose()
-      },
+      disposeAfterRender: model.dispose,
       afterRender({ renderHandle }) {
-        const hotReloadController =
-          createFileHotReloadController({
-            statePath: workerData.hotStatePath,
-            dispatcherQueue: window.dispatcherQueue,
-            fileSystem,
-            renderHandle,
-            fallback: errorTree,
-            beforeReload(message) {
-              model.hotStatus.value =
-                message.type === 'hot-build-error'
-                  ? 'build error'
-                  : 'reloading'
-            },
-            load(message: FileHotReloadMessage) {
-              if (message.type === 'hot-build-error') {
-                throw new Error(
-                  message.message ?? 'TypeScript build failed.',
-                )
-              }
-              return loadApp(true).renderApp(context)
-            },
-            onReload(version) {
-              model.hotStatus.value = 'ready'
-              model.hotVersion.value = version
-              model.lastError.value = null
-              model.diagnostics.value = renderer.diagnostics
-              parentPort.postMessage({
-                type: 'hot-reload',
-                status: 'applied',
-                version,
-              })
-            },
-            onError(error, version) {
-              model.hotStatus.value = 'error'
-              model.hotVersion.value = version
-              model.lastError.value =
-                error instanceof Error
-                  ? error.stack ?? error.message
-                  : String(error)
-              parentPort.postMessage({
-                type: 'hot-reload',
-                status: 'error',
-                version,
-                message: model.lastError.value,
-              })
-            },
-            onPollError(error, version) {
-              parentPort.postMessage({
-                type: 'hot-reload',
-                status: 'error',
-                version,
-                message:
-                  error instanceof Error
-                    ? error.stack ?? error.message
-                    : String(error),
-              })
-            },
-          })
-
-        return {
-          disposeBeforeRender() {
-            hotReloadController?.dispose()
+        return runtime.createRenderedHooks({
+          dispatcherQueue:
+            window.dispatcherQueue,
+          renderer,
+          renderHandle,
+          fallback: errorTree,
+          beforeReload(message) {
+            model.hotStatus.value =
+              message.type === 'hot-build-error'
+                ? 'build error'
+                : 'reloading'
           },
-        }
+          load(
+            message:
+              WinUIWorkerRuntimeHotReloadMessage,
+          ) {
+            if (
+              message.type ===
+                'hot-build-error'
+            ) {
+              throw new Error(
+                message.message ??
+                'TypeScript build failed.',
+              )
+            }
+            return loadApp(true).renderApp(context)
+          },
+          onReload(version) {
+            model.hotStatus.value = 'ready'
+            model.hotVersion.value = version
+            model.lastError.value = null
+            model.diagnostics.value =
+              renderer.diagnostics
+          },
+          onReloadError(error, version) {
+            model.hotStatus.value = 'error'
+            model.hotVersion.value = version
+            model.lastError.value =
+              error instanceof Error
+                ? error.stack ?? error.message
+                : String(error)
+          },
+        })
       },
     }
   },
-  onDiagnostics(diagnostics) {
-    parentPort.postMessage({
-      type: 'diagnostics',
-      value: diagnostics,
-    })
-  },
-  onError(error) {
-    parentPort.postMessage({
-      type: 'error',
-      message:
-        error instanceof Error
-          ? error.stack
-          : String(error),
-    })
-  },
+  ...runtime.appCallbacks,
 })
 
-void app.run().then((exitCode) => {
-  bridge.dispose()
-  workerData.statePort.close()
-  process.exit(exitCode)
-})
+void runtime.run(app)
