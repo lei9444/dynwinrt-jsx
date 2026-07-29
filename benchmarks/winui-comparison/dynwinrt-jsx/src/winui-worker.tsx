@@ -11,9 +11,9 @@ import {
   renderBenchmark,
   type BenchmarkController,
   type BenchmarkOptions,
-  type BenchmarkResult,
 } from './app'
 import { renderKeyedBenchmark } from './keyed-app'
+import { renderVirtualBenchmark } from './virtual-app'
 
 interface BenchmarkState {
   readonly version: 1
@@ -40,6 +40,16 @@ const runtime = createWinUIWorkerRuntime<
 })
 const app = defineWinUIApp({
   bindings: WinUIBindings,
+  rendererOptions:
+    runtime.workerData.benchmarkOptions
+      .inspectorMode === 'minimal'
+      ? {
+          inspector: {
+            maxOperations: 0,
+            trackNodes: false,
+          },
+        }
+      : {},
   initializeRuntime() {
     roInitialize(0)
   },
@@ -57,7 +67,9 @@ const app = defineWinUIApp({
   }) {
     let controller: BenchmarkController | null =
       null
-    const report = (result: BenchmarkResult) => {
+    const report = (
+      result: object,
+    ) => {
       runtime.postMessage({
         type: 'benchmark-result',
         value: result,
@@ -68,7 +80,10 @@ const app = defineWinUIApp({
         runtime.workerData.benchmarkOptions.scenario ===
           'keyed-list'
           ? renderKeyedBenchmark
-          : renderBenchmark
+          : runtime.workerData.benchmarkOptions.scenario ===
+              'virtual-list'
+            ? renderVirtualBenchmark
+            : renderBenchmark
       )(
         {
           window,

@@ -213,8 +213,14 @@ function validatePropertyPhase(
 }
 
 export const adapter = {
-  oneWay<Instance>(): NativePropertyAdapter<Instance> {
-    return { kind: 'property', mode: 'oneWay' }
+  oneWay<Instance>(
+    set?: NativePropertyAdapter<Instance>['set'],
+  ): NativePropertyAdapter<Instance> {
+    return {
+      kind: 'property',
+      mode: 'oneWay',
+      ...(set ? { set } : {}),
+    }
   },
   initialOnly<Instance>(): NativePropertyAdapter<Instance> {
     return { kind: 'property', mode: 'initialOnly' }

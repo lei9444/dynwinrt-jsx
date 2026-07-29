@@ -26,6 +26,27 @@ node main.js --scenario keyed-list `
 
 Their Direct/Reactor interleaved runner legs are the next suite expansion.
 
+The suite now also provides:
+
+```powershell
+# Keyed structural churn (JSX vs Reactor KeyedList)
+.\run-comparison.ps1 -Scenario KeyedList
+
+# Blank startup (Direct WinUI vs JSX vs Reactor)
+.\run-startup.ps1
+
+# Virtualized scrolling, optionally with live insert/remove edits
+.\run-virtual-list.ps1 -Count 5000 -WithEdits
+
+# ControlModel M1/M2/M3/M7/M8/M9/M10
+.\run-micro.ps1 -Iterations 100 -Reps 5
+```
+
+Startup, KeyedList, VirtualList, and the comparable ControlModel micro subset
+have all completed one-repetition smoke comparisons. Baseline-quality results
+still require the documented warmups/repetitions and, for visual frame claims,
+elevated ETW Present tracing.
+
 The Direct and Reactor applications come from the sibling
 `microsoft-ui-reactor/tests/stress_perf` suite. The dynwinrt-jsx application
 ports its `StockDataSource` dimensions, 33 ms update interval, mutation

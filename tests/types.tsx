@@ -1128,6 +1128,11 @@ void invalidGridLength
 adapter.collectionSlotFrom(
   (panel: TypePanel) => panel.children,
 )
+adapter.oneWay<TypeTextBlock>(
+  (instance, value) => {
+    instance.text = String(value)
+  },
+)
 adapter.selfCollection<TypeVector>()
 
 const name = signal('name')

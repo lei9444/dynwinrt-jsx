@@ -10,9 +10,14 @@ const {
   createScope,
   effect,
   onCleanup,
+  onMount,
   runInScope,
   signal,
 } = require('../dist')
+const {
+  flushScopeMounts,
+  inspectReactiveScopes,
+} = require('../dist/core/reactive')
 
 test('signals update effects and computed values', () => {
   const count = signal(2)
@@ -100,6 +105,41 @@ test('subscriptions created in a scope are removed with it', () => {
   value.value = 2
 
   assert.deepEqual(changes, [1])
+})
+
+test('scope inspection stays stable after owned work is removed', () => {
+  const scope = createScope()
+  const source = signal(0)
+  let child
+  let disposeCleanup
+  let disposeEffect
+  let unsubscribe
+
+  runInScope(scope, () => {
+    child = createScope()
+    disposeCleanup = onCleanup(() => {})
+    disposeEffect = effect(() => {
+      source.value
+    })
+    unsubscribe = source.subscribe(() => {})
+    onMount(() => {})
+  })
+
+  disposeCleanup()
+  disposeEffect()
+  unsubscribe()
+  child.dispose()
+  flushScopeMounts(scope)
+
+  const inspection = inspectReactiveScopes([scope])
+  assert.equal(inspection.scopes.length, 1)
+  assert.deepEqual(inspection.scopes[0].childIds, [])
+  assert.deepEqual(inspection.scopes[0].observerIds, [])
+  assert.deepEqual(inspection.scopes[0].dependencyIds, [])
+  assert.equal(inspection.scopes[0].cleanupCount, 0)
+  assert.equal(inspection.scopes[0].pendingMountCount, 0)
+
+  scope.dispose()
 })
 
 test('effects observe a consistent computed graph', () => {

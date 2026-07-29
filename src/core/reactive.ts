@@ -26,7 +26,7 @@ export type MaybeSignal<T> = T | ReadonlySignal<T>
 interface Dependency {
   readonly inspectionId: number
   readonly inspectionListenerCount?: number
-  observers: Set<Observer>
+  observers: Set<Observer> | undefined
   producer?: Observer
 }
 
@@ -87,13 +87,13 @@ let nextDependencyInspectionId = 1
 
 class ScopeImpl {
   readonly inspectionId = nextScopeInspectionId++
-  readonly children = new Set<ScopeImpl>()
-  readonly cleanups = new Set<Cleanup>()
-  readonly values = new Map<symbol, unknown>()
-  readonly mounts: MountCallback[] = []
-  readonly observers = new Set<Observer>()
-  readonly subscribedDependencies =
-    new Map<Dependency, number>()
+  children: Set<ScopeImpl> | undefined
+  cleanups: Set<Cleanup> | undefined
+  values: Map<symbol, unknown> | undefined
+  mounts: MountCallback[] | undefined
+  observers: Set<Observer> | undefined
+  subscribedDependencies:
+    Map<Dependency, number> | undefined
   inspectionKind = 'scope'
   inspectionLabel: string | undefined
   errorHandler: ScopeErrorHandler | undefined
@@ -101,7 +101,29 @@ class ScopeImpl {
   disposed = false
 
   constructor(readonly parent: ScopeImpl | null) {
-    parent?.children.add(this)
+    parent?.addChild(this)
+  }
+
+  addChild(child: ScopeImpl): void {
+    ;(this.children ??= new Set()).add(child)
+  }
+
+  removeChild(child: ScopeImpl): void {
+    this.children?.delete(child)
+    if (this.children?.size === 0) {
+      this.children = undefined
+    }
+  }
+
+  addObserver(observer: Observer): void {
+    ;(this.observers ??= new Set()).add(observer)
+  }
+
+  removeObserver(observer: Observer): void {
+    this.observers?.delete(observer)
+    if (this.observers?.size === 0) {
+      this.observers = undefined
+    }
   }
 
   add(cleanup: Cleanup): Cleanup {
@@ -117,11 +139,14 @@ class ScopeImpl {
       }
 
       active = false
-      this.cleanups.delete(dispose)
+      this.cleanups?.delete(dispose)
+      if (this.cleanups?.size === 0) {
+        this.cleanups = undefined
+      }
       cleanup()
     }
 
-    this.cleanups.add(dispose)
+    ;(this.cleanups ??= new Set()).add(dispose)
     return dispose
   }
 
@@ -138,15 +163,17 @@ class ScopeImpl {
       return
     }
 
-    this.mounts.push(callback)
+    ;(this.mounts ??= []).push(callback)
   }
 
   addSubscribedDependency(
     dependency: Dependency,
   ): void {
-    this.subscribedDependencies.set(
+    const dependencies =
+      this.subscribedDependencies ??= new Map()
+    dependencies.set(
       dependency,
-      (this.subscribedDependencies.get(dependency) ?? 0) + 1,
+      (dependencies.get(dependency) ?? 0) + 1,
     )
   }
 
@@ -154,12 +181,18 @@ class ScopeImpl {
     dependency: Dependency,
   ): void {
     const count =
-      this.subscribedDependencies.get(dependency) ?? 0
+      this.subscribedDependencies?.get(dependency) ?? 0
     if (count <= 1) {
-      this.subscribedDependencies.delete(dependency)
+      this.subscribedDependencies?.delete(dependency)
+      if (this.subscribedDependencies?.size === 0) {
+        this.subscribedDependencies = undefined
+      }
       return
     }
-    this.subscribedDependencies.set(dependency, count - 1)
+    this.subscribedDependencies?.set(
+      dependency,
+      count - 1,
+    )
   }
 
   flushMounts(): void {
@@ -168,7 +201,8 @@ class ScopeImpl {
     }
 
     this.mountsFlushed = true
-    const callbacks = this.mounts.splice(0)
+    const callbacks = this.mounts ?? []
+    this.mounts = undefined
     for (const callback of callbacks) {
       try {
         const cleanup = callback()
@@ -192,27 +226,31 @@ class ScopeImpl {
 
     let firstError: unknown
 
-    for (const child of [...this.children]) {
+    for (const child of [...(this.children ?? [])]) {
       try {
         child.dispose()
       } catch (error) {
         firstError ??= error
       }
     }
-    this.children.clear()
-    this.mounts.length = 0
+    this.children = undefined
+    this.mounts = undefined
 
-    for (const cleanup of [...this.cleanups].reverse()) {
+    for (
+      const cleanup of
+        [...(this.cleanups ?? [])].reverse()
+    ) {
       try {
         cleanup()
       } catch (error) {
         firstError ??= error
       }
     }
-    this.cleanups.clear()
-    this.observers.clear()
-    this.subscribedDependencies.clear()
-    this.parent?.children.delete(this)
+    this.cleanups = undefined
+    this.observers = undefined
+    this.subscribedDependencies = undefined
+    this.values = undefined
+    this.parent?.removeChild(this)
 
     if (firstError !== undefined && !reportScopeError(this.parent, firstError)) {
       throw firstError
@@ -235,6 +273,23 @@ const pendingComputed = new Set<Observer>()
 const pendingEffects = new Set<Observer>()
 const pendingAfterFlush: Array<() => void> = []
 
+function addDependencyObserver(
+  dependency: Dependency,
+  observer: Observer,
+): void {
+  ;(dependency.observers ??= new Set()).add(observer)
+}
+
+function removeDependencyObserver(
+  dependency: Dependency,
+  observer: Observer,
+): void {
+  dependency.observers?.delete(observer)
+  if (dependency.observers?.size === 0) {
+    dependency.observers = undefined
+  }
+}
+
 class Observer {
   readonly inspectionId = nextObserverInspectionId++
   readonly dependencies = new Set<Dependency>()
@@ -251,7 +306,7 @@ class Observer {
     readonly kind: ObserverKind,
     readonly onError?: (error: unknown) => void,
   ) {
-    scope?.observers.add(this)
+    scope?.addObserver(this)
   }
 
   track(dependency: Dependency): void {
@@ -260,7 +315,7 @@ class Observer {
     }
 
     this.dependencies.add(dependency)
-    dependency.observers.add(this)
+    addDependencyObserver(dependency, this)
   }
 
   schedule(): void {
@@ -286,7 +341,10 @@ class Observer {
     const added = !queue.has(this)
     queue.add(this)
     if (added && this.kind === 'computed' && this.output) {
-      for (const observer of [...this.output.observers]) {
+      for (
+        const observer of
+          [...(this.output.observers ?? [])]
+      ) {
         observer.schedule()
       }
     }
@@ -311,7 +369,7 @@ class Observer {
       this.cleanup = undefined
 
       for (const dependency of this.dependencies) {
-        dependency.observers.delete(this)
+        removeDependencyObserver(dependency, this)
       }
       this.dependencies.clear()
 
@@ -369,10 +427,10 @@ class Observer {
     finally {
       this.cleanup = undefined
       for (const dependency of this.dependencies) {
-        dependency.observers.delete(this)
+        removeDependencyObserver(dependency, this)
       }
       this.dependencies.clear()
-      this.scope?.observers.delete(this)
+      this.scope?.removeObserver(this)
     }
     if (
       cleanupError !== undefined &&
@@ -395,14 +453,15 @@ class Observer {
 abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
   readonly inspectionId = nextDependencyInspectionId++
   readonly __dynwinrtSignal = true as const
-  readonly observers = new Set<Observer>()
-  readonly listeners = new Set<(value: T, previous: T) => void>()
+  observers: Set<Observer> | undefined
+  listeners:
+    Set<(value: T, previous: T) => void> | undefined
   producer: Observer | undefined
 
   protected constructor(protected currentValue: T) {}
 
   get inspectionListenerCount(): number {
-    return this.listeners.size
+    return this.listeners?.size ?? 0
   }
 
   get value(): T {
@@ -415,20 +474,20 @@ abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
   }
 
   subscribe(listener: (value: T, previous: T) => void, options?: SubscribeOptions): Cleanup {
-    this.listeners.add(listener)
+    ;(this.listeners ??= new Set()).add(listener)
     try {
       if (options?.immediate) {
         listener(this.currentValue, this.currentValue)
       }
     } catch (error) {
-      this.listeners.delete(listener)
+      this.removeListener(listener)
       throw error
     }
 
     const scope = currentScope
     scope?.addSubscribedDependency(this)
     const unsubscribe = () => {
-      this.listeners.delete(listener)
+      this.removeListener(listener)
       scope?.removeSubscribedDependency(this)
     }
     return scope?.add(unsubscribe) ?? unsubscribe
@@ -439,15 +498,20 @@ abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
     let firstError: unknown
 
     try {
-      for (const observer of [...this.observers]) {
-        observer.schedule()
+      if (this.observers) {
+        // Scheduling cannot rebind dependencies until this publish completes.
+        for (const observer of this.observers) {
+          observer.schedule()
+        }
       }
 
-      for (const listener of [...this.listeners]) {
-        try {
-          listener(next, previous)
-        } catch (error) {
-          firstError ??= error
+      if (this.listeners) {
+        for (const listener of [...this.listeners]) {
+          try {
+            listener(next, previous)
+          } catch (error) {
+            firstError ??= error
+          }
         }
       }
     } finally {
@@ -461,6 +525,15 @@ abstract class ReactiveCell<T> implements Dependency, ReadonlySignal<T> {
 
     if (firstError !== undefined) {
       throw firstError
+    }
+  }
+
+  private removeListener(
+    listener: (value: T, previous: T) => void,
+  ): void {
+    this.listeners?.delete(listener)
+    if (this.listeners?.size === 0) {
+      this.listeners = undefined
     }
   }
 }
@@ -536,8 +609,8 @@ class ComputedImpl<T> extends ReactiveCell<T> {
 
   dispose(): void {
     this.observer.dispose()
-    this.listeners.clear()
-    this.observers.clear()
+    this.listeners = undefined
+    this.observers = undefined
   }
 
   private refreshIfPending(): void {
@@ -691,7 +764,7 @@ export function inspectReactiveScopes(
       return
     }
     scopes.add(scope)
-    for (const child of scope.children) {
+    for (const child of scope.children ?? []) {
       visitScope(child)
     }
   }
@@ -717,11 +790,11 @@ export function inspectReactiveScopes(
     }
   }
   for (const scope of scopes) {
-    for (const observer of scope.observers) {
+    for (const observer of scope.observers ?? []) {
       visitObserver(observer)
     }
     for (const dependency of
-      scope.subscribedDependencies.keys()) {
+      scope.subscribedDependencies?.keys() ?? []) {
       dependencies.add(dependency)
       if (dependency.producer) {
         visitObserver(dependency.producer)
@@ -748,15 +821,15 @@ export function inspectReactiveScopes(
           ? { label: scope.inspectionLabel }
           : {}),
         disposed: scope.disposed,
-        childIds: [...scope.children]
+        childIds: [...(scope.children ?? [])]
           .filter((child) => scopes.has(child))
           .map((child) => child.inspectionId)
           .sort((left, right) => left - right),
-        observerIds: [...scope.observers]
+        observerIds: [...(scope.observers ?? [])]
           .filter((observer) => observers.has(observer))
           .map((observer) => observer.inspectionId)
           .sort((left, right) => left - right),
-        dependencyIds: [...scope.observers]
+        dependencyIds: [...(scope.observers ?? [])]
           .filter((observer) => observers.has(observer))
           .flatMap((observer) => [
             ...observer.dependencies,
@@ -770,7 +843,10 @@ export function inspectReactiveScopes(
               values.indexOf(dependency) === index,
           )
           .concat([
-            ...scope.subscribedDependencies.keys(),
+            ...(
+              scope.subscribedDependencies?.keys() ??
+              []
+            ),
           ])
           .filter(
             (dependency, index, values) =>
@@ -779,8 +855,9 @@ export function inspectReactiveScopes(
           )
           .map((dependency) => dependency.inspectionId)
           .sort((left, right) => left - right),
-        cleanupCount: scope.cleanups.size,
-        pendingMountCount: scope.mounts.length,
+        cleanupCount: scope.cleanups?.size ?? 0,
+        pendingMountCount:
+          scope.mounts?.length ?? 0,
         handlesErrors: scope.errorHandler !== undefined,
       })),
     observers: [...observers]
@@ -826,7 +903,7 @@ export function inspectReactiveScopes(
                 dependency.producer.inspectionId,
             }
           : {}),
-        observerIds: [...dependency.observers]
+        observerIds: [...(dependency.observers ?? [])]
           .filter((observer) => observers.has(observer))
           .map((observer) => observer.inspectionId)
           .sort((left, right) => left - right),
@@ -869,7 +946,10 @@ export function provideScopeValue<T>(
     throw new Error('A context provider must run while mounting a component.')
   }
 
-  currentScope.values.set(key, value)
+  ;(currentScope.values ??= new Map()).set(
+    key,
+    value,
+  )
 }
 
 export function readScopeValue<T>(
@@ -878,7 +958,7 @@ export function readScopeValue<T>(
 ): T {
   let scope = currentScope
   while (scope) {
-    if (scope.values.has(key)) {
+    if (scope.values?.has(key)) {
       return scope.values.get(key) as T
     }
     scope = scope.parent

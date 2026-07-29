@@ -1,15 +1,18 @@
 import {
   batch,
+  adapter,
   color,
   createControls,
   createGridControl,
   createSolidColorBrush,
   gridLength,
   onCleanup,
+  native,
   signal,
   thickness,
   type Child,
   type ProjectedOwnership,
+  type MaybeSignal,
 } from 'dynwinrt-jsx'
 import {
   Button,
@@ -64,6 +67,8 @@ export interface BenchmarkOptions {
   readonly editsPerSecond: number
   readonly iterations: number
   readonly reps: number
+  readonly inspectorMode: 'full' | 'minimal'
+  readonly cellBindingMode: 'split' | 'grouped'
 }
 
 export interface BenchmarkResult {
@@ -99,14 +104,29 @@ extends ProjectedOwnership {
   readonly window: Window
   readonly options: BenchmarkOptions
   readonly baselineMemory: MemoryUsage
-  readonly report: (result: BenchmarkResult) => void
+  readonly report: (
+    result: object,
+  ) => void
 }
 
-interface CellState {
-  readonly text: ReturnType<typeof signal<string>>
-  readonly foreground:
-    ReturnType<typeof signal<SolidColorBrush>>
+interface CellViewState {
+  readonly text: string
+  readonly foreground: SolidColorBrush
 }
+
+type CellState =
+  | {
+      readonly mode: 'split'
+      readonly text:
+        ReturnType<typeof signal<string>>
+      readonly foreground:
+        ReturnType<typeof signal<SolidColorBrush>>
+    }
+  | {
+      readonly mode: 'grouped'
+      readonly value:
+        ReturnType<typeof signal<CellViewState>>
+    }
 
 const UI = createControls({
   Button,
@@ -119,6 +139,22 @@ const LayoutGrid = createGridControl({
   Grid,
   RowDefinition,
   ColumnDefinition,
+})
+const GroupedTextBlock = native<
+  TextBlock,
+  {
+    readonly cell:
+      MaybeSignal<CellViewState>
+  }
+>(TextBlock, {
+  displayName: 'GroupedTextBlock',
+  adapters: {
+    cell: adapter.oneWay((instance, value) => {
+      const cell = value as CellViewState
+      instance.text = cell.text
+      instance.foreground = cell.foreground
+    }),
+  },
 })
 
 function average(values: readonly number[]): number {
@@ -176,10 +212,21 @@ function BenchmarkApp(props: {
     ),
   )
   const cells: CellState[] = source.items.map(
-    (item) => ({
-      text: signal(formatCell(item)),
-      foreground: signal(greenBrush),
-    }),
+    (item) =>
+      context.options.cellBindingMode ===
+        'grouped'
+        ? {
+            mode: 'grouped',
+            value: signal({
+              text: formatCell(item),
+              foreground: greenBrush,
+            }),
+          }
+        : {
+            mode: 'split',
+            text: signal(formatCell(item)),
+            foreground: signal(greenBrush),
+          },
   )
   const fpsText = signal('FPS: --')
   const updateText = signal('Update: -- ms')
@@ -311,11 +358,21 @@ function BenchmarkApp(props: {
     batch(() => {
       for (const change of changes) {
         const cell = cells[change.index]!
-        cell.text.value = formatCell(change.item)
-        cell.foreground.value =
+        const foreground =
           change.item.isUp
             ? greenBrush
             : redBrush
+        if (cell.mode === 'grouped') {
+          cell.value.value = {
+            text: formatCell(change.item),
+            foreground,
+          }
+        }
+        else {
+          cell.text.value =
+            formatCell(change.item)
+          cell.foreground.value = foreground
+        }
       }
     })
     const elapsed = performance.now() - begin
@@ -442,24 +499,34 @@ function BenchmarkApp(props: {
             () => gridLength.pixel(18),
           )}
         >
-          {cells.map((cell, index) => (
-            <UI.TextBlock
-              key={index}
-              gridRow={Math.floor(
+          {cells.map((cell, index) => {
+            const shared = {
+              key: index,
+              gridRow: Math.floor(
                 index / StockDataSource.columns,
-              )}
-              gridColumn={
-                index % StockDataSource.columns
-              }
-              text={cell.text}
-              foreground={cell.foreground}
-              fontSize={8}
-              padding={thickness(2, 1)}
-              textTrimming={
-                TextTrimming.CharacterEllipsis
-              }
-            />
-          ))}
+              ),
+              gridColumn:
+                index % StockDataSource.columns,
+              fontSize: 8,
+              padding: thickness(2, 1),
+              textTrimming:
+                TextTrimming.CharacterEllipsis,
+            }
+            return cell.mode === 'grouped'
+              ? (
+                  <GroupedTextBlock
+                    {...shared}
+                    cell={cell.value}
+                  />
+                )
+              : (
+                  <UI.TextBlock
+                    {...shared}
+                    text={cell.text}
+                    foreground={cell.foreground}
+                  />
+                )
+          })}
         </LayoutGrid>
       </UI.ScrollViewer>
     </LayoutGrid>

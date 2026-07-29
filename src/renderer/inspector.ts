@@ -15,6 +15,8 @@ export type {
 
 export interface RendererInspectorOptions {
   readonly maxOperations?: number
+  readonly trackNodes?: boolean
+  readonly trackSubscriptions?: boolean
   readonly now?: () => number
 }
 
@@ -178,6 +180,8 @@ function operationForNode(
 
 export class RendererInspectorRuntime {
   readonly maxOperations: number
+  readonly trackNodes: boolean
+  readonly trackSubscriptions: boolean
   private readonly now: () => number
   private readonly operations: RendererOperationRecord[] = []
   private readonly nodes =
@@ -193,6 +197,9 @@ export class RendererInspectorRuntime {
     this.maxOperations = requireOperationLimit(
       options.maxOperations ?? 200,
     )
+    this.trackNodes = options.trackNodes ?? true
+    this.trackSubscriptions =
+      options.trackSubscriptions ?? true
     this.now = options.now ?? Date.now
   }
 
@@ -224,6 +231,9 @@ export class RendererInspectorRuntime {
     label: string,
     scope: ReactiveScope,
   ): number {
+    if (!this.trackNodes) {
+      return 0
+    }
     const id = this.nextNodeId
     this.nextNodeId += 1
     const node = Object.freeze({
@@ -244,6 +254,9 @@ export class RendererInspectorRuntime {
   }
 
   releaseNode(id: number): void {
+    if (!this.trackNodes) {
+      return
+    }
     const node = this.nodes.get(id)
     if (!node) {
       return
@@ -264,6 +277,9 @@ export class RendererInspectorRuntime {
     target: unknown,
     name: string,
   ): number {
+    if (!this.trackSubscriptions) {
+      return 0
+    }
     const id = this.nextSubscriptionId
     this.nextSubscriptionId += 1
     const subscription = Object.freeze({
@@ -289,6 +305,9 @@ export class RendererInspectorRuntime {
   }
 
   releaseSubscription(id: number): void {
+    if (!this.trackSubscriptions) {
+      return
+    }
     const subscription = this.subscriptions.get(id)
     if (!subscription) {
       return
@@ -310,6 +329,9 @@ export class RendererInspectorRuntime {
     id: number,
     error: unknown,
   ): void {
+    if (!this.trackSubscriptions) {
+      return
+    }
     const subscription = this.subscriptions.get(id)
     if (!subscription) {
       return

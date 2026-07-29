@@ -12,6 +12,8 @@ param(
     ) { "ARM64" } else { "x64" }),
     [ValidateSet("Release")]
     [string]$Configuration = "Release",
+    [ValidateSet("StockGrid", "KeyedList")]
+    [string]$Scenario = "StockGrid",
     [double[]]$Percents = @(0, 50, 100),
     [int]$Duration = 10,
     [int]$Warmup = 2,
@@ -119,10 +121,16 @@ function Build-Benchmarks {
     Invoke-Checked $npmPath @("run", "build") $jsxRoot
     Invoke-Checked $npmPath @("test") $jsxRoot
 
-    foreach ($project in @(
-        "StressPerf.Direct",
-        "StressPerf.ReactorOptimized"
-    )) {
+    $projects = if ($Scenario -eq "KeyedList") {
+        @("StressPerf.KeyedList")
+    }
+    else {
+        @(
+            "StressPerf.Direct",
+            "StressPerf.ReactorOptimized"
+        )
+    }
+    foreach ($project in $projects) {
         $projectPath = Join-Path `
             $ReactorRoot `
             "tests\stress_perf\$project\$project.csproj"
@@ -160,16 +168,9 @@ if (-not $SkipBuild) {
     Build-Benchmarks
 }
 
-$directRoot = Join-Path `
-    $ReactorRoot `
-    "tests\stress_perf\StressPerf.Direct"
-$reactorRoot = Join-Path `
-    $ReactorRoot `
-    "tests\stress_perf\StressPerf.ReactorOptimized"
-$directExe = Find-AppExecutable $directRoot "StressPerf.Direct"
-$reactorExe = Find-AppExecutable `
-    $reactorRoot `
-    "StressPerf.ReactorOptimized"
+$directRoot = Join-Path $ReactorRoot "tests\stress_perf\StressPerf.Direct"
+$reactorOptimizedRoot = Join-Path $ReactorRoot "tests\stress_perf\StressPerf.ReactorOptimized"
+$keyedRoot = Join-Path $ReactorRoot "tests\stress_perf\StressPerf.KeyedList"
 $presentTracer = $null
 if ($IncludeEtw) {
     $presentTracer = Find-AppExecutable `
@@ -177,28 +178,55 @@ if ($IncludeEtw) {
         "PresentTracer"
 }
 
-$variants = [ordered]@{
-    Direct = @{
-        FilePath = $directExe
-        WorkingDirectory = Split-Path $directExe
-        AppName = "StressPerf.Direct"
-    }
-    DynWinRTJsx = @{
-        FilePath = $nodePath
-        WorkingDirectory = $jsxRoot
-        AppName = "DynWinRTJsx.SignalGrid"
-    }
-    Reactor = @{
-        FilePath = $reactorExe
-        WorkingDirectory = Split-Path $reactorExe
-        AppName = "StressPerf.ReactorOptimized"
+$variants = if ($Scenario -eq "KeyedList") {
+    $reactorKeyedExe = Find-AppExecutable $keyedRoot "StressPerf.KeyedList"
+    [ordered]@{
+        DynWinRTJsx = @{
+            FilePath = $nodePath
+            WorkingDirectory = $jsxRoot
+            AppName = "DynWinRTJsx.KeyedList"
+        }
+        Reactor = @{
+            FilePath = $reactorKeyedExe
+            WorkingDirectory = Split-Path $reactorKeyedExe
+            AppName = "StressPerf.KeyedList"
+        }
     }
 }
-$orders = @(
-    @("Direct", "DynWinRTJsx", "Reactor"),
-    @("Reactor", "Direct", "DynWinRTJsx"),
-    @("DynWinRTJsx", "Reactor", "Direct")
-)
+else {
+    $directExe = Find-AppExecutable $directRoot "StressPerf.Direct"
+    $reactorExe = Find-AppExecutable $reactorOptimizedRoot "StressPerf.ReactorOptimized"
+    [ordered]@{
+        Direct = @{
+            FilePath = $directExe
+            WorkingDirectory = Split-Path $directExe
+            AppName = "StressPerf.Direct"
+        }
+        DynWinRTJsx = @{
+            FilePath = $nodePath
+            WorkingDirectory = $jsxRoot
+            AppName = "DynWinRTJsx.SignalGrid"
+        }
+        Reactor = @{
+            FilePath = $reactorExe
+            WorkingDirectory = Split-Path $reactorExe
+            AppName = "StressPerf.ReactorOptimized"
+        }
+    }
+}
+$orders = if ($Scenario -eq "KeyedList") {
+    @(
+        @("DynWinRTJsx", "Reactor"),
+        @("Reactor", "DynWinRTJsx")
+    )
+}
+else {
+    @(
+        @("Direct", "DynWinRTJsx", "Reactor"),
+        @("Reactor", "Direct", "DynWinRTJsx"),
+        @("DynWinRTJsx", "Reactor", "Direct")
+    )
+}
 $rawPath = Join-Path $OutDir "raw.jsonl"
 Remove-Item $rawPath -Force -ErrorAction SilentlyContinue
 
@@ -330,12 +358,19 @@ function Invoke-Variant {
         -ErrorAction SilentlyContinue
 
     $arguments = if ($Name -eq "DynWinRTJsx") {
-        @(
+        $jsxArguments = @(
             "main.js",
             "--percent", "$Percent",
             "--duration", "$Duration",
             "--out", $metricsPath
         )
+        if ($Scenario -eq "KeyedList") {
+            $jsxArguments += @(
+                "--scenario",
+                "keyed-list"
+            )
+        }
+        $jsxArguments
     }
     else {
         @(
@@ -578,14 +613,24 @@ foreach ($percent in $Percents) {
 
 $comparisons = [Collections.Generic.List[object]]::new()
 foreach ($percent in $Percents) {
-    $direct = @(
+    $baselineName = if ($Scenario -eq "KeyedList") {
+        "Reactor"
+    } else {
+        "Direct"
+    }
+    $baselineSamples = @(
         $measured |
         Where-Object {
             $_.percent -eq $percent -and
-            $_.variant -eq "Direct"
+            $_.variant -eq $baselineName
         }
     )
-    foreach ($name in @("DynWinRTJsx", "Reactor")) {
+    $comparisonNames = if ($Scenario -eq "KeyedList") {
+        @("DynWinRTJsx")
+    } else {
+        @("DynWinRTJsx", "Reactor")
+    }
+    foreach ($name in $comparisonNames) {
         $variantSamples = @(
             $measured |
             Where-Object {
@@ -597,7 +642,7 @@ foreach ($percent in $Percents) {
         $latencyDeltas = @()
         $memoryDeltas = @()
         foreach ($sample in $variantSamples) {
-            $baseline = $direct |
+            $baseline = $baselineSamples |
                 Where-Object { $_.round -eq $sample.round } |
                 Select-Object -First 1
             if (-not $baseline) { continue }
@@ -637,7 +682,7 @@ foreach ($percent in $Percents) {
         }
         $comparisons.Add([pscustomobject][ordered]@{
             variant = $name
-            baseline = "Direct"
+            baseline = $baselineName
             percent = $percent
             rendersPerSecDeltaPercent = Get-MeanCi $renderDeltas
             avgCombinedMsDeltaPercent = Get-MeanCi $latencyDeltas
@@ -682,6 +727,7 @@ $metadata = [ordered]@{
     os = [Environment]::OSVersion.VersionString
     architecture = $Platform
     configuration = $Configuration
+    scenario = $Scenario
     node = (& $nodePath --version).Trim()
     dotnet = (& $dotnet --version).Trim()
     jsxCommit = Git-Revision $repoRoot

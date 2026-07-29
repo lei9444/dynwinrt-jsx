@@ -188,6 +188,42 @@ test('renderer inspector validates its operation bound', () => {
   )
 })
 
+test('renderer inspector can disable detailed tracking', () => {
+  const renderer = createRenderer({
+    inspector: {
+      maxOperations: 0,
+      trackNodes: false,
+      trackSubscriptions: false,
+    },
+  })
+  const UI = createControls({
+    TextBlock: FakeTextBlock,
+  })
+  const window = new FakeWindow()
+  const handle = renderer.render(
+    jsx(UI.TextBlock, {
+      text: 'Production',
+    }),
+    window,
+  )
+
+  const mounted = renderer.inspector.snapshot()
+  assert.deepEqual(mounted.nodes, [])
+  assert.deepEqual(mounted.subscriptions, [])
+  assert.deepEqual(mounted.operations, [])
+  assert.equal(
+    mounted.diagnostics.activeNative,
+    1,
+  )
+
+  handle.dispose()
+  assert.equal(
+    renderer.inspector.snapshot()
+      .diagnostics.activeNative,
+    0,
+  )
+})
+
 test('renderer inspector rolls back partially mounted nodes', () => {
   const nativeRenderer = createRenderer({
     createText(value) {

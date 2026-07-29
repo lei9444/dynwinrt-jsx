@@ -6,12 +6,25 @@ import {
   defineWinUIApp,
 } from 'dynwinrt-jsx/worker'
 import { roInitialize } from '@microsoft/dynwinrt'
-import * as WinUIBindings from '#winapp/bindings'
+import {
+  Application,
+} from '#winapp/bindings/Application'
 import {
   CompositionTarget,
+} from '#winapp/bindings/CompositionTarget'
+import {
   DispatcherQueuePriority,
+} from '#winapp/bindings/DispatcherQueuePriority'
+import {
   TextBlock,
-} from '#winapp/bindings'
+} from '#winapp/bindings/TextBlock'
+import {
+  Window,
+} from '#winapp/bindings/Window'
+import {
+  createProjectedLifetimeScope,
+  releaseProjected,
+} from '#winapp/bindings/lifetime'
 import type { BenchmarkOptions } from './app'
 
 interface BenchmarkState {
@@ -26,6 +39,13 @@ declare const process: {
 }
 
 const moduleEnteredAt = Date.now()
+const StartupBindings = {
+  Application,
+  Window,
+  TextBlock,
+  createProjectedLifetimeScope,
+  releaseProjected,
+}
 const runtime = createWinUIWorkerRuntime<
   BenchmarkState,
   {
@@ -36,7 +56,7 @@ const runtime = createWinUIWorkerRuntime<
 })
 const UI = createControls({ TextBlock })
 const app = defineWinUIApp({
-  bindings: WinUIBindings,
+  bindings: StartupBindings,
   initializeRuntime() {
     roInitialize(0)
   },

@@ -19,6 +19,8 @@ function parseArguments(arguments_) {
     editsPerSecond: 4,
     iterations: 1000,
     reps: 5,
+    inspectorMode: 'full',
+    cellBindingMode: 'split',
     outputPath: path.join(
       __dirname,
       '.winapp',
@@ -55,6 +57,12 @@ function parseArguments(arguments_) {
     else if (argument === '--reps') {
       options.reps = Number(arguments_[++index])
     }
+    else if (argument === '--inspector') {
+      options.inspectorMode = arguments_[++index]
+    }
+    else if (argument === '--cell-binding') {
+      options.cellBindingMode = arguments_[++index]
+    }
   }
   if (
     !Number.isFinite(options.percent) ||
@@ -78,6 +86,20 @@ function parseArguments(arguments_) {
   ].includes(options.scenario)) {
     throw new RangeError(
       '--scenario must be stock-grid, keyed-list, virtual-list, micro, or startup.',
+    )
+  }
+  if (!['full', 'minimal'].includes(
+    options.inspectorMode,
+  )) {
+    throw new RangeError(
+      '--inspector must be full or minimal.',
+    )
+  }
+  if (!['split', 'grouped'].includes(
+    options.cellBindingMode,
+  )) {
+    throw new RangeError(
+      '--cell-binding must be split or grouped.',
     )
   }
   return options
@@ -114,7 +136,9 @@ const host = defineWinUIHost({
     'dist',
     benchmarkOptions.scenario === 'startup'
       ? 'startup-worker.js'
-      : 'winui-worker.js',
+      : benchmarkOptions.scenario === 'micro'
+        ? 'micro-worker.js'
+        : 'winui-worker.js',
   ),
   state: {
     path: statePath,

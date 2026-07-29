@@ -4,6 +4,7 @@ import {
 } from 'dynwinrt-jsx'
 import {
   Button,
+  Border,
   ColumnDefinition,
   Grid,
   RowDefinition,
@@ -15,6 +16,7 @@ import {
 
 export const UI = createControls({
   Button,
+  Border,
   ScrollViewer,
   Slider,
   StackPanel,

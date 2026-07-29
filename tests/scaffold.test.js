@@ -670,6 +670,32 @@ test('WinUI comparison benchmark keeps three variants aligned', () => {
   assert.match(runner, /DynWinRTJsx/)
   assert.match(runner, /Get-MeanCi/)
   assert.match(runner, /externalPeakRssMB/)
+  for (const runnerName of [
+    'run-startup.ps1',
+    'run-virtual-list.ps1',
+    'run-micro.ps1',
+  ]) {
+    assert.ok(
+      fs.existsSync(
+        path.join(benchmarkRoot, runnerName),
+      ),
+    )
+  }
+  for (const scenarioSource of [
+    'keyed-app.tsx',
+    'startup-worker.tsx',
+    'virtual-app.tsx',
+    'micro-worker.tsx',
+  ]) {
+    assert.ok(
+      fs.existsSync(path.join(
+        benchmarkRoot,
+        'dynwinrt-jsx',
+        'src',
+        scenarioSource,
+      )),
+    )
+  }
 })
 
 test('create refuses to overwrite a non-empty directory', (t) => {
