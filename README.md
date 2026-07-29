@@ -76,6 +76,21 @@ animations. Original user settings are restored in `finally`. See
 [`docs/accessibility-verification.md`](docs/accessibility-verification.md) for
 the automated evidence and manual Narrator checklist.
 
+Run the cross-framework WinUI StockGrid benchmark against direct C# WinUI and
+Microsoft.UI.Reactor:
+
+```powershell
+.\benchmarks\winui-comparison\run-comparison.ps1 `
+  -ReactorRoot ..\microsoft-ui-reactor `
+  -Percents 0,50,100 `
+  -Duration 10 `
+  -Warmup 2 `
+  -Reps 12
+```
+
+See [`benchmarks/winui-comparison/README.md`](benchmarks/winui-comparison/README.md)
+for environment controls, optional ETW Present tracing, and result semantics.
+
 The generated app keeps its Window, Worker, and model state alive while
 reloading `src/app.tsx`. Changes to the Worker, model, generated bindings, or
 native runtime require a restart.

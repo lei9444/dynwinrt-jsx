@@ -617,6 +617,61 @@ test('CI covers pinned Windows and ARM64 source matrices', () => {
   }
 })
 
+test('WinUI comparison benchmark keeps three variants aligned', () => {
+  const benchmarkRoot = path.join(
+    __dirname,
+    '..',
+    'benchmarks',
+    'winui-comparison',
+  )
+  const workload = fs.readFileSync(
+    path.join(
+      benchmarkRoot,
+      'dynwinrt-jsx',
+      'src',
+      'workload.ts',
+    ),
+    'utf8',
+  )
+  const app = fs.readFileSync(
+    path.join(
+      benchmarkRoot,
+      'dynwinrt-jsx',
+      'src',
+      'app.tsx',
+    ),
+    'utf8',
+  )
+  const runner = fs.readFileSync(
+    path.join(
+      benchmarkRoot,
+      'run-comparison.ps1',
+    ),
+    'utf8',
+  )
+  const worker = fs.readFileSync(
+    path.join(
+      benchmarkRoot,
+      'dynwinrt-jsx',
+      'src',
+      'winui-worker.tsx',
+    ),
+    'utf8',
+  )
+
+  assert.match(workload, /columns = 70/)
+  assert.match(workload, /rows = 70/)
+  assert.match(workload, /new DotNetRandom\(42\)/)
+  assert.match(app, /batch\(\(\) =>/)
+  assert.match(app, /duration: 330_000n/)
+  assert.match(worker, /benchmark-result/)
+  assert.match(runner, /StressPerf\.Direct/)
+  assert.match(runner, /StressPerf\.ReactorOptimized/)
+  assert.match(runner, /DynWinRTJsx/)
+  assert.match(runner, /Get-MeanCi/)
+  assert.match(runner, /externalPeakRssMB/)
+})
+
 test('create refuses to overwrite a non-empty directory', (t) => {
   const temp = createTempDirectory(t)
   fs.writeFileSync(path.join(temp, 'keep.txt'), 'keep')

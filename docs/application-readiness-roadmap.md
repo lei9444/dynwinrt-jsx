@@ -564,6 +564,10 @@ identity, and manifest dependencies in a provenance document.
 
 #### Performance and package size
 
+- [x] Add a cross-framework StockGrid benchmark against direct WinUI and
+      Microsoft.UI.Reactor with interleaved warmups/repetitions, external
+      RSS/CPU sampling, common JSON results, paired confidence intervals, and
+      optional ETW Present tracing.
 - [ ] Prune generated WinRT bindings to runtime-reachable dependencies.
 - [ ] Exclude declarations and other development-only files from application
       runtime packages.
@@ -571,6 +575,13 @@ identity, and manifest dependencies in a provenance document.
       lookup and module parsing.
 - [ ] Profile and optimize renderer property, collection, and disposal hot
       paths.
+- [ ] Add a DispatcherQueue/frame coalescer for high-frequency native events.
+  - [ ] Track `PointerMoved` using last-value-per-frame delivery instead of
+        synchronously updating Signals for every native callback.
+  - [ ] Add configurable ScrollViewer sampling modes for immediate,
+        frame-coalesced, and native-only state.
+  - [ ] Add scoped Composition animation ownership helpers so per-frame
+        animation work remains native.
 - [ ] Keep non-first-screen pages and adapters outside the startup critical
       path.
 
