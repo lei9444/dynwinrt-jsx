@@ -856,6 +856,112 @@ test('router NavigationView shell releases partial item creation', () => {
   router.dispose()
 })
 
+test('router NavigationView shell derives grouped route metadata', () => {
+  class Vector {
+    values = []
+
+    append(value) {
+      this.values.push(value)
+    }
+  }
+  class Item {
+    menuItems = new Vector()
+    name = ''
+    content = null
+    icon = null
+    selectsOnInvoked = true
+  }
+  class Text {
+    text = ''
+  }
+  const createdIcon = {}
+  const routes = [
+    {
+      id: 'home',
+      path: '/',
+      handle: {
+        navigation: {
+          label: 'Home',
+          order: 0,
+        },
+      },
+      render: () => null,
+    },
+    {
+      id: 'signals',
+      path: '/signals',
+      handle: {
+        navigation: {
+          label: 'Signals',
+          group: {
+            id: 'framework',
+            label: 'Framework',
+            order: 10,
+            createIcon: () => createdIcon,
+          },
+        },
+      },
+      render: () => null,
+    },
+    {
+      id: 'diagnostics',
+      path: '/diagnostics',
+      handle: {
+        navigation: {
+          label: 'Diagnostics',
+          placement: 'footer',
+        },
+      },
+      render: () => null,
+    },
+  ]
+  const router = createRouter({ routes })
+  const navigationRoutes = [{
+    id: 'layout',
+    render: () => null,
+    children: routes,
+  }]
+  const released = []
+  const shell = createRouterNavigationViewShell({
+    router,
+    routes: navigationRoutes,
+    bindings: {
+      NavigationViewItem: Item,
+      TextBlock: Text,
+    },
+    items: [{
+      name: 'header',
+      label: 'Header',
+      order: 5,
+    }],
+    enqueue: () => true,
+    releaseProjected: (value) => {
+      released.push(value)
+    },
+  })
+
+  assert.deepEqual(
+    shell.menuItems.map((item) => item.name),
+    ['home', 'header', 'framework'],
+  )
+  assert.equal(
+    shell.menuItems[2].menuItems.values[0].name,
+    'signals',
+  )
+  assert.equal(shell.menuItems[2].icon, createdIcon)
+  assert.deepEqual(
+    shell.footerMenuItems.map((item) => item.name),
+    ['diagnostics'],
+  )
+
+  shell.dispose()
+  assert.equal(
+    released.filter((value) => value === createdIcon).length,
+    1,
+  )
+  router.dispose()
+})
+
 test('router validates definitions and query encoding', () => {
   assert.deepEqual(
     parseRouterQuery('?tag=a&tag=b&empty='),

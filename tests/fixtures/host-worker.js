@@ -7,6 +7,27 @@ const {
 
 const statePort = workerData.statePort
 let updated = false
+const inspection = {
+  timestamp: Date.now(),
+  diagnostics: {
+    nativeCreated: 0,
+    nativeDisposed: 0,
+    activeNative: 0,
+    componentsMounted: 0,
+    componentsDisposed: 0,
+    activeComponents: 0,
+    listEntriesCreated: 0,
+    listEntriesReused: 0,
+  },
+  nodes: [],
+  reactive: {
+    scopes: [],
+    observers: [],
+    dependencies: [],
+  },
+  subscriptions: [],
+  operations: [],
+}
 
 statePort.on('message', (message) => {
   if (
@@ -33,6 +54,22 @@ statePort.on('message', (message) => {
     message.value?.status === 'running' &&
     message.value?.count === 4
   ) {
+    if (workerData.heartbeatEnabled) {
+      parentPort.postMessage({
+        type: 'heartbeat',
+        value: {
+          sequence: 1,
+          sentAt: Date.now(),
+          snapshot: inspection,
+        },
+      })
+    }
+    if (workerData.inspectorExportPath) {
+      parentPort.postMessage({
+        type: 'inspector-export',
+        value: inspection,
+      })
+    }
     parentPort.postMessage({
       type: 'diagnostics',
       value: {

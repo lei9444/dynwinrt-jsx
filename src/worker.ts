@@ -29,6 +29,10 @@ import {
   type WinUIRendererCapabilities,
   type WinUIRendererOptions,
 } from './winui/winui'
+import {
+  createProjectedOwnership,
+  type ProjectedOwnership,
+} from './runtime/projected-owner'
 
 export {
   createDiagnosticChannel,
@@ -86,8 +90,10 @@ export {
 } from './runtime/diagnostic-evidence'
 
 export {
+  createProjectedOwnership,
   createProjectedValueOwner,
   ownProjectedValue,
+  type ProjectedOwnership,
   type ProjectedValueOwner,
 } from './runtime/projected-owner'
 
@@ -287,6 +293,9 @@ type WinUIAppProjectionScope<
   Bindings extends WinUIAppBindingNamespace,
 > = ReturnType<Bindings['createProjectedLifetimeScope']>
 
+export type DefinedWinUIProjectedOwnership =
+  ProjectedOwnership
+
 export type DefinedWinUIAppContext<
   Bindings extends WinUIAppBindingNamespace,
 > = WinUIWorkerAppContext<
@@ -297,6 +306,12 @@ export type DefinedWinUIAppContext<
   readonly bindings: Bindings
   readonly capabilities: WinUIRendererCapabilities
   readonly releaseProjected: Bindings['releaseProjected']
+  readonly createProjectedOwner:
+    DefinedWinUIProjectedOwnership['createProjectedOwner']
+  readonly ownProjected:
+    DefinedWinUIProjectedOwnership['ownProjected']
+  readonly createProjected:
+    DefinedWinUIProjectedOwnership['createProjected']
   readonly diagnostics: DiagnosticChannel | undefined
 }
 
@@ -310,6 +325,12 @@ export type DefinedWinUIAppRenderedContext<
   readonly bindings: Bindings
   readonly capabilities: WinUIRendererCapabilities
   readonly releaseProjected: Bindings['releaseProjected']
+  readonly createProjectedOwner:
+    DefinedWinUIProjectedOwnership['createProjectedOwner']
+  readonly ownProjected:
+    DefinedWinUIProjectedOwnership['ownProjected']
+  readonly createProjected:
+    DefinedWinUIProjectedOwnership['createProjected']
   readonly diagnostics: DiagnosticChannel | undefined
 }
 
@@ -417,6 +438,10 @@ export function defineWinUIApp<
   } = options
   const rendererPreset =
     createWinUIRendererPreset(bindings)
+  const projectedOwnership =
+    createProjectedOwnership(
+      bindings.releaseProjected,
+    )
   let started = false
 
   return {
@@ -624,6 +649,7 @@ export function defineWinUIApp<
             bindings,
             capabilities: rendererPreset.capabilities,
             releaseProjected: bindings.releaseProjected,
+            ...projectedOwnership,
             diagnostics,
           })
         },
@@ -650,6 +676,7 @@ export function defineWinUIApp<
             bindings,
             capabilities: rendererPreset.capabilities,
             releaseProjected: bindings.releaseProjected,
+            ...projectedOwnership,
             diagnostics,
           })
           return {
@@ -668,6 +695,7 @@ export function defineWinUIApp<
                   rendererPreset.capabilities,
                 releaseProjected:
                   bindings.releaseProjected,
+                ...projectedOwnership,
                 diagnostics,
               })
             },
@@ -679,6 +707,7 @@ export function defineWinUIApp<
                   rendererPreset.capabilities,
                 releaseProjected:
                   bindings.releaseProjected,
+                ...projectedOwnership,
                 diagnostics,
               })
             },

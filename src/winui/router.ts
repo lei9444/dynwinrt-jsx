@@ -1,4 +1,5 @@
 import type {
+  RouteDefinition,
   Router,
   RouterTarget,
 } from '../core/router'
@@ -95,10 +96,44 @@ export interface RouterNavigationViewItemDefinition<
   readonly name?: string
   readonly routeId?: RouteId
   readonly selectable?: boolean
+  readonly order?: number
+  readonly createIcon?: () => Icon
   readonly children?: readonly RouterNavigationViewItemDefinition<
     RouteId,
     Icon
   >[]
+}
+
+export interface RouterNavigationViewGroupMetadata<
+  Icon = unknown,
+> extends Omit<
+  NavigationItemOptions<Icon>,
+  'name' | 'selectsOnInvoked' | 'icon'
+> {
+  readonly id: string
+  readonly order?: number
+  readonly placement?: 'menu' | 'footer'
+  readonly createIcon?: () => Icon
+}
+
+export interface RouterNavigationViewRouteMetadata<
+  Icon = unknown,
+> extends Omit<
+  NavigationItemOptions<Icon>,
+  'name' | 'selectsOnInvoked' | 'icon'
+> {
+  readonly order?: number
+  readonly placement?: 'menu' | 'footer'
+  readonly selectable?: boolean
+  readonly createIcon?: () => Icon
+  readonly group?: RouterNavigationViewGroupMetadata<Icon>
+}
+
+export interface RouterNavigationViewRouteHandle<
+  Icon = unknown,
+> {
+  readonly navigation?:
+    RouterNavigationViewRouteMetadata<Icon>
 }
 
 export interface RouterNavigationViewShellOptions<
@@ -111,7 +146,16 @@ export interface RouterNavigationViewShellOptions<
 > {
   readonly router: Router<State, Handle>
   readonly bindings: NavigationItemBindings<Item, Text>
-  readonly items: readonly RouterNavigationViewItemDefinition<
+  readonly routes?: readonly RouteDefinition<
+    State,
+    Handle
+  >[]
+  readonly getRouteNavigation?: (
+    route: RouteDefinition<State, Handle>,
+  ) => RouterNavigationViewRouteMetadata<
+    Item['icon']
+  > | null
+  readonly items?: readonly RouterNavigationViewItemDefinition<
     RouteId,
     Item['icon']
   >[]
@@ -122,12 +166,17 @@ export interface RouterNavigationViewShellOptions<
   readonly settingsRouteId?: RouteId
   readonly preservePaneOpenOnSelection?: boolean
   readonly enqueue: (callback: () => void) => boolean
-  readonly releaseProjected: Extract<
+  readonly releaseProjected?: Extract<
     ReleaseResult,
     PromiseLike<unknown>
   > extends never
     ? (value: object) => ReleaseResult
     : never
+  readonly createProjectedOwner?: <
+    Value extends object,
+  >(
+    value: Value,
+  ) => ProjectedValueOwner<Value>
   readonly targetForRoute?: (
     routeId: string,
   ) => RouterTarget
@@ -176,15 +225,29 @@ export function createRouterNavigationViewShell<
     typeof options !== 'object' ||
     options === null ||
     typeof options.enqueue !== 'function' ||
-    typeof options.releaseProjected !== 'function' ||
-    !Array.isArray(options.items) ||
+    (
+      typeof options.releaseProjected !== 'function' &&
+      typeof options.createProjectedOwner !== 'function'
+    ) ||
+    (
+      options.items !== undefined &&
+      !Array.isArray(options.items)
+    ) ||
+    (
+      options.routes !== undefined &&
+      !Array.isArray(options.routes)
+    ) ||
+    (
+      options.items === undefined &&
+      options.routes === undefined
+    ) ||
     (
       options.footerItems !== undefined &&
       !Array.isArray(options.footerItems)
     )
   ) {
     throw new TypeError(
-      'createRouterNavigationViewShell() requires router, bindings, items, and enqueue options.',
+      'createRouterNavigationViewShell() requires router, bindings, routes or items, projected ownership, and enqueue options.',
     )
   }
 
@@ -194,6 +257,17 @@ export function createRouterNavigationViewShell<
   const parentItems = new Map<Item, Item>()
   const names = new Set<string>()
   const projectedOwners: ProjectedValueOwner<object>[] = []
+  const ownProjected = <Value extends object>(
+    value: Value,
+  ): ProjectedValueOwner<Value> => {
+    if (options.createProjectedOwner) {
+      return options.createProjectedOwner(value)
+    }
+    return createProjectedValueOwner(
+      value,
+      options.releaseProjected!,
+    )
+  }
   const disposeProjectedOwners = (): unknown => {
     let firstError: unknown
     for (
@@ -209,6 +283,149 @@ export function createRouterNavigationViewShell<
       }
     }
     return firstError
+  }
+  const routeNavigation = (
+    route: RouteDefinition<State, Handle>,
+  ): RouterNavigationViewRouteMetadata<
+    Item['icon']
+  > | null => {
+    if (options.getRouteNavigation) {
+      return options.getRouteNavigation(route)
+    }
+    if (
+      typeof route.handle !== 'object' ||
+      route.handle === null ||
+      !('navigation' in route.handle)
+    ) {
+      return null
+    }
+    const navigation = (
+      route.handle as RouterNavigationViewRouteHandle<
+        Item['icon']
+      >
+    ).navigation
+    return navigation ?? null
+  }
+  const sortDefinitions = (
+    definitions: readonly RouterNavigationViewItemDefinition<
+      RouteId,
+      Item['icon']
+    >[],
+  ) => [...definitions].sort(
+    (left, right) =>
+      (left.order ?? 0) - (right.order ?? 0),
+  )
+  const routeMenuDefinitions: RouterNavigationViewItemDefinition<
+    RouteId,
+    Item['icon']
+  >[] = []
+  const routeFooterDefinitions: RouterNavigationViewItemDefinition<
+    RouteId,
+    Item['icon']
+  >[] = []
+  const groups = new Map<string, {
+    readonly metadata:
+      RouterNavigationViewGroupMetadata<Item['icon']>
+    readonly children: RouterNavigationViewItemDefinition<
+      RouteId,
+      Item['icon']
+    >[]
+  }>()
+  const routeDefinitions = (
+    route: RouteDefinition<State, Handle>,
+  ): RouterNavigationViewItemDefinition<
+    RouteId,
+    Item['icon']
+  >[] => {
+    const metadata = routeNavigation(route)
+    const children = (
+      route.children ?? []
+    ).flatMap(routeDefinitions)
+    if (metadata === null) {
+      return children
+    }
+    const definition: RouterNavigationViewItemDefinition<
+      RouteId,
+      Item['icon']
+    > = {
+      routeId: route.id as RouteId,
+      label: metadata.label,
+      selectable: metadata.selectable,
+      order: metadata.order,
+      createIcon: metadata.createIcon,
+      automationId: metadata.automationId,
+      automationName: metadata.automationName,
+      automationPositionInSet:
+        metadata.automationPositionInSet,
+      automationSizeOfSet:
+        metadata.automationSizeOfSet,
+      ...(children.length === 0
+        ? {}
+        : { children: sortDefinitions(children) }),
+    }
+    if (!metadata.group) {
+      return [definition]
+    }
+    const existing = groups.get(metadata.group.id)
+    if (
+      existing &&
+      existing.metadata.label !==
+        metadata.group.label
+    ) {
+      throw new Error(
+        `Router navigation group '${metadata.group.id}' has conflicting labels.`,
+      )
+    }
+    const group = existing ?? {
+      metadata: metadata.group,
+      children: [],
+    }
+    group.children.push(definition)
+    groups.set(metadata.group.id, group)
+    return []
+  }
+  const collectRootRoute = (
+    route: RouteDefinition<State, Handle>,
+  ) => {
+    const metadata = routeNavigation(route)
+    if (metadata === null) {
+      for (const child of route.children ?? []) {
+        collectRootRoute(child)
+      }
+      return
+    }
+    const definitions = routeDefinitions(route)
+    const target = metadata.placement === 'footer'
+      ? routeFooterDefinitions
+      : routeMenuDefinitions
+    target.push(...definitions)
+  }
+  for (const route of options.routes ?? []) {
+    collectRootRoute(route)
+  }
+  for (const group of groups.values()) {
+    const definition: RouterNavigationViewItemDefinition<
+      RouteId,
+      Item['icon']
+    > = {
+      name: group.metadata.id,
+      label: group.metadata.label,
+      selectable: false,
+      order: group.metadata.order,
+      createIcon: group.metadata.createIcon,
+      automationId: group.metadata.automationId,
+      automationName: group.metadata.automationName,
+      automationPositionInSet:
+        group.metadata.automationPositionInSet,
+      automationSizeOfSet:
+        group.metadata.automationSizeOfSet,
+      children: sortDefinitions(group.children),
+    }
+    const target =
+      group.metadata.placement === 'footer'
+        ? routeFooterDefinitions
+        : routeMenuDefinitions
+    target.push(definition)
   }
 
   const createItems = (
@@ -242,32 +459,47 @@ export function createRouterNavigationViewShell<
       )
     }
 
-    const children = definition.children ?? []
+    const children = sortDefinitions(
+      definition.children ?? [],
+    )
     const selectable =
       definition.selectable ??
       definition.routeId !== undefined
+    const icon = definition.createIcon?.() ??
+      definition.icon
+    if (
+      definition.createIcon &&
+      typeof icon === 'object' &&
+      icon !== null
+    ) {
+      projectedOwners.push(
+        ownProjected(icon),
+      )
+    }
     const {
       item,
       label,
     } = createNavigationItemRecord(
       options.bindings,
       {
-        ...definition,
         name,
+        label: definition.label,
+        icon,
         selectsOnInvoked: selectable,
+        automationId: definition.automationId,
+        automationName:
+          definition.automationName,
+        automationPositionInSet:
+          definition.automationPositionInSet,
+        automationSizeOfSet:
+          definition.automationSizeOfSet,
       },
     )
     projectedOwners.push(
-      createProjectedValueOwner(
-        label,
-        options.releaseProjected,
-      ),
+      ownProjected(label),
     )
     projectedOwners.push(
-      createProjectedValueOwner(
-        item,
-        options.releaseProjected,
-      ),
+      ownProjected(item),
     )
     if (parent !== null) {
       parentItems.set(item, parent)
@@ -293,9 +525,18 @@ export function createRouterNavigationViewShell<
   let menuItems: Item[]
   let footerMenuItems: Item[]
   try {
-    menuItems = createItems(options.items, null)
+    menuItems = createItems(
+      sortDefinitions([
+        ...(options.items ?? []),
+        ...routeMenuDefinitions,
+      ]),
+      null,
+    )
     footerMenuItems = createItems(
-      options.footerItems ?? [],
+      sortDefinitions([
+        ...(options.footerItems ?? []),
+        ...routeFooterDefinitions,
+      ]),
       null,
     )
   }

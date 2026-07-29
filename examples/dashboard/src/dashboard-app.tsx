@@ -32,6 +32,9 @@ import {
   type Child,
   type DiagnosticChannel,
   type ReadonlySignal,
+  type ProjectedOwnership,
+  type RouteDefinition,
+  type RouterNavigationViewRouteHandle,
   type RefObject,
   type Renderer,
 } from 'dynwinrt-jsx'
@@ -66,7 +69,6 @@ import {
   NavigationViewPaneDisplayMode,
   ProgressBar,
   PropertyValue,
-  releaseProjected,
   RowDefinition,
   ScrollBarVisibility,
   ScrollViewer,
@@ -135,7 +137,8 @@ type TextBoxInstance = InstanceType<typeof TextBox>
 type ToggleSwitchInstance = InstanceType<typeof ToggleSwitch>
 type NavigationViewInstance = InstanceType<typeof NavigationView>
 
-export interface DashboardAppContext {
+export interface DashboardAppContext
+extends ProjectedOwnership {
   readonly model: DashboardModel
   readonly renderer: Renderer
   readonly window: Window
@@ -952,29 +955,75 @@ function ApplicationShell(context: DashboardAppContext) {
     diagnostics: '/diagnostics',
     settings: '/settings',
   }
+  const routes: readonly RouteDefinition<
+    unknown,
+    RouterNavigationViewRouteHandle<
+      InstanceType<typeof SymbolIcon>
+    >
+  >[] = [
+    {
+      id: 'dashboard',
+      path: '/',
+      handle: {
+        navigation: {
+          label: 'Dashboard',
+          createIcon: () =>
+            createSymbolIcon(SymbolIcon, Symbol.Home),
+          automationId: 'DashboardNavItem',
+          automationName: 'Dashboard page',
+          automationPositionInSet: 1,
+          automationSizeOfSet: 3,
+        },
+      },
+      render: () => <DashboardPage {...context} />,
+    },
+    {
+      id: 'tasks',
+      path: '/tasks',
+      handle: {
+        navigation: {
+          label: 'Tasks',
+          createIcon: () =>
+            createSymbolIcon(
+              SymbolIcon,
+              Symbol.Bullets,
+            ),
+          automationId: 'TasksNavItem',
+          automationName: 'Tasks page',
+          automationPositionInSet: 2,
+          automationSizeOfSet: 3,
+        },
+      },
+      render: () => <TasksPage {...context} />,
+    },
+    {
+      id: 'diagnostics',
+      path: '/diagnostics',
+      handle: {
+        navigation: {
+          label: 'Diagnostics',
+          placement: 'footer' as const,
+          createIcon: () =>
+            createSymbolIcon(
+              SymbolIcon,
+              Symbol.Repair,
+            ),
+          automationId: 'DiagnosticsNavItem',
+          automationName: 'Diagnostics page',
+          automationPositionInSet: 3,
+          automationSizeOfSet: 3,
+        },
+      },
+      render: () => <DiagnosticsPage {...context} />,
+    },
+    {
+      id: 'settings',
+      path: '/settings',
+      render: () => <SettingsPage {...context} />,
+    },
+  ]
   const router = createRouter({
-    routes: [
-      {
-        id: 'dashboard',
-        path: '/',
-        render: () => <DashboardPage {...context} />,
-      },
-      {
-        id: 'tasks',
-        path: '/tasks',
-        render: () => <TasksPage {...context} />,
-      },
-      {
-        id: 'diagnostics',
-        path: '/diagnostics',
-        render: () => <DiagnosticsPage {...context} />,
-      },
-      {
-        id: 'settings',
-        path: '/settings',
-        render: () => <SettingsPage {...context} />,
-      },
-    ],
+    routes,
     initialEntries: [
       routePaths[context.model.route.peek()],
     ],
@@ -995,44 +1044,15 @@ function ApplicationShell(context: DashboardAppContext) {
         TextBlock,
         AutomationProperties,
       },
-      items: [
-        {
-          routeId: 'dashboard',
-          label: 'Dashboard',
-          icon: createSymbolIcon(SymbolIcon, Symbol.Home),
-          automationId: 'DashboardNavItem',
-          automationName: 'Dashboard page',
-          automationPositionInSet: 1,
-          automationSizeOfSet: 3,
-        },
-        {
-          routeId: 'tasks',
-          label: 'Tasks',
-          icon: createSymbolIcon(SymbolIcon, Symbol.Bullets),
-          automationId: 'TasksNavItem',
-          automationName: 'Tasks page',
-          automationPositionInSet: 2,
-          automationSizeOfSet: 3,
-        },
-      ],
-      footerItems: [
-        {
-          routeId: 'diagnostics',
-          label: 'Diagnostics',
-          icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
-          automationId: 'DiagnosticsNavItem',
-          automationName: 'Diagnostics page',
-          automationPositionInSet: 3,
-          automationSizeOfSet: 3,
-        },
-      ],
+      routes,
       settingsRouteId: 'settings',
       enqueue: (callback) =>
         context.window.dispatcherQueue.tryEnqueue(
           DispatcherQueuePriority.Low,
           callback,
         ),
-      releaseProjected,
+      createProjectedOwner:
+        context.createProjectedOwner,
     })
   onCleanup(navigationShell.dispose)
   return (

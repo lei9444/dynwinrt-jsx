@@ -20,6 +20,9 @@ import {
   tokens,
   useContext,
   type Child,
+  type ProjectedOwnership,
+  type RouteDefinition,
+  type RouterNavigationViewRouteHandle,
   type RefObject,
   type Renderer,
 } from 'dynwinrt-jsx'
@@ -36,7 +39,6 @@ import {
   NavigationView,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
-  releaseProjected,
   StackPanel,
   Symbol,
   SymbolIcon,
@@ -65,7 +67,7 @@ const ThemeControllerContext = createContext<{
 type ButtonInstance = InstanceType<typeof Button>
 type ToggleInstance = InstanceType<typeof ToggleSwitch>
 
-export interface AppContext {
+export interface AppContext extends ProjectedOwnership {
   readonly model: AppModel
   readonly renderer: Renderer
   readonly window: Window
@@ -241,24 +243,51 @@ function Shell(context: AppContext) {
     diagnostics: '/diagnostics',
     settings: '/settings',
   }
+  const routes: readonly RouteDefinition<
+    unknown,
+    RouterNavigationViewRouteHandle<
+      InstanceType<typeof SymbolIcon>
+    >
+  >[] = [
+    {
+      id: 'home',
+      path: '/',
+      handle: {
+        navigation: {
+          label: 'Home',
+          createIcon: () =>
+            createSymbolIcon(SymbolIcon, Symbol.Home),
+          automationId: 'HomeNavItem',
+          automationPositionInSet: 1,
+          automationSizeOfSet: 2,
+        },
+      },
+      render: () => <HomePage {...context} />,
+    },
+    {
+      id: 'diagnostics',
+      path: '/diagnostics',
+      handle: {
+        navigation: {
+          label: 'Diagnostics',
+          placement: 'footer' as const,
+          createIcon: () =>
+            createSymbolIcon(SymbolIcon, Symbol.Repair),
+          automationId: 'DiagnosticsNavItem',
+          automationPositionInSet: 2,
+          automationSizeOfSet: 2,
+        },
+      },
+      render: () => <DiagnosticsPage {...context} />,
+    },
+    {
+      id: 'settings',
+      path: '/settings',
+      render: () => <SettingsPage {...context} />,
+    },
+  ]
   const router = createRouter({
-    routes: [
-      {
-        id: 'home',
-        path: '/',
-        render: () => <HomePage {...context} />,
-      },
-      {
-        id: 'diagnostics',
-        path: '/diagnostics',
-        render: () => <DiagnosticsPage {...context} />,
-      },
-      {
-        id: 'settings',
-        path: '/settings',
-        render: () => <SettingsPage {...context} />,
-      },
-    ],
+    routes,
     initialEntries: [
       routePaths[context.model.route.peek()],
     ],
@@ -277,33 +306,15 @@ function Shell(context: AppContext) {
         TextBlock,
         AutomationProperties,
       },
-      items: [
-        {
-          routeId: 'home',
-          label: 'Home',
-          icon: createSymbolIcon(SymbolIcon, Symbol.Home),
-          automationId: 'HomeNavItem',
-          automationPositionInSet: 1,
-          automationSizeOfSet: 2,
-        },
-      ],
-      footerItems: [
-        {
-          routeId: 'diagnostics',
-          label: 'Diagnostics',
-          icon: createSymbolIcon(SymbolIcon, Symbol.Repair),
-          automationId: 'DiagnosticsNavItem',
-          automationPositionInSet: 2,
-          automationSizeOfSet: 2,
-        },
-      ],
+      routes,
       settingsRouteId: 'settings',
       enqueue: (callback) =>
         context.window.dispatcherQueue.tryEnqueue(
           DispatcherQueuePriority.Low,
           callback,
         ),
-      releaseProjected,
+      createProjectedOwner:
+        context.createProjectedOwner,
     })
   onCleanup(navigationShell.dispose)
   return (

@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { native } = require('../dist/index.js')
+const { jsx } = require('../dist/jsx-runtime.js')
 
 const workerPath = require.resolve('../dist/worker.js')
 assert.equal(require.resolve('dynwinrt-jsx/worker'), workerPath)
@@ -1890,12 +1891,41 @@ test('defined app owns generated renderer and lifetime wiring', async () => {
       )
       harness.order.push('window-configure')
     },
-    mount({ bindings, diagnostics: mountedDiagnostics }) {
+    mount({
+      bindings,
+      diagnostics: mountedDiagnostics,
+      createProjectedOwner,
+      ownProjected,
+      createProjected,
+    }) {
       assert.equal(bindings, harness.bindings)
       assert.equal(mountedDiagnostics, diagnostics)
+      const manual = createProjectedOwner(
+        new bindings.TextBlock(),
+      )
+      manual.dispose()
+      function OwnedProjection() {
+        const created = createProjected(
+          () => new bindings.TextBlock(),
+        )
+        const owned = new bindings.TextBlock()
+        assert.equal(ownProjected(owned), owned)
+        assert.notEqual(
+          created,
+          owned,
+        )
+        return Text({ text: 'Hello' })
+      }
       return {
-        child: Text({ text: 'Hello' }),
-        afterActivate({ window }) {
+        child: jsx(OwnedProjection, {}),
+        afterActivate({
+          window,
+          createProjected: renderedCreateProjected,
+        }) {
+          assert.equal(
+            renderedCreateProjected,
+            createProjected,
+          )
           window.close()
         },
       }

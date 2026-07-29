@@ -19,6 +19,7 @@ test('host entry avoids renderer and WinUI modules', () => {
     require.resolve('../dist/runtime/persistence.js'),
     require.resolve('../dist/runtime/heartbeat.js'),
     require.resolve('../dist/runtime/host-app.js'),
+    require.resolve('../dist/runtime/host-evidence.js'),
   ]) {
     delete require.cache[modulePath]
   }
@@ -67,6 +68,11 @@ test('defined WinUI Host owns state and Worker cleanup', async (t) => {
     'hot',
     'state.json',
   )
+  const inspectorPath = path.join(
+    directory,
+    'evidence',
+    'inspector.json',
+  )
   const messages = []
   const { defineWinUIHost } =
     require('../dist/host.js')
@@ -83,6 +89,14 @@ test('defined WinUI Host owns state and Worker cleanup', async (t) => {
       statePath: hotStatePath,
       reloadFiles: [],
       restartFiles: [],
+    },
+    evidence: {
+      heartbeat: {
+        timeoutMs: 5_000,
+      },
+      inspector: {
+        path: inspectorPath,
+      },
     },
     logger: {
       log: (message) => messages.push(String(message)),
@@ -128,7 +142,17 @@ test('defined WinUI Host owns state and Worker cleanup', async (t) => {
   assert.equal(host.disposed, true)
   assert.equal(host.worker, null)
   assert.equal(host.bridge, null)
+  assert.equal(
+    host.evidencePaths.inspector,
+    inspectorPath,
+  )
   assert.equal(fs.existsSync(hotStatePath), false)
+  assert.equal(
+    JSON.parse(
+      fs.readFileSync(inspectorPath, 'utf8'),
+    ).type,
+    'renderer-inspector',
+  )
   assert.deepEqual(
     JSON.parse(fs.readFileSync(statePath, 'utf8')),
     {

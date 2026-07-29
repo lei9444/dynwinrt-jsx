@@ -500,11 +500,17 @@ identity, and manifest dependencies in a provenance document.
 - [x] Add `defineWinUIHost()` as the preferred main-process host for Windows
       App SDK bootstrap, Worker/state-port wiring, persistence, hot reload,
       diagnostics, and deterministic exit cleanup.
+- [x] Add Host heartbeat, inspector, diagnostics-export, timeout, and final
+      evidence presets with shared-state acknowledgement and atomic files.
 - [x] Add a Router-driven NavigationView shell that owns native item creation,
       route maps, selection synchronization, parent expansion, and queued
       route transitions.
+- [x] Generate NavigationView menu/footer/group definitions from typed route
+      handle metadata.
 - [x] Add retryable synchronous projected-value owners with optional
       component-scope disposal.
+- [x] Bind projected owner/create helpers to `defineWinUIApp()` contexts so
+      applications do not import or thread generated release callbacks.
 - [x] Split `src/renderer/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,

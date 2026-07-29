@@ -165,7 +165,14 @@ const app = defineWinUIApp({
       releaseProjected(configuredAppWindow)
     }
   },
-  mount({ bindings, window, renderer }) {
+  mount({
+    bindings,
+    window,
+    renderer,
+    createProjectedOwner,
+    ownProjected,
+    createProjected,
+  }) {
     window.systemBackdrop = new bindings.MicaBackdrop()
     const appNotifications = createAppNotificationOwner({
       getManager: () => AppNotificationManager.default_,
@@ -244,6 +251,9 @@ const app = defineWinUIApp({
       appNotifications,
       secondaryWindows,
       shellCapabilities: workerData.shellCapabilities,
+      createProjectedOwner,
+      ownProjected,
+      createProjected,
       refreshDiagnostics() {
         model.updateInspection(
           renderer.inspector.snapshot(),

@@ -10,7 +10,6 @@ import {
   effect,
   gridLength,
   onCleanup,
-  ownProjectedValue,
   styles,
   theme,
   thickness,
@@ -28,7 +27,6 @@ import {
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
   PropertyValue,
-  releaseProjected,
   Symbol,
   SymbolIcon,
   TextBlock,
@@ -45,132 +43,18 @@ import {
   UI,
 } from './gallery-ui'
 import { loadGalleryBitmap } from './gallery-assets'
-import {
-  galleryPages,
-} from './gallery-data'
 import { isGalleryRoute } from './launch-intent'
 import {
   createGalleryRoutes,
-  galleryCategoryRouteIds,
 } from './pages/routes'
-
-interface GalleryNavigationCategory {
-  readonly category: string
-  readonly name: string
-  readonly symbol: Symbol
-}
-
-const primaryNavigationCategories = [
-  {
-    category: 'Framework',
-    name: 'Framework',
-    symbol: Symbol.Document,
-  },
-  {
-    category: 'Fundamentals',
-    name: 'Fundamentals',
-    symbol: Symbol.Library,
-  },
-  {
-    category: 'Design',
-    name: 'Design',
-    symbol: Symbol.Highlight,
-  },
-  {
-    category: 'Accessibility',
-    name: 'Accessibility',
-    symbol: Symbol.Permissions,
-  },
-  {
-    category: 'Styles',
-    name: 'Styles',
-    symbol: Symbol.Highlight,
-  },
-] as const satisfies readonly GalleryNavigationCategory[]
-
-const controlNavigationCategories = [
-  {
-    category: 'Basic input',
-    name: 'BasicInput',
-    symbol: Symbol.TouchPointer,
-  },
-  {
-    category: 'Collections',
-    name: 'Collections',
-    symbol: Symbol.Bullets,
-  },
-  {
-    category: 'Date & time',
-    name: 'DateTime',
-    symbol: Symbol.Clock,
-  },
-  {
-    category: 'Dialogs & flyouts',
-    name: 'DialogsFlyouts',
-    symbol: Symbol.OpenWith,
-  },
-  {
-    category: 'Layout',
-    name: 'Layout',
-    symbol: Symbol.Page,
-  },
-  {
-    category: 'Media',
-    name: 'Media',
-    symbol: Symbol.Play,
-  },
-  {
-    category: 'Menus & toolbars',
-    name: 'MenusToolbars',
-    symbol: Symbol.Bullets,
-  },
-  {
-    category: 'Motion',
-    name: 'Motion',
-    symbol: Symbol.Sync,
-  },
-  {
-    category: 'Windowing',
-    name: 'Windowing',
-    symbol: Symbol.NewWindow,
-  },
-  {
-    category: 'System',
-    name: 'System',
-    symbol: Symbol.Setting,
-  },
-  {
-    category: 'Navigation',
-    name: 'Navigation',
-    symbol: Symbol.GlobalNavigationButton,
-  },
-  {
-    category: 'Scrolling',
-    name: 'Scrolling',
-    symbol: Symbol.Forward,
-  },
-  {
-    category: 'Shell',
-    name: 'Shell',
-    symbol: Symbol.Repair,
-  },
-  {
-    category: 'Text',
-    name: 'Text',
-    symbol: Symbol.Font,
-  },
-  {
-    category: 'Status & info',
-    name: 'StatusInfo',
-    symbol: Symbol.Flag,
-  },
-] as const satisfies readonly GalleryNavigationCategory[]
 
 export function Shell(context: AppContext) {
   const titleBar: RefObject<TitleBarInstance> = {
     current: null,
   }
-  const appIcon = new ImageIconSource()
+  const appIcon = context.createProjected(
+    () => new ImageIconSource(),
+  )
   appIcon.imageSource = loadGalleryBitmap('GalleryAppIcon.png', 20)
   const themeController = createWinUIThemeController({
     isDark: context.model.darkTheme,
@@ -182,8 +66,9 @@ export function Shell(context: AppContext) {
     titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
+  const routes = createGalleryRoutes(context)
   const router = createRouter({
-    routes: createGalleryRoutes(context),
+    routes,
     initialRouteId: context.model.route.peek(),
   })
   onCleanup(router.dispose)
@@ -201,39 +86,6 @@ export function Shell(context: AppContext) {
       context.model.navigate(routeId)
     }
   })
-  const ownedIcon = (symbol: Symbol) =>
-    ownProjectedValue(
-      createSymbolIcon(SymbolIcon, symbol),
-      releaseProjected,
-    )
-  const categoryItem = (
-    definition: GalleryNavigationCategory,
-  ) => {
-    const routeId =
-      galleryCategoryRouteIds.get(definition.category)
-    const pages = galleryPages.filter(
-      (page) => page.category === definition.category,
-    )
-    if (pages.length === 0) {
-      throw new Error(
-        `Gallery navigation category '${definition.category}' has no pages.`,
-      )
-    }
-    return {
-      ...(routeId
-        ? { routeId }
-        : { name: `category-${definition.name}` }),
-      label: definition.category,
-      icon: ownedIcon(definition.symbol),
-      automationId:
-        `Gallery${definition.name}CategoryNavItem`,
-      children: pages.map((page) => ({
-        routeId: page.id,
-        label: page.title,
-        automationId: `Gallery${page.id}NavItem`,
-      })),
-    }
-  }
   const navigationShell =
     createRouterNavigationViewShell({
       router,
@@ -242,33 +94,24 @@ export function Shell(context: AppContext) {
         TextBlock,
         AutomationProperties,
       },
+      routes,
       items: [
-        {
-          routeId: 'home',
-          label: 'Home',
-          icon: ownedIcon(Symbol.Home),
-          automationId: 'GalleryHomeNavItem',
-        },
-        ...primaryNavigationCategories.map(categoryItem),
         {
           name: 'controls-header',
           label: 'Controls',
+          order: 60,
           automationId: 'GalleryControlsHeader',
         },
         {
           name: 'all-controls',
           label: 'All',
-          icon: ownedIcon(Symbol.AllApps),
+          order: 61,
+          createIcon: () =>
+            createSymbolIcon(
+              SymbolIcon,
+              Symbol.AllApps,
+            ),
           automationId: 'GalleryAllControlsNavItem',
-        },
-        ...controlNavigationCategories.map(categoryItem),
-      ],
-      footerItems: [
-        {
-          routeId: 'diagnostics',
-          label: 'Diagnostics',
-          icon: ownedIcon(Symbol.Repair),
-          automationId: 'GalleryDiagnosticsNavItem',
         },
       ],
       settingsRouteId: 'settings',
@@ -278,7 +121,8 @@ export function Shell(context: AppContext) {
           DispatcherQueuePriority.Low,
           callback,
         ),
-      releaseProjected,
+      createProjectedOwner:
+        context.createProjectedOwner,
     })
   onCleanup(navigationShell.dispose)
 

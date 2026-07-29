@@ -121,7 +121,14 @@ export function runDashboardApplication(
         releaseProjected(configuredAppWindow)
       }
     },
-    mount({ bindings, window, renderer }) {
+    mount({
+      bindings,
+      window,
+      renderer,
+      createProjectedOwner,
+      ownProjected,
+      createProjected,
+    }) {
       window.systemBackdrop = new bindings.MicaBackdrop()
       const model = createDashboardModel(
         stateBridge,
@@ -215,6 +222,9 @@ export function runDashboardApplication(
         renderer,
         window,
         diagnostics,
+        createProjectedOwner,
+        ownProjected,
+        createProjected,
         getXamlRoot() {
           xamlRoot ??= window.content.xamlRoot
           return xamlRoot

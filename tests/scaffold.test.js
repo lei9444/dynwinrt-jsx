@@ -141,6 +141,8 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.match(appSource, /styles\.heading/)
   assert.match(appSource, /createRouter/)
   assert.match(appSource, /createRouterNavigationViewShell/)
+  assert.match(appSource, /handle:\s*\{\s*navigation:/s)
+  assert.match(appSource, /routes,/)
   assert.match(appSource, /<RouterProvider router=\{router\}>/)
   assert.match(appSource, /styles\.button/)
   assert.match(appSource, /tokens\.spacing/)
@@ -453,8 +455,32 @@ test('Gallery uses the signal-native router', () => {
     'utf8',
   )
   assert.match(galleryMain, /defineWinUIHost/)
+  assert.match(galleryMain, /evidence:\s*\{/)
   assert.doesNotMatch(galleryMain, /new MessageChannel/)
   assert.doesNotMatch(galleryMain, /initWinappsdk/)
+  const galleryUi = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'src',
+      'gallery-ui.ts',
+    ),
+    'utf8',
+  )
+  assert.match(galleryUi, /\.asVector\(\)/)
+  assert.equal(
+    fs.existsSync(path.join(
+      __dirname,
+      '..',
+      'examples',
+      'gallery',
+      'src',
+      'command-bar-collection.ts',
+    )),
+    false,
+  )
   for (const directory of [
     'basic-input',
     'collections',

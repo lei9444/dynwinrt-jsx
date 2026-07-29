@@ -111,3 +111,11 @@ export {
   type WinUIHostWorker,
   type WinUIHostWorkerContext,
 } from './runtime/host-app'
+
+export {
+  type WinUIHostEvidenceFileOptions,
+  type WinUIHostEvidenceOptions,
+  type WinUIHostEvidencePaths,
+  type WinUIHostFinalEvidenceOptions,
+  type WinUIHostHeartbeatEvidenceOptions,
+} from './runtime/host-evidence'

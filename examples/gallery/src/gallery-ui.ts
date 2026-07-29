@@ -14,6 +14,7 @@ import {
   type Capability,
   type MaybeSignal,
   type Renderer,
+  type ProjectedOwnership,
 } from 'dynwinrt-jsx'
 import {
   AutoSuggestBox,
@@ -139,7 +140,6 @@ import type { AppNotificationOwner } from './app-notification-owner'
 import type {
   GallerySecondaryWindowManager,
 } from './secondary-window-manager'
-import { commandBarCollection } from './command-bar-collection'
 
 export const UI = createControls({
   AutoSuggestBox,
@@ -251,16 +251,12 @@ export const GalleryCommandBar = native<
   adapters: {
     secondaryCommands: adapter.collectionSlotFrom(
       (instance) =>
-        commandBarCollection(
-          instance.secondaryCommands,
-        ),
+        instance.secondaryCommands.asVector(),
     ),
   },
   children: adapter.collectionSlotFrom(
     (instance) =>
-      commandBarCollection(
-        instance.primaryCommands,
-      ),
+      instance.primaryCommands.asVector(),
   ),
 })
 export const GalleryCommandBarFlyout = native<
@@ -273,16 +269,12 @@ export const GalleryCommandBarFlyout = native<
   adapters: {
     secondaryCommands: adapter.collectionSlotFrom(
       (instance) =>
-        commandBarCollection(
-          instance.secondaryCommands,
-        ),
+        instance.secondaryCommands.asVector(),
     ),
   },
   children: adapter.collectionSlotFrom(
     (instance) =>
-      commandBarCollection(
-        instance.primaryCommands,
-      ),
+      instance.primaryCommands.asVector(),
   ),
 })
 export const GallerySwipeItems = native(SwipeItems, {
@@ -519,7 +511,7 @@ export type ToggleInstance = InstanceType<typeof ToggleSwitch>
 export type RefreshContainerInstance =
   InstanceType<typeof RefreshContainer>
 
-export interface AppContext {
+export interface AppContext extends ProjectedOwnership {
   readonly model: AppModel
   readonly renderer: Renderer
   readonly window: Window

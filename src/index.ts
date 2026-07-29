@@ -79,8 +79,11 @@ export {
   createRouterNavigationViewShell,
   type RouterNavigationHostOptions,
   type RouterNavigationSelectionChangedEvent,
+  type RouterNavigationViewGroupMetadata,
   type RouterNavigationViewInstance,
   type RouterNavigationViewItemDefinition,
+  type RouterNavigationViewRouteHandle,
+  type RouterNavigationViewRouteMetadata,
   type RouterNavigationViewShell,
   type RouterNavigationViewShellOptions,
 } from './winui/router'
@@ -298,8 +301,10 @@ export {
 } from './runtime/capability'
 
 export {
+  createProjectedOwnership,
   createProjectedValueOwner,
   ownProjectedValue,
+  type ProjectedOwnership,
   type ProjectedValueOwner,
 } from './runtime/projected-owner'
 

@@ -125,6 +125,14 @@ const host = defineWinUIHost({
     }),
     isReady: (state) => state.status === 'running',
   },
+  evidence: {
+    heartbeat: true,
+    inspector: true,
+    diagnostics: true,
+    final: {
+      assertIdle: true,
+    },
+  },
 })
 
 host.run().then(
@@ -141,6 +149,10 @@ host.run().then(
 Set `bootstrap: false` only when another host already initialized the Windows
 App SDK. `workerData` can add application-specific transferred configuration;
 the Host always owns `statePort`, `initialState`, and `hotStatePath`.
+The evidence preset additionally injects `heartbeatEnabled`,
+`heartbeatState`, `inspectorExportPath`, and `diagnosticsExportPath`; it
+handles Worker heartbeat, inspector-export, diagnostics-export, timeout, and
+final-evidence messages with atomic writes.
 
 Worker entry points can reuse deterministic Window teardown and file-backed hot
 reload without copying the lifecycle implementation:
@@ -165,10 +177,23 @@ const app = defineWinUIApp({
   configureWindow({ window }) {
     window.title = 'My WinUI app'
   },
-  mount({ bindings, renderer, window }) {
+  mount({
+    bindings,
+    renderer,
+    window,
+    createProjectedOwner,
+    ownProjected,
+    createProjected,
+  }) {
     window.systemBackdrop = new bindings.MicaBackdrop()
     return {
-      child: renderApp({ renderer, window }),
+      child: renderApp({
+        renderer,
+        window,
+        createProjectedOwner,
+        ownProjected,
+        createProjected,
+      }),
     }
   },
   onError: reportWorkerError,
@@ -304,7 +329,8 @@ const CommandSurface = native<
 >(CommandBar, {
   adapters: {
     commands: adapter.collection({
-      get: (instance) => instance.primaryCommands,
+      get: (instance) =>
+        instance.primaryCommands.asVector(),
       label: 'CommandBar primaryCommands',
     }),
   },
@@ -717,28 +743,48 @@ detail routes, and retains separate DispatcherQueue turns for old-page
 disposal and target mounting:
 
 ```tsx
+const routeDefinitions = [{
+  id: 'home',
+  path: '/',
+  handle: {
+    navigation: {
+      label: 'Home',
+      order: 0,
+      createIcon: () =>
+        createSymbolIcon(SymbolIcon, Symbol.Home),
+      automationId: 'HomeNavItem',
+    },
+  },
+  render: () => <HomePage />,
+}, {
+  id: 'tasks',
+  path: '/tasks',
+  handle: {
+    navigation: {
+      label: 'Tasks',
+      group: {
+        id: 'work',
+        label: 'Work',
+        order: 10,
+      },
+    },
+  },
+  render: () => <TasksPage />,
+}]
+const router = createRouter({
+  routes: routeDefinitions,
+})
 const navigationShell = createRouterNavigationViewShell({
   router,
+  routes: routeDefinitions,
   bindings: {
     NavigationViewItem,
     TextBlock,
     AutomationProperties,
   },
-  items: [{
-    routeId: 'home',
-    label: 'Home',
-  }, {
-    name: 'work',
-    label: 'Work',
-    selectable: false,
-    children: [{
-      routeId: 'tasks',
-      label: 'Tasks',
-    }],
-  }],
   settingsRouteId: 'settings',
   preservePaneOpenOnSelection: true,
-  releaseProjected,
+  createProjectedOwner,
   enqueue: (callback) =>
     window.dispatcherQueue.tryEnqueue(
       DispatcherQueuePriority.Low,
@@ -766,11 +812,13 @@ onCleanup(navigationShell.dispose)
 </Navigation>
 ```
 
+`handle.navigation` supports label, order, menu/footer placement, automation
+metadata, icon factories, and virtual groups for routes that do not share a
+structural parent. Routes without navigation metadata remain hidden.
 `createRouterNavigationHost()` remains the lower-level bridge when native
-items are created or selected by application-specific policy.
-The shell requires `releaseProjected`; it owns and retry-releases every
-NavigationViewItem and TextBlock label that it creates. Icons supplied in item
-metadata remain caller-owned.
+items are created or selected by application-specific policy. The shell uses
+the app-bound `createProjectedOwner` (or a raw `releaseProjected` fallback) to
+retry-release every item, label, and icon factory result it creates.
 
 The router is not React Router and does not use browser history. Route render
 functions mount once per matched route identity; application changes flow
@@ -889,6 +937,24 @@ const brush = ownProjectedValue(
 
 Manual projected owners are idempotent after success and remain retryable when
 release throws. Release callbacks must be synchronous.
+
+`defineWinUIApp()` binds these operations to the generated
+`releaseProjected()` function. Pass `createProjectedOwner`, `ownProjected`, and
+`createProjected` from its context into application components:
+
+```ts
+function Page(context: AppContext) {
+  const brush = context.createProjected(
+    () => new SolidColorBrush(),
+  )
+  return <UI.Border background={brush} />
+}
+```
+
+`ownProjected()` and `createProjected()` register with the current component
+or effect scope. Calling them outside a reactive scope releases the new value
+before reporting the scope error. Use `createProjectedOwner()` for manual,
+retryable ordering.
 
 Use `createListViewControl()` when JSX children should populate native
 `items`, with owned `header` and `footer` slots:

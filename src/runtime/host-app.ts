@@ -16,6 +16,12 @@ import {
   createJsonStateStore,
   type JsonStateLoadResult,
 } from './persistence'
+import {
+  createWinUIHostEvidenceSession,
+  type WinUIHostEvidenceOptions,
+  type WinUIHostEvidencePaths,
+  type WinUIHostEvidenceSession,
+} from './host-evidence'
 
 interface FileStats {
   readonly mtimeMs: number
@@ -165,6 +171,7 @@ export interface WinUIHostWorkerContext<State> {
   readonly statePort: MessageEndpoint
   readonly initialState: State
   readonly hotStatePath: string | null
+  readonly evidencePaths: WinUIHostEvidencePaths | null
 }
 
 export interface DefineWinUIHostOptions<
@@ -185,6 +192,7 @@ export interface DefineWinUIHostOptions<
       context: WinUIHostWorkerContext<State>,
     ) => Readonly<Record<string, unknown>>)
   readonly hotReload?: WinUIHostHotReloadOptions
+  readonly evidence?: WinUIHostEvidenceOptions
   readonly logger?: WinUIHostLogger
   readonly diagnosticSource?: string
   readonly workerDiagnosticSource?: string
@@ -198,6 +206,7 @@ export interface DefinedWinUIHost<State> {
   readonly statePath: string
   readonly bridge: StateBridge<State> | null
   readonly worker: WinUIHostWorker | null
+  readonly evidencePaths: WinUIHostEvidencePaths | null
   readonly started: boolean
   readonly disposed: boolean
   run(): Promise<number>
@@ -378,6 +387,10 @@ export function defineWinUIHost<State, PersistedState>(
   let runPromise: Promise<number> | null = null
   let workerFailed = false
   let stateSubscription: (() => void) | null = null
+  let evidenceSession: WinUIHostEvidenceSession | null =
+    null
+  let evidencePaths: WinUIHostEvidencePaths | null =
+    null
 
   const diagnosticSource =
     options.diagnosticSource ?? 'app-host'
@@ -478,6 +491,14 @@ export function defineWinUIHost<State, PersistedState>(
     ) {
       pendingWorkerPort = null
     }
+    if (
+      evidenceSession !== null &&
+      attempt(() => {
+        evidenceSession?.dispose()
+      })
+    ) {
+      evidenceSession = null
+    }
     if (hotStatePath !== null) {
       const currentHotStatePath = hotStatePath
       if (
@@ -498,6 +519,7 @@ export function defineWinUIHost<State, PersistedState>(
       bridge === null &&
       hostPort === null &&
       pendingWorkerPort === null &&
+      evidenceSession === null &&
       hotStatePath === null
     return firstError
   }
@@ -509,6 +531,9 @@ export function defineWinUIHost<State, PersistedState>(
     },
     get worker() {
       return worker
+    },
+    get evidencePaths() {
+      return evidencePaths
     },
     get started() {
       return started
@@ -591,11 +616,26 @@ export function defineWinUIHost<State, PersistedState>(
             version: hotVersion,
           })
         }
+        if (options.evidence) {
+          evidenceSession =
+            createWinUIHostEvidenceSession({
+              options: options.evidence,
+              statePath,
+              logger,
+              onError(error) {
+                logger.error(error)
+                workerFailed = true
+              },
+            })
+          evidencePaths = evidenceSession.paths
+        }
 
         const workerContext: WinUIHostWorkerContext<State> = {
           statePort: port2,
           initialState,
           hotStatePath,
+          evidencePaths:
+            evidenceSession?.paths ?? null,
         }
         const additionalWorkerData =
           typeof options.workerData === 'function'
@@ -611,6 +651,7 @@ export function defineWinUIHost<State, PersistedState>(
           {
             workerData: {
               ...additionalWorkerData,
+              ...evidenceSession?.workerData,
               statePort: port2,
               hotStatePath,
               initialState,
@@ -619,6 +660,7 @@ export function defineWinUIHost<State, PersistedState>(
           },
         )
         pendingWorkerPort = null
+        evidenceSession?.attachWorker(worker.threadId)
         worker.on('message', (message) => {
           if (
             isRecord(message) &&
@@ -630,6 +672,9 @@ export function defineWinUIHost<State, PersistedState>(
               )
               workerFailed = true
             } else {
+              evidenceSession?.recordDiagnostic(
+                message.value,
+              )
               logger.log(
                 formatDiagnosticProtocolRecordSummary(
                   message.value,
@@ -677,6 +722,15 @@ export function defineWinUIHost<State, PersistedState>(
             }
           }
           try {
+            evidenceSession?.handleWorkerMessage(
+              message,
+            )
+          }
+          catch (error) {
+            logger.error(error)
+            workerFailed = true
+          }
+          try {
             options.onWorkerMessage?.(message)
           }
           catch (error) {
@@ -695,6 +749,13 @@ export function defineWinUIHost<State, PersistedState>(
           workerFailed = true
         })
         worker.on('exit', (code) => {
+          try {
+            evidenceSession?.finalize(code)
+          }
+          catch (error) {
+            logger.error(error)
+            workerFailed = true
+          }
           const cleanupError = cleanup()
           if (cleanupError !== undefined) {
             workerFailed = true

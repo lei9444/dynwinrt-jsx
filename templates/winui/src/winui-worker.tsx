@@ -150,7 +150,14 @@ const app = defineWinUIApp({
       releaseProjected(configuredAppWindow)
     }
   },
-  mount({ bindings, window, renderer }) {
+  mount({
+    bindings,
+    window,
+    renderer,
+    createProjectedOwner,
+    ownProjected,
+    createProjected,
+  }) {
     window.systemBackdrop = new bindings.MicaBackdrop()
     const model = createAppModel(
       bridge,
@@ -160,6 +167,9 @@ const app = defineWinUIApp({
       model,
       renderer,
       window,
+      createProjectedOwner,
+      ownProjected,
+      createProjected,
       refreshDiagnostics() {
         model.diagnostics.value = renderer.diagnostics
       },

@@ -6,6 +6,18 @@ export interface ProjectedValueOwner<Value extends object> {
   dispose(): void
 }
 
+export interface ProjectedOwnership {
+  createProjectedOwner<Value extends object>(
+    value: Value,
+  ): ProjectedValueOwner<Value>
+  ownProjected<Value extends object>(
+    value: Value,
+  ): Value
+  createProjected<Value extends object>(
+    factory: () => Value,
+  ): Value
+}
+
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return (
     value !== null &&
@@ -101,6 +113,60 @@ export function ownProjectedValue<
     : never,
 ): Value {
   const owner = createProjectedValueOwner(value, release)
-  onCleanup(owner.dispose)
+  try {
+    onCleanup(owner.dispose)
+  }
+  catch (error) {
+    try {
+      owner.dispose()
+    }
+    catch (releaseError) {
+      throw new AggregateError(
+        [error, releaseError],
+        'Projected value scope registration and release failed.',
+      )
+    }
+    throw error
+  }
   return value
+}
+
+export function createProjectedOwnership<
+  Result = void,
+>(
+  release: Extract<
+    Result,
+    PromiseLike<unknown>
+  > extends never
+    ? (value: object) => Result
+    : never,
+): ProjectedOwnership
+export function createProjectedOwnership(
+  release: (value: object) => unknown,
+): ProjectedOwnership {
+  if (typeof release !== 'function') {
+    throw new TypeError(
+      'createProjectedOwnership() requires a release callback.',
+    )
+  }
+  const ownership: ProjectedOwnership = {
+    createProjectedOwner(value) {
+      return createProjectedValueOwner(
+        value,
+        release,
+      )
+    },
+    ownProjected(value) {
+      return ownProjectedValue(value, release)
+    },
+    createProjected(factory) {
+      if (typeof factory !== 'function') {
+        throw new TypeError(
+          'createProjected() requires a factory.',
+        )
+      }
+      return ownership.ownProjected(factory())
+    },
+  }
+  return ownership
 }

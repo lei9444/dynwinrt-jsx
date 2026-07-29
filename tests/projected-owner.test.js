@@ -5,6 +5,7 @@ const test = require('node:test')
 
 const {
   createControls,
+  createProjectedOwnership,
   createProjectedValueOwner,
   createRenderer,
   ownProjectedValue,
@@ -74,4 +75,31 @@ test('owned projected values release with component scope', () => {
   handle.dispose()
 
   assert.deepEqual(released, [projected])
+})
+
+test('bound projected ownership creates and releases values', () => {
+  const released = []
+  const ownership = createProjectedOwnership(
+    (value) => released.push(value),
+  )
+  const value = {}
+  const owner =
+    ownership.createProjectedOwner(value)
+
+  owner.dispose()
+  assert.deepEqual(released, [value])
+})
+
+test('scoped ownership releases when no scope is active', () => {
+  const released = []
+  const ownership = createProjectedOwnership(
+    (value) => released.push(value),
+  )
+  const value = {}
+
+  assert.throws(
+    () => ownership.ownProjected(value),
+    /onCleanup\(\) must be called/,
+  )
+  assert.deepEqual(released, [value])
 })

@@ -96,7 +96,7 @@ adoption map.
 | Flyout, MenuFlyout, Popup, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
 | Theme resources, tokens, and recipes | `src/winui/resource.ts`, `src/winui/theme.ts`, `src/winui/style.ts` |
 | Worker state and persistence | `src/runtime/bridge.ts`, `src/runtime/persistence.ts` |
-| Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/diagnostic-evidence.ts`, `src/runtime/heartbeat.ts` |
+| Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/diagnostic-evidence.ts`, `src/runtime/heartbeat.ts`, `src/runtime/host-evidence.ts` |
 | Worker Window lifecycle and file hot reload | `src/worker.ts` |
 | Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
@@ -193,7 +193,7 @@ The built-in WinUI layer currently provides:
 - NavigationView menu/footer collections through `createNavigationViewControl()`.
 - Nested route definitions, signal params/query/state, owned `Outlet` scopes,
   typed route registries, logical-parent `up()`, in-memory history, and
-  NavigationView route-ID/target integration.
+  route-handle-driven NavigationView menu/footer/group integration.
 - Scoped ContentDialog rendering, native icon factories, and focus targets.
 - ListView item/slot adapters with controlled selection helpers.
 - ComboBox items/header ownership with mounted controlled selection.
@@ -228,6 +228,9 @@ The built-in WinUI layer currently provides:
   monitor that detects startup hangs, UI-thread timeouts, and recovery.
 - Bounded diagnostic buffers and versioned evidence bundles combine lifecycle,
   route, renderer, heartbeat, UIA, and final-idle evidence.
+- Main-process Host evidence presets own heartbeat shared state, inspector and
+  diagnostics exports, timeout capture, and optional final-idle evidence.
+- `defineWinUIApp()` contexts expose app-bound projected owner/create helpers.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters

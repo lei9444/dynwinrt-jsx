@@ -22,6 +22,7 @@ import {
   createContext,
   createComboBoxControl,
   createCapabilityOwner,
+  createProjectedOwnership,
   createProjectedValueOwner,
   createControls,
   createFocusTarget,
@@ -84,6 +85,7 @@ import {
   type ScrollViewerController,
   type RouteDefinition,
   type RouterLocation,
+  type RouterNavigationViewRouteHandle,
   type WinUIRendererCapability,
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
@@ -595,10 +597,23 @@ const definedWinUIApp = defineWinUIApp({
         context
     void typedContext.bindings
     void typedContext.capabilities
+    const owned = typedContext.createProjectedOwner(
+      new TypeTextBlock(),
+    )
+    owned.dispose()
   },
-  mount({ bindings, releaseProjected }) {
+  mount({
+    bindings,
+    releaseProjected,
+    createProjectedOwner,
+    ownProjected,
+    createProjected,
+  }) {
     void bindings
     void releaseProjected
+    void createProjectedOwner
+    void ownProjected
+    void createProjected
     return {
       child: null,
       afterActivate({ setExitCode }) {
@@ -617,7 +632,8 @@ void definedWinUIApp.run()
 interface TypeRouteState {
   readonly source: string
 }
-interface TypeRouteHandle {
+interface TypeRouteHandle
+extends RouterNavigationViewRouteHandle<TypeSymbolIcon> {
   readonly navigationLabel: string
 }
 const typeRoutes: readonly RouteDefinition<
@@ -1000,6 +1016,15 @@ const projectedOwner = createProjectedValueOwner(
   new TypeTextBlock(),
   () => {},
 )
+const projectedOwnership =
+  createProjectedOwnership(() => {})
+void projectedOwnership.createProjectedOwner(
+  new TypeTextBlock(),
+)
+createProjectedOwnership(
+  // @ts-expect-error Projected ownership release must be synchronous.
+  async () => {},
+)
 void projectedOwner.value
 void ownProjectedValue(
   new TypeTextBlock(),
@@ -1042,8 +1067,18 @@ const typeHost = defineWinUIHost({
       count: state.count,
     }),
   },
+  evidence: {
+    heartbeat: {
+      timeoutMs: 5_000,
+    },
+    inspector: true,
+    final: {
+      assertIdle: true,
+    },
+  },
 })
 void typeHost.run
+void typeHost.evidencePaths?.inspector
 declare const maybeAsyncCleanup:
   () => void | Promise<void>
 createCapabilityOwner(
