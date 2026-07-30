@@ -575,15 +575,20 @@ identity, and manifest dependencies in a provenance document.
       lookup and module parsing.
 - [ ] Profile and optimize renderer property, collection, and disposal hot
       paths.
-- [ ] Add a DispatcherQueue/frame coalescer for high-frequency native events.
-  - [ ] Track `PointerMoved` using last-value-per-frame delivery instead of
+- [ ] Revisit typed dynwinrt JavaScript projection fast paths only with
+      runtime/codegen version gating, differential generated-binding
+      conformance tests, and full real-WinUI lifecycle validation. Local
+      prototypes showed large potential for activation/property setters but
+      were removed rather than shipping broad unversioned codegen changes.
+- [x] Add a scoped composition-frame coalescer for high-frequency native events.
+  - [x] Track `PointerMoved` using last-value-per-frame delivery instead of
         synchronously updating Signals for every native callback.
-  - [ ] Add configurable ScrollViewer sampling modes for immediate,
+  - [x] Add configurable ScrollViewer sampling modes for immediate,
         frame-coalesced, and native-only state.
   - [ ] Add scoped Composition animation ownership helpers so per-frame
         animation work remains native.
-- [ ] Keep non-first-screen pages and adapters outside the startup critical
-      path.
+- [x] Keep non-first-screen Gallery pages outside the startup critical path
+      with public `createLazyComponent()` synchronous route loaders.
 
 #### Diagnostics and application models
 

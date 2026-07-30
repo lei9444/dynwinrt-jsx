@@ -29,6 +29,7 @@ declare const process: {
   }
 }
 
+const moduleEnteredAt = Date.now()
 const baselineMemory = process.memoryUsage()
 const runtime = createWinUIWorkerRuntime<
   BenchmarkState,
@@ -38,6 +39,16 @@ const runtime = createWinUIWorkerRuntime<
 >({
   moduleId: './dist/app.js',
 })
+const startupEpochMs =
+  runtime.workerData.benchmarkOptions.startupEpochMs
+const startupMilestones: Record<string, number> = {
+  moduleEntered: moduleEnteredAt - startupEpochMs,
+  runtimeCreated: Date.now() - startupEpochMs,
+}
+const markStartup = (name: string) => {
+  startupMilestones[name] ??=
+    Date.now() - startupEpochMs
+}
 const app = defineWinUIApp({
   bindings: WinUIBindings,
   rendererOptions:
@@ -51,20 +62,26 @@ const app = defineWinUIApp({
         }
       : {},
   initializeRuntime() {
+    markStartup('runtimeInitializeStarted')
     roInitialize(0)
+    markStartup('runtimeInitialized')
   },
   configureWindow({ window }) {
+    markStartup('windowConfigureStarted')
     window.title = 'DynWinRT JSX SignalGrid'
     window.appWindow.setPresenter(
       AppWindowPresenterKind.FullScreen,
     )
+    markStartup('windowConfigured')
   },
   mount({
     window,
+    renderer,
     createProjectedOwner,
     ownProjected,
     createProjected,
   }) {
+    markStartup('mountEntered')
     let controller: BenchmarkController | null =
       null
     const report = (
@@ -72,34 +89,49 @@ const app = defineWinUIApp({
     ) => {
       runtime.postMessage({
         type: 'benchmark-result',
-        value: result,
+        value: {
+          ...result,
+          startupMilestones: {
+            ...startupMilestones,
+          },
+          rendererDiagnostics: {
+            ...renderer.diagnostics,
+          },
+        },
       })
     }
+    const child = (
+      runtime.workerData.benchmarkOptions.scenario ===
+        'keyed-list'
+        ? renderKeyedBenchmark
+        : runtime.workerData.benchmarkOptions.scenario ===
+            'virtual-list'
+          ? renderVirtualBenchmark
+          : renderBenchmark
+    )(
+      {
+        window,
+        options:
+          runtime.workerData.benchmarkOptions,
+        baselineMemory,
+        report,
+        markStartup,
+        createProjectedOwner,
+        ownProjected,
+        createProjected,
+      },
+      (value) => {
+        controller = value
+      },
+    )
+    markStartup('jsxBuilt')
     return {
-      child: (
-        runtime.workerData.benchmarkOptions.scenario ===
-          'keyed-list'
-          ? renderKeyedBenchmark
-          : runtime.workerData.benchmarkOptions.scenario ===
-              'virtual-list'
-            ? renderVirtualBenchmark
-            : renderBenchmark
-      )(
-        {
-          window,
-          options:
-            runtime.workerData.benchmarkOptions,
-          baselineMemory,
-          report,
-          createProjectedOwner,
-          ownProjected,
-          createProjected,
-        },
-        (value) => {
-          controller = value
-        },
-      ),
+      child,
+      afterRender() {
+        markStartup('afterRender')
+      },
       afterActivate() {
+        markStartup('afterActivate')
         if (!controller) {
           throw new Error(
             'Benchmark controller was not mounted.',
@@ -109,7 +141,11 @@ const app = defineWinUIApp({
       },
     }
   },
+  onStage(stage) {
+    markStartup(stage)
+  },
   ...runtime.appCallbacks,
 })
+markStartup('appDefined')
 
 void runtime.run(app)

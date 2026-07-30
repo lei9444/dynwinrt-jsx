@@ -107,6 +107,7 @@ extends ProjectedOwnership {
   readonly report: (
     result: object,
   ) => void
+  readonly markStartup: (name: string) => void
 }
 
 interface CellViewState {
@@ -198,6 +199,7 @@ function BenchmarkApp(props: {
     context,
     onReady,
   } = props
+  context.markStartup('componentEntered')
   const source = new StockDataSource()
   const greenBrush = context.createProjected(
     () => createSolidColorBrush(
@@ -409,7 +411,10 @@ function BenchmarkApp(props: {
       renderingToken =
         CompositionTarget.add_Rendering(() => {
           const now = performance.now()
-          firstFrameAt ??= Date.now()
+          if (firstFrameAt === null) {
+            firstFrameAt = Date.now()
+            context.markStartup('firstFrame')
+          }
           frameCount += 1
           const elapsed =
             now - lastFrameSampleAt
@@ -436,8 +441,12 @@ function BenchmarkApp(props: {
 
   onCleanup(stop)
 
-  return (
+  context.markStartup('componentSetupComplete')
+  const child = (
     <LayoutGrid
+      onLoaded={() => {
+        context.markStartup('rootLoaded')
+      }}
       rowDefinitions={[
         gridLength.auto(),
         gridLength.star(),
@@ -531,6 +540,8 @@ function BenchmarkApp(props: {
       </UI.ScrollViewer>
     </LayoutGrid>
   )
+  context.markStartup('vnodeTreeBuilt')
+  return child
 }
 
 export function renderBenchmark(

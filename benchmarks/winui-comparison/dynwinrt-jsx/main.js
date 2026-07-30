@@ -1,13 +1,19 @@
 'use strict'
 
+const startupEpochMs = performance.timeOrigin
+const hostMilestones = {
+  processTimeOrigin: 0,
+  mainEntered:
+    Date.now() - startupEpochMs,
+}
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const {
   defineWinUIHost,
 } = require('dynwinrt-jsx/host')
-
-const startupEpochMs = Date.now()
+hostMilestones.hostModuleLoaded =
+  Date.now() - startupEpochMs
 
 function parseArguments(arguments_) {
   const options = {
@@ -124,6 +130,8 @@ function writeJsonAtomic(filePath, value) {
 const benchmarkOptions = parseArguments(
   process.argv.slice(2),
 )
+hostMilestones.argumentsParsed =
+  Date.now() - startupEpochMs
 const statePath = path.join(
   os.tmpdir(),
   `dynwinrt-jsx-perf-${process.pid}.json`,
@@ -159,20 +167,36 @@ const host = defineWinUIHost({
       startupEpochMs,
     },
   },
+  onWorkerCreated() {
+    hostMilestones.workerCreated =
+      Date.now() - startupEpochMs
+  },
   onWorkerMessage(message) {
     if (message?.type !== 'benchmark-result') {
       return
     }
+    hostMilestones.resultReceived =
+      Date.now() - startupEpochMs
+    const value = {
+      ...message.value,
+      hostMilestones: {
+        ...hostMilestones,
+      },
+    }
     writeJsonAtomic(
       benchmarkOptions.outputPath,
-      message.value,
+      value,
     )
     console.log(
-      `DYNWINRT_JSX_PERF_JSON ${JSON.stringify(message.value)}`,
+      `DYNWINRT_JSX_PERF_JSON ${JSON.stringify(value)}`,
     )
   },
 })
+hostMilestones.hostDefined =
+  Date.now() - startupEpochMs
 
+hostMilestones.hostRunCalled =
+  Date.now() - startupEpochMs
 host.run().then(
   (code) => {
     fs.rmSync(statePath, { force: true })

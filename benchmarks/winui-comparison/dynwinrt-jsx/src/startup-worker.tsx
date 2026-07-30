@@ -54,88 +54,114 @@ const runtime = createWinUIWorkerRuntime<
 >({
   moduleId: './dist/app.js',
 })
+const startupEpochMs =
+  runtime.workerData.benchmarkOptions.startupEpochMs
+const startupMilestones: Record<string, number> = {
+  moduleEntered: moduleEnteredAt - startupEpochMs,
+  runtimeCreated: Date.now() - startupEpochMs,
+}
+const markStartup = (name: string) => {
+  startupMilestones[name] ??=
+    Date.now() - startupEpochMs
+}
 const UI = createControls({ TextBlock })
 const app = defineWinUIApp({
   bindings: StartupBindings,
   initializeRuntime() {
+    markStartup('runtimeInitializeStarted')
     roInitialize(0)
+    markStartup('runtimeInitialized')
   },
   configureWindow({ window }) {
+    markStartup('windowConfigureStarted')
     window.title = 'DynWinRT JSX Startup'
     window.appWindow.resize({
       width: 1000,
       height: 1000,
     })
+    markStartup('windowConfigured')
   },
   mount({ window }) {
-    const startedAt =
-      runtime.workerData.benchmarkOptions
-        .startupEpochMs
+    markStartup('mountEntered')
     let renderingToken:
       | ReturnType<
           typeof CompositionTarget.add_Rendering
         >
       | undefined
     let reported = false
-    return {
-      child: (
-        <UI.TextBlock
-          text="Blank dynwinrt-jsx startup benchmark"
-          fontSize={14}
-          onLoaded={() => {
-            renderingToken =
-              CompositionTarget.add_Rendering(() => {
-                if (reported) {
-                  return
-                }
-                reported = true
-                const firstFrameAt = Date.now()
-                if (renderingToken !== undefined) {
-                  CompositionTarget.remove_Rendering(
-                    renderingToken,
-                  )
-                  renderingToken = undefined
-                }
-                const queued =
-                  window.dispatcherQueue.tryEnqueue(
-                    DispatcherQueuePriority.Low,
-                    () => {
-                      const memory =
-                        process.memoryUsage()
-                      runtime.postMessage({
-                        type: 'benchmark-result',
-                        value: {
-                          app:
-                            'DynWinRTJsx.Startup',
-                          moduleEnteredMs:
-                            moduleEnteredAt -
-                            startedAt,
-                          firstFrameMs:
-                            firstFrameAt -
-                            startedAt,
-                          interactiveMs:
-                            Date.now() -
-                            startedAt,
-                          rssMB:
-                            memory.rss /
-                            1_048_576,
-                          jsHeapUsedMB:
-                            memory.heapUsed /
-                            1_048_576,
+    const child = (
+      <UI.TextBlock
+        text="Blank dynwinrt-jsx startup benchmark"
+        fontSize={14}
+        onLoaded={() => {
+          markStartup('rootLoaded')
+          renderingToken =
+            CompositionTarget.add_Rendering(() => {
+              if (reported) {
+                return
+              }
+              reported = true
+              const firstFrameAt = Date.now()
+              markStartup('firstFrame')
+              if (renderingToken !== undefined) {
+                CompositionTarget.remove_Rendering(
+                  renderingToken,
+                )
+                renderingToken = undefined
+              }
+              const queued =
+                window.dispatcherQueue.tryEnqueue(
+                  DispatcherQueuePriority.Low,
+                  () => {
+                    markStartup('idle')
+                    const memory =
+                      process.memoryUsage()
+                    runtime.postMessage({
+                      type: 'benchmark-result',
+                      value: {
+                        app:
+                          'DynWinRTJsx.Startup',
+                        moduleEnteredMs:
+                          moduleEnteredAt -
+                          startupEpochMs,
+                        firstFrameMs:
+                          firstFrameAt -
+                          startupEpochMs,
+                        interactiveMs:
+                          Date.now() -
+                          startupEpochMs,
+                        rssMB:
+                          memory.rss /
+                          1_048_576,
+                        jsHeapUsedMB:
+                          memory.heapUsed /
+                          1_048_576,
+                        startupMilestones: {
+                          ...startupMilestones,
                         },
-                      })
-                      window.close()
-                    },
-                  )
-                if (!queued) {
-                  throw new Error(
-                    'Failed to queue startup idle marker.',
-                  )
-                }
-              })
-          }}
-        />
-      ),
+                      },
+                    })
+                    window.close()
+                  },
+                )
+              if (!queued) {
+                throw new Error(
+                  'Failed to queue startup idle marker.',
+                )
+              }
+            })
+        }}
+      />
+    )
+    markStartup('jsxBuilt')
+    return {
+      child,
+      afterRender() {
+        markStartup('afterRender')
+      },
+      afterActivate() {
+        markStartup('afterActivate')
+      },
       disposeAfterRender() {
         if (renderingToken !== undefined) {
           CompositionTarget.remove_Rendering(
@@ -146,7 +172,11 @@ const app = defineWinUIApp({
       },
     }
   },
+  onStage(stage) {
+    markStartup(stage)
+  },
   ...runtime.appCallbacks,
 })
+markStartup('appDefined')
 
 void runtime.run(app)
