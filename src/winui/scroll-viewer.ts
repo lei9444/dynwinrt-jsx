@@ -4,6 +4,10 @@ import {
   signal,
   type ReadonlySignal,
 } from '../core/reactive'
+import {
+  createLastValueCoalescer,
+  type CoalescingScheduler,
+} from '../core/coalescing'
 import type { RefObject } from '../renderer/native'
 
 export interface ScrollViewerInstance {
@@ -67,6 +71,16 @@ export interface ScrollViewerController<
   dispose(): void
 }
 
+export type ScrollViewerSamplingMode =
+  | 'immediate'
+  | 'frame'
+  | 'native'
+
+export interface ScrollViewerControllerOptions {
+  readonly sampling?: ScrollViewerSamplingMode
+  readonly scheduleFrame?: CoalescingScheduler
+}
+
 function metric(value: number): number {
   return Number.isFinite(value) ? Math.max(0, value) : 0
 }
@@ -80,7 +94,18 @@ function clamp(
 
 export function createScrollViewerController<
   Instance extends ScrollViewerInstance,
->(): ScrollViewerController<Instance> {
+>(
+  options: ScrollViewerControllerOptions = {},
+): ScrollViewerController<Instance> {
+  const sampling = options.sampling ?? 'immediate'
+  if (
+    sampling === 'frame' &&
+    !options.scheduleFrame
+  ) {
+    throw new TypeError(
+      'Frame-sampled ScrollViewer controllers require scheduleFrame.',
+    )
+  }
   const horizontalOffset = signal(0)
   const verticalOffset = signal(0)
   const scrollableWidth = signal(0)
@@ -126,8 +151,24 @@ export function createScrollViewerController<
         metric(current!.viewportHeight)
     })
   }
+  const refreshCoalescer =
+    sampling === 'frame'
+      ? createLastValueCoalescer(
+          options.scheduleFrame!,
+          refresh,
+        )
+      : undefined
+  const requestRefresh = () => {
+    if (sampling === 'immediate') {
+      refresh()
+    }
+    else if (sampling === 'frame') {
+      refreshCoalescer!.push(undefined)
+    }
+  }
 
   const detach = () => {
+    refreshCoalescer?.cancel()
     let firstError: unknown
     const failed: Array<() => void> = []
     for (const unsubscribe of subscriptions.reverse()) {
@@ -150,23 +191,25 @@ export function createScrollViewerController<
     current = instance
     const nextSubscriptions: Array<() => void> = []
     try {
-      nextSubscriptions.push(
-        instance.onViewChanged(refresh),
-      )
-      if (instance.onSizeChanged) {
+      if (sampling !== 'native') {
         nextSubscriptions.push(
-          instance.onSizeChanged(refresh),
+          instance.onViewChanged(requestRefresh),
         )
-      }
-      if (instance.onLoaded) {
-        nextSubscriptions.push(
-          instance.onLoaded(refresh),
-        )
-      }
-      if (instance.onLayoutUpdated) {
-        nextSubscriptions.push(
-          instance.onLayoutUpdated(refresh),
-        )
+        if (instance.onSizeChanged) {
+          nextSubscriptions.push(
+            instance.onSizeChanged(requestRefresh),
+          )
+        }
+        if (instance.onLoaded) {
+          nextSubscriptions.push(
+            instance.onLoaded(requestRefresh),
+          )
+        }
+        if (instance.onLayoutUpdated) {
+          nextSubscriptions.push(
+            instance.onLayoutUpdated(requestRefresh),
+          )
+        }
       }
       subscriptions = nextSubscriptions
       refresh()
@@ -295,6 +338,7 @@ export function createScrollViewerController<
         return
       }
       detach()
+      refreshCoalescer?.dispose()
       disposed = true
     },
   }

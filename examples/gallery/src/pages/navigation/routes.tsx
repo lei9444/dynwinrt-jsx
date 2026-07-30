@@ -1,12 +1,31 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { NavigationCategoryPage } from './index'
-import { BreadcrumbBarPage } from './breadcrumb-bar'
-import { NavigationViewPage } from './navigation-view'
-import { PivotPage } from './pivot'
-import { SelectorBarPage } from './selector-bar'
-import { TabViewPage } from './tab-view'
 import { createGalleryRouteGroup } from '../route-group'
+
+const NavigationCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).NavigationCategoryPage,
+)
+
+const BreadcrumbBarPage = createLazyComponent(
+  () => (require('./breadcrumb-bar') as typeof import('./breadcrumb-bar')).BreadcrumbBarPage,
+)
+
+const NavigationViewPage = createLazyComponent(
+  () => (require('./navigation-view') as typeof import('./navigation-view')).NavigationViewPage,
+)
+
+const PivotPage = createLazyComponent(
+  () => (require('./pivot') as typeof import('./pivot')).PivotPage,
+)
+
+const SelectorBarPage = createLazyComponent(
+  () => (require('./selector-bar') as typeof import('./selector-bar')).SelectorBarPage,
+)
+
+const TabViewPage = createLazyComponent(
+  () => (require('./tab-view') as typeof import('./tab-view')).TabViewPage,
+)
 
 export function createNavigationRoutes(
   context: AppContext,

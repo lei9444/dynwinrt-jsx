@@ -1,10 +1,23 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { AccessibilityCategoryPage } from './index'
-import { ColorContrastPage } from './color-contrast'
-import { KeyboardNavigationPage } from './keyboard-navigation'
-import { ScreenReaderPage } from './screen-reader'
 import { createGalleryRouteGroup } from '../route-group'
+
+const AccessibilityCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).AccessibilityCategoryPage,
+)
+
+const ColorContrastPage = createLazyComponent(
+  () => (require('./color-contrast') as typeof import('./color-contrast')).ColorContrastPage,
+)
+
+const KeyboardNavigationPage = createLazyComponent(
+  () => (require('./keyboard-navigation') as typeof import('./keyboard-navigation')).KeyboardNavigationPage,
+)
+
+const ScreenReaderPage = createLazyComponent(
+  () => (require('./screen-reader') as typeof import('./screen-reader')).ScreenReaderPage,
+)
 
 export function createAccessibilityRoutes(
   context: AppContext,

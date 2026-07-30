@@ -1,14 +1,39 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { FundamentalsCategoryPage } from './index'
-import { BindingPage } from './binding'
-import { CustomUserControlsPage } from './custom-user-controls'
-import { ScratchPadPage } from './scratch-pad'
-import { StylePage } from './style'
-import { TemplatesPage } from './templates'
-import { XamlConditionsPage } from './xaml-conditions'
-import { ResourcesPage } from './resources'
 import { createGalleryRouteGroup } from '../route-group'
+
+const FundamentalsCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).FundamentalsCategoryPage,
+)
+
+const BindingPage = createLazyComponent(
+  () => (require('./binding') as typeof import('./binding')).BindingPage,
+)
+
+const CustomUserControlsPage = createLazyComponent(
+  () => (require('./custom-user-controls') as typeof import('./custom-user-controls')).CustomUserControlsPage,
+)
+
+const ScratchPadPage = createLazyComponent(
+  () => (require('./scratch-pad') as typeof import('./scratch-pad')).ScratchPadPage,
+)
+
+const StylePage = createLazyComponent(
+  () => (require('./style') as typeof import('./style')).StylePage,
+)
+
+const TemplatesPage = createLazyComponent(
+  () => (require('./templates') as typeof import('./templates')).TemplatesPage,
+)
+
+const XamlConditionsPage = createLazyComponent(
+  () => (require('./xaml-conditions') as typeof import('./xaml-conditions')).XamlConditionsPage,
+)
+
+const ResourcesPage = createLazyComponent(
+  () => (require('./resources') as typeof import('./resources')).ResourcesPage,
+)
 
 export function createFundamentalsRoutes(
   context: AppContext,

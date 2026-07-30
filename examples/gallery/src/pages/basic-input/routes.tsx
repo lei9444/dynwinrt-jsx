@@ -1,21 +1,67 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { BasicInputCategoryPage } from './index'
-import { ButtonPage } from './button'
-import { CheckBoxPage } from './check-box'
-import { ColorPickerPage } from './color-picker'
-import { ComboBoxPage } from './combo-box'
-import { DropDownButtonPage } from './drop-down-button'
-import { HyperlinkButtonPage } from './hyperlink-button'
-import { RadioButtonPage } from './radio-button'
-import { RatingControlPage } from './rating-control'
-import { RepeatButtonPage } from './repeat-button'
-import { SliderPage } from './slider'
-import { SplitButtonPage } from './split-button'
-import { ToggleButtonPage } from './toggle-button'
-import { ToggleSplitButtonPage } from './toggle-split-button'
-import { ToggleSwitchPage } from './toggle-switch'
 import { createGalleryRouteGroup } from '../route-group'
+
+const BasicInputCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).BasicInputCategoryPage,
+)
+
+const ButtonPage = createLazyComponent(
+  () => (require('./button') as typeof import('./button')).ButtonPage,
+)
+
+const CheckBoxPage = createLazyComponent(
+  () => (require('./check-box') as typeof import('./check-box')).CheckBoxPage,
+)
+
+const ColorPickerPage = createLazyComponent(
+  () => (require('./color-picker') as typeof import('./color-picker')).ColorPickerPage,
+)
+
+const ComboBoxPage = createLazyComponent(
+  () => (require('./combo-box') as typeof import('./combo-box')).ComboBoxPage,
+)
+
+const DropDownButtonPage = createLazyComponent(
+  () => (require('./drop-down-button') as typeof import('./drop-down-button')).DropDownButtonPage,
+)
+
+const HyperlinkButtonPage = createLazyComponent(
+  () => (require('./hyperlink-button') as typeof import('./hyperlink-button')).HyperlinkButtonPage,
+)
+
+const RadioButtonPage = createLazyComponent(
+  () => (require('./radio-button') as typeof import('./radio-button')).RadioButtonPage,
+)
+
+const RatingControlPage = createLazyComponent(
+  () => (require('./rating-control') as typeof import('./rating-control')).RatingControlPage,
+)
+
+const RepeatButtonPage = createLazyComponent(
+  () => (require('./repeat-button') as typeof import('./repeat-button')).RepeatButtonPage,
+)
+
+const SliderPage = createLazyComponent(
+  () => (require('./slider') as typeof import('./slider')).SliderPage,
+)
+
+const SplitButtonPage = createLazyComponent(
+  () => (require('./split-button') as typeof import('./split-button')).SplitButtonPage,
+)
+
+const ToggleButtonPage = createLazyComponent(
+  () => (require('./toggle-button') as typeof import('./toggle-button')).ToggleButtonPage,
+)
+
+const ToggleSplitButtonPage = createLazyComponent(
+  () => (require('./toggle-split-button') as typeof import('./toggle-split-button')).ToggleSplitButtonPage,
+)
+
+const ToggleSwitchPage = createLazyComponent(
+  () => (require('./toggle-switch') as typeof import('./toggle-switch')).ToggleSwitchPage,
+)
 
 export function createBasicInputRoutes(
   context: AppContext,

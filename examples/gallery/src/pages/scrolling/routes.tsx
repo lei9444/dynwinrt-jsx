@@ -1,12 +1,31 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { ScrollingCategoryPage } from './index'
-import { AnnotatedScrollBarPage } from './annotated-scroll-bar'
-import { PipsPagerPage } from './pips-pager'
-import { ScrollViewPage } from './scroll-view'
-import { ScrollViewerPage } from './scroll-viewer'
-import { SemanticZoomPage } from './semantic-zoom'
 import { createGalleryRouteGroup } from '../route-group'
+
+const ScrollingCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).ScrollingCategoryPage,
+)
+
+const AnnotatedScrollBarPage = createLazyComponent(
+  () => (require('./annotated-scroll-bar') as typeof import('./annotated-scroll-bar')).AnnotatedScrollBarPage,
+)
+
+const PipsPagerPage = createLazyComponent(
+  () => (require('./pips-pager') as typeof import('./pips-pager')).PipsPagerPage,
+)
+
+const ScrollViewPage = createLazyComponent(
+  () => (require('./scroll-view') as typeof import('./scroll-view')).ScrollViewPage,
+)
+
+const ScrollViewerPage = createLazyComponent(
+  () => (require('./scroll-viewer') as typeof import('./scroll-viewer')).ScrollViewerPage,
+)
+
+const SemanticZoomPage = createLazyComponent(
+  () => (require('./semantic-zoom') as typeof import('./semantic-zoom')).SemanticZoomPage,
+)
 
 export function createScrollingRoutes(
   context: AppContext,

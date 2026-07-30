@@ -1,14 +1,39 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { MediaCategoryPage } from './index'
-import { AnimatedVisualPlayerPage } from './animated-visual-player'
-import { CaptureElementPreviewPage } from './capture-element-preview'
-import { ImagePage } from './image'
-import { MapControlPage } from './map-control'
-import { MediaPlayerElementPage } from './media-player-element'
-import { PersonPicturePage } from './person-picture'
-import { SoundPage } from './sound'
 import { createGalleryRouteGroup } from '../route-group'
+
+const MediaCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).MediaCategoryPage,
+)
+
+const AnimatedVisualPlayerPage = createLazyComponent(
+  () => (require('./animated-visual-player') as typeof import('./animated-visual-player')).AnimatedVisualPlayerPage,
+)
+
+const CaptureElementPreviewPage = createLazyComponent(
+  () => (require('./capture-element-preview') as typeof import('./capture-element-preview')).CaptureElementPreviewPage,
+)
+
+const ImagePage = createLazyComponent(
+  () => (require('./image') as typeof import('./image')).ImagePage,
+)
+
+const MapControlPage = createLazyComponent(
+  () => (require('./map-control') as typeof import('./map-control')).MapControlPage,
+)
+
+const MediaPlayerElementPage = createLazyComponent(
+  () => (require('./media-player-element') as typeof import('./media-player-element')).MediaPlayerElementPage,
+)
+
+const PersonPicturePage = createLazyComponent(
+  () => (require('./person-picture') as typeof import('./person-picture')).PersonPicturePage,
+)
+
+const SoundPage = createLazyComponent(
+  () => (require('./sound') as typeof import('./sound')).SoundPage,
+)
 
 export function createMediaRoutes(
   context: AppContext,

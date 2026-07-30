@@ -1,12 +1,31 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { StatusInfoCategoryPage } from './index'
-import { InfoBadgePage } from './info-badge'
-import { InfoBarPage } from './info-bar'
-import { ProgressBarPage } from './progress-bar'
-import { ProgressRingPage } from './progress-ring'
-import { ToolTipPage } from './tool-tip'
 import { createGalleryRouteGroup } from '../route-group'
+
+const StatusInfoCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).StatusInfoCategoryPage,
+)
+
+const InfoBadgePage = createLazyComponent(
+  () => (require('./info-badge') as typeof import('./info-badge')).InfoBadgePage,
+)
+
+const InfoBarPage = createLazyComponent(
+  () => (require('./info-bar') as typeof import('./info-bar')).InfoBarPage,
+)
+
+const ProgressBarPage = createLazyComponent(
+  () => (require('./progress-bar') as typeof import('./progress-bar')).ProgressBarPage,
+)
+
+const ProgressRingPage = createLazyComponent(
+  () => (require('./progress-ring') as typeof import('./progress-ring')).ProgressRingPage,
+)
+
+const ToolTipPage = createLazyComponent(
+  () => (require('./tool-tip') as typeof import('./tool-tip')).ToolTipPage,
+)
 
 export function createStatusInfoRoutes(
   context: AppContext,

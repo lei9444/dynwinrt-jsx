@@ -1,12 +1,31 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { DesignCategoryPage } from './index'
-import { ColorPage } from './color'
-import { GeometryPage } from './geometry'
-import { IconographyPage } from './iconography'
-import { SpacingPage } from './spacing'
-import { TypographyPage } from './typography'
 import { createGalleryRouteGroup } from '../route-group'
+
+const DesignCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).DesignCategoryPage,
+)
+
+const ColorPage = createLazyComponent(
+  () => (require('./color') as typeof import('./color')).ColorPage,
+)
+
+const GeometryPage = createLazyComponent(
+  () => (require('./geometry') as typeof import('./geometry')).GeometryPage,
+)
+
+const IconographyPage = createLazyComponent(
+  () => (require('./iconography') as typeof import('./iconography')).IconographyPage,
+)
+
+const SpacingPage = createLazyComponent(
+  () => (require('./spacing') as typeof import('./spacing')).SpacingPage,
+)
+
+const TypographyPage = createLazyComponent(
+  () => (require('./typography') as typeof import('./typography')).TypographyPage,
+)
 
 export function createDesignRoutes(
   context: AppContext,

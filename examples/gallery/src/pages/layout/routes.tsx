@@ -1,16 +1,47 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { LayoutCategoryPage } from './index'
-import { BorderPage } from './border'
-import { CanvasPage } from './canvas'
-import { ExpanderPage } from './expander'
-import { GridPage } from './grid'
-import { RelativePanelPage } from './relative-panel'
-import { SplitViewPage } from './split-view'
-import { StackPanelPage } from './stack-panel'
-import { VariableSizedWrapGridPage } from './variable-sized-wrap-grid'
-import { ViewboxPage } from './viewbox'
 import { createGalleryRouteGroup } from '../route-group'
+
+const LayoutCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).LayoutCategoryPage,
+)
+
+const BorderPage = createLazyComponent(
+  () => (require('./border') as typeof import('./border')).BorderPage,
+)
+
+const CanvasPage = createLazyComponent(
+  () => (require('./canvas') as typeof import('./canvas')).CanvasPage,
+)
+
+const ExpanderPage = createLazyComponent(
+  () => (require('./expander') as typeof import('./expander')).ExpanderPage,
+)
+
+const GridPage = createLazyComponent(
+  () => (require('./grid') as typeof import('./grid')).GridPage,
+)
+
+const RelativePanelPage = createLazyComponent(
+  () => (require('./relative-panel') as typeof import('./relative-panel')).RelativePanelPage,
+)
+
+const SplitViewPage = createLazyComponent(
+  () => (require('./split-view') as typeof import('./split-view')).SplitViewPage,
+)
+
+const StackPanelPage = createLazyComponent(
+  () => (require('./stack-panel') as typeof import('./stack-panel')).StackPanelPage,
+)
+
+const VariableSizedWrapGridPage = createLazyComponent(
+  () => (require('./variable-sized-wrap-grid') as typeof import('./variable-sized-wrap-grid')).VariableSizedWrapGridPage,
+)
+
+const ViewboxPage = createLazyComponent(
+  () => (require('./viewbox') as typeof import('./viewbox')).ViewboxPage,
+)
 
 export function createLayoutRoutes(
   context: AppContext,

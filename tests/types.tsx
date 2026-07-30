@@ -31,8 +31,10 @@ import {
   createItemsRepeaterControl,
   createVirtualizedItemsControl,
   createJsonStateStore,
+  createLazyComponent,
   createListViewControl,
   createListViewScrollTarget,
+  createLastValueCoalescer,
   createNavigationHost,
   createNavigationItem,
   createNavigationViewControl,
@@ -44,6 +46,7 @@ import {
   createRouterNavigationViewShell,
   defineRouteRegistry,
   createScrollViewerController,
+  createScopedLastValueCoalescer,
   createSecondaryWindowManager,
   createSelectorBarControl,
   createSolidColorBrush,
@@ -53,6 +56,7 @@ import {
   createUri,
   createWinUIThemeController,
   createWinUIRendererPreset,
+  createCompositionFrameScheduler,
   gridLength,
   mapCapability,
   native,
@@ -83,6 +87,7 @@ import {
   type RendererInspectionSnapshot,
   type RendererInspectorOptions,
   type ScrollViewerController,
+  type ScrollViewerSamplingMode,
   type RouteDefinition,
   type RouterLocation,
   type RouterNavigationViewRouteHandle,
@@ -936,6 +941,30 @@ const scrollViewerController:
   ScrollViewerController<TypeScrollViewer> =
     createScrollViewerController<TypeScrollViewer>()
 scrollViewerController.scrollHorizontalByViewport(1)
+const frameSampling: ScrollViewerSamplingMode = 'frame'
+const frameScheduler = createCompositionFrameScheduler({
+  add_Rendering(callback: () => void) {
+    return callback
+  },
+  remove_Rendering(_callback: () => void) {},
+})
+createScrollViewerController<TypeScrollViewer>({
+  sampling: frameSampling,
+  scheduleFrame: frameScheduler,
+})
+createLastValueCoalescer(frameScheduler, (_value: number) => {})
+createScopedLastValueCoalescer(
+  frameScheduler,
+  (_value: number) => {},
+)
+const LazyTypedPage = createLazyComponent(
+  () => (_props: { readonly title: string }) => (
+    <TypeTextBlock />
+  ),
+)
+;<LazyTypedPage title="Lazy" />
+// @ts-expect-error Lazy page props remain typed.
+;<LazyTypedPage />
 const listScroll = createListViewScrollTarget<TypeListView>()
 const navItem = createNavigationItem(
   {

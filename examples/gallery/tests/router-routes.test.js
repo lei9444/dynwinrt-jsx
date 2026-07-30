@@ -48,3 +48,48 @@ test('page route modules cover every Gallery page exactly once', () => {
     )
   }
 })
+
+test('page route modules keep page implementations lazy', () => {
+  const pagesRoot = path.join(
+    __dirname,
+    '..',
+    'src',
+    'pages',
+  )
+  const sources = collectRouteFiles(pagesRoot)
+    .filter(
+      (filePath) =>
+        path.dirname(filePath) !== pagesRoot,
+    )
+    .map(
+      (filePath) => fs.readFileSync(filePath, 'utf8'),
+    )
+
+  for (const source of sources) {
+    assert.doesNotMatch(
+      source,
+      /^import \{ \w+Page \} from '\.\//m,
+    )
+  }
+  const rootRoutes = fs.readFileSync(
+    path.join(pagesRoot, 'routes.tsx'),
+    'utf8',
+  )
+  assert.doesNotMatch(
+    rootRoutes,
+    /^import \{ (Search|Diagnostics|Settings)Page \} from '\.\//m,
+  )
+  assert.equal(
+    sources.reduce(
+      (count, source) =>
+        count +
+        [...source.matchAll(/\bcreateLazyComponent\(/g)].length,
+      0,
+    ),
+    140,
+  )
+  assert.equal(
+    [...rootRoutes.matchAll(/\bcreateLazyComponent\(/g)].length,
+    3,
+  )
+})

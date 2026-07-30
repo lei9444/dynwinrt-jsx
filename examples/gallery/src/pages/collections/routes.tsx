@@ -1,14 +1,39 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { CollectionsCategoryPage } from './index'
-import { FlipViewPage } from './flip-view'
-import { GridViewPage } from './grid-view'
-import { ItemsRepeaterPage } from './items-repeater'
-import { ItemsViewPage } from './items-view'
-import { ListViewPage } from './list-view'
-import { PullToRefreshPage } from './pull-to-refresh'
-import { TreeViewPage } from './tree-view'
 import { createGalleryRouteGroup } from '../route-group'
+
+const CollectionsCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).CollectionsCategoryPage,
+)
+
+const FlipViewPage = createLazyComponent(
+  () => (require('./flip-view') as typeof import('./flip-view')).FlipViewPage,
+)
+
+const GridViewPage = createLazyComponent(
+  () => (require('./grid-view') as typeof import('./grid-view')).GridViewPage,
+)
+
+const ItemsRepeaterPage = createLazyComponent(
+  () => (require('./items-repeater') as typeof import('./items-repeater')).ItemsRepeaterPage,
+)
+
+const ItemsViewPage = createLazyComponent(
+  () => (require('./items-view') as typeof import('./items-view')).ItemsViewPage,
+)
+
+const ListViewPage = createLazyComponent(
+  () => (require('./list-view') as typeof import('./list-view')).ListViewPage,
+)
+
+const PullToRefreshPage = createLazyComponent(
+  () => (require('./pull-to-refresh') as typeof import('./pull-to-refresh')).PullToRefreshPage,
+)
+
+const TreeViewPage = createLazyComponent(
+  () => (require('./tree-view') as typeof import('./tree-view')).TreeViewPage,
+)
 
 export function createCollectionsRoutes(
   context: AppContext,

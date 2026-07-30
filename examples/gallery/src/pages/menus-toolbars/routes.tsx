@@ -1,17 +1,51 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { MenusToolbarsCategoryPage } from './index'
-import { AppBarButtonPage } from './app-bar-button'
-import { AppBarSeparatorPage } from './app-bar-separator'
-import { AppBarToggleButtonPage } from './app-bar-toggle-button'
-import { CommandBarPage } from './command-bar'
-import { CommandBarFlyoutPage } from './command-bar-flyout'
-import { MenuBarPage } from './menu-bar'
-import { MenuFlyoutPage } from './menu-flyout'
-import { StandardUICommandPage } from './standard-ui-command'
-import { SwipeControlPage } from './swipe-control'
-import { XamlUICommandPage } from './xaml-ui-command'
 import { createGalleryRouteGroup } from '../route-group'
+
+const MenusToolbarsCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).MenusToolbarsCategoryPage,
+)
+
+const AppBarButtonPage = createLazyComponent(
+  () => (require('./app-bar-button') as typeof import('./app-bar-button')).AppBarButtonPage,
+)
+
+const AppBarSeparatorPage = createLazyComponent(
+  () => (require('./app-bar-separator') as typeof import('./app-bar-separator')).AppBarSeparatorPage,
+)
+
+const AppBarToggleButtonPage = createLazyComponent(
+  () => (require('./app-bar-toggle-button') as typeof import('./app-bar-toggle-button')).AppBarToggleButtonPage,
+)
+
+const CommandBarPage = createLazyComponent(
+  () => (require('./command-bar') as typeof import('./command-bar')).CommandBarPage,
+)
+
+const CommandBarFlyoutPage = createLazyComponent(
+  () => (require('./command-bar-flyout') as typeof import('./command-bar-flyout')).CommandBarFlyoutPage,
+)
+
+const MenuBarPage = createLazyComponent(
+  () => (require('./menu-bar') as typeof import('./menu-bar')).MenuBarPage,
+)
+
+const MenuFlyoutPage = createLazyComponent(
+  () => (require('./menu-flyout') as typeof import('./menu-flyout')).MenuFlyoutPage,
+)
+
+const StandardUICommandPage = createLazyComponent(
+  () => (require('./standard-ui-command') as typeof import('./standard-ui-command')).StandardUICommandPage,
+)
+
+const SwipeControlPage = createLazyComponent(
+  () => (require('./swipe-control') as typeof import('./swipe-control')).SwipeControlPage,
+)
+
+const XamlUICommandPage = createLazyComponent(
+  () => (require('./xaml-ui-command') as typeof import('./xaml-ui-command')).XamlUICommandPage,
+)
 
 export function createMenusToolbarsRoutes(
   context: AppContext,

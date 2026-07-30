@@ -1,11 +1,27 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { DateTimeCategoryPage } from './index'
-import { CalendarDatePickerPage } from './calendar-date-picker'
-import { CalendarViewPage } from './calendar-view'
-import { DatePickerPage } from './date-picker'
-import { TimePickerPage } from './time-picker'
 import { createGalleryRouteGroup } from '../route-group'
+
+const DateTimeCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).DateTimeCategoryPage,
+)
+
+const CalendarDatePickerPage = createLazyComponent(
+  () => (require('./calendar-date-picker') as typeof import('./calendar-date-picker')).CalendarDatePickerPage,
+)
+
+const CalendarViewPage = createLazyComponent(
+  () => (require('./calendar-view') as typeof import('./calendar-view')).CalendarViewPage,
+)
+
+const DatePickerPage = createLazyComponent(
+  () => (require('./date-picker') as typeof import('./date-picker')).DatePickerPage,
+)
+
+const TimePickerPage = createLazyComponent(
+  () => (require('./time-picker') as typeof import('./time-picker')).TimePickerPage,
+)
 
 export function createDateTimeRoutes(
   context: AppContext,

@@ -1,17 +1,51 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { StylesCategoryPage } from './index'
-import { AcrylicBrushPage } from './acrylic-brush'
-import { AnimatedIconPage } from './animated-icon'
-import { CompactSizingPage } from './compact-sizing'
-import { IconElementPage } from './icon-element'
-import { LinePage } from './line'
-import { RadialGradientBrushPage } from './radial-gradient-brush'
-import { ShapePage } from './shape'
-import { SystemBackdropElementPage } from './system-backdrop-element'
-import { SystemBackdropsPage } from './system-backdrops'
-import { ThemeShadowPage } from './theme-shadow'
 import { createGalleryRouteGroup } from '../route-group'
+
+const StylesCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).StylesCategoryPage,
+)
+
+const AcrylicBrushPage = createLazyComponent(
+  () => (require('./acrylic-brush') as typeof import('./acrylic-brush')).AcrylicBrushPage,
+)
+
+const AnimatedIconPage = createLazyComponent(
+  () => (require('./animated-icon') as typeof import('./animated-icon')).AnimatedIconPage,
+)
+
+const CompactSizingPage = createLazyComponent(
+  () => (require('./compact-sizing') as typeof import('./compact-sizing')).CompactSizingPage,
+)
+
+const IconElementPage = createLazyComponent(
+  () => (require('./icon-element') as typeof import('./icon-element')).IconElementPage,
+)
+
+const LinePage = createLazyComponent(
+  () => (require('./line') as typeof import('./line')).LinePage,
+)
+
+const RadialGradientBrushPage = createLazyComponent(
+  () => (require('./radial-gradient-brush') as typeof import('./radial-gradient-brush')).RadialGradientBrushPage,
+)
+
+const ShapePage = createLazyComponent(
+  () => (require('./shape') as typeof import('./shape')).ShapePage,
+)
+
+const SystemBackdropElementPage = createLazyComponent(
+  () => (require('./system-backdrop-element') as typeof import('./system-backdrop-element')).SystemBackdropElementPage,
+)
+
+const SystemBackdropsPage = createLazyComponent(
+  () => (require('./system-backdrops') as typeof import('./system-backdrops')).SystemBackdropsPage,
+)
+
+const ThemeShadowPage = createLazyComponent(
+  () => (require('./theme-shadow') as typeof import('./theme-shadow')).ThemeShadowPage,
+)
 
 export function createStylesRoutes(
   context: AppContext,

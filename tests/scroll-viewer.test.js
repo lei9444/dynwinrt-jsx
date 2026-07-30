@@ -179,3 +179,67 @@ test('ScrollViewer controller rolls back partial attachment failures', () => {
   assert.equal(controller.current, null)
   assert.equal(scrollViewer.viewChanged.size, 0)
 })
+
+test('ScrollViewer frame sampling publishes only the latest view', () => {
+  const pending = []
+  const controller = createScrollViewerController({
+    sampling: 'frame',
+    scheduleFrame(callback) {
+      const entry = { active: true, callback }
+      pending.push(entry)
+      return () => {
+        entry.active = false
+      }
+    },
+  })
+  const scrollViewer = new FakeScrollViewer()
+  controller.current = scrollViewer
+
+  scrollViewer.verticalOffset = 10
+  scrollViewer.emit(scrollViewer.viewChanged)
+  scrollViewer.verticalOffset = 20
+  scrollViewer.emit(scrollViewer.viewChanged)
+  scrollViewer.verticalOffset = 30
+  scrollViewer.emit(scrollViewer.viewChanged)
+
+  assert.equal(controller.verticalOffset.value, 0)
+  assert.equal(
+    pending.filter((entry) => entry.active).length,
+    1,
+  )
+  const frame = pending.find((entry) => entry.active)
+  frame.active = false
+  frame.callback()
+  assert.equal(controller.verticalOffset.value, 30)
+
+  scrollViewer.verticalOffset = 40
+  scrollViewer.emit(scrollViewer.viewChanged)
+  controller.current = null
+  for (const entry of pending) {
+    if (entry.active) {
+      entry.callback()
+    }
+  }
+  assert.equal(controller.verticalOffset.value, 30)
+})
+
+test('ScrollViewer native sampling avoids JS event subscriptions', () => {
+  const controller = createScrollViewerController({
+    sampling: 'native',
+  })
+  const scrollViewer = new FakeScrollViewer()
+  scrollViewer.verticalOffset = 25
+  controller.current = scrollViewer
+
+  assert.equal(controller.verticalOffset.value, 25)
+  assert.equal(scrollViewer.viewChanged.size, 0)
+  assert.equal(scrollViewer.sizeChanged.size, 0)
+  assert.equal(scrollViewer.loaded.size, 0)
+  assert.equal(scrollViewer.layoutUpdated.size, 0)
+
+  scrollViewer.verticalOffset = 50
+  scrollViewer.emit(scrollViewer.viewChanged)
+  assert.equal(controller.verticalOffset.value, 25)
+  controller.refresh()
+  assert.equal(controller.verticalOffset.value, 50)
+})

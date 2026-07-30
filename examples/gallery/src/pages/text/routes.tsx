@@ -1,14 +1,39 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { TextCategoryPage } from './index'
-import { AutoSuggestBoxPage } from './auto-suggest-box'
-import { NumberBoxPage } from './number-box'
-import { PasswordBoxPage } from './password-box'
-import { RichEditBoxPage } from './rich-edit-box'
-import { RichTextBlockPage } from './rich-text-block'
-import { TextBlockPage } from './text-block'
-import { TextBoxPage } from './text-box'
 import { createGalleryRouteGroup } from '../route-group'
+
+const TextCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).TextCategoryPage,
+)
+
+const AutoSuggestBoxPage = createLazyComponent(
+  () => (require('./auto-suggest-box') as typeof import('./auto-suggest-box')).AutoSuggestBoxPage,
+)
+
+const NumberBoxPage = createLazyComponent(
+  () => (require('./number-box') as typeof import('./number-box')).NumberBoxPage,
+)
+
+const PasswordBoxPage = createLazyComponent(
+  () => (require('./password-box') as typeof import('./password-box')).PasswordBoxPage,
+)
+
+const RichEditBoxPage = createLazyComponent(
+  () => (require('./rich-edit-box') as typeof import('./rich-edit-box')).RichEditBoxPage,
+)
+
+const RichTextBlockPage = createLazyComponent(
+  () => (require('./rich-text-block') as typeof import('./rich-text-block')).RichTextBlockPage,
+)
+
+const TextBlockPage = createLazyComponent(
+  () => (require('./text-block') as typeof import('./text-block')).TextBlockPage,
+)
+
+const TextBoxPage = createLazyComponent(
+  () => (require('./text-box') as typeof import('./text-box')).TextBoxPage,
+)
 
 export function createTextRoutes(
   context: AppContext,

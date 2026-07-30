@@ -1,10 +1,23 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { ShellCategoryPage } from './index'
-import { AppNotificationsPage } from './app-notifications'
-import { BadgeNotificationsPage } from './badge-notifications'
-import { JumpListPage } from './jump-list'
 import { createGalleryRouteGroup } from '../route-group'
+
+const ShellCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).ShellCategoryPage,
+)
+
+const AppNotificationsPage = createLazyComponent(
+  () => (require('./app-notifications') as typeof import('./app-notifications')).AppNotificationsPage,
+)
+
+const BadgeNotificationsPage = createLazyComponent(
+  () => (require('./badge-notifications') as typeof import('./badge-notifications')).BadgeNotificationsPage,
+)
+
+const JumpListPage = createLazyComponent(
+  () => (require('./jump-list') as typeof import('./jump-list')).JumpListPage,
+)
 
 export function createShellRoutes(
   context: AppContext,

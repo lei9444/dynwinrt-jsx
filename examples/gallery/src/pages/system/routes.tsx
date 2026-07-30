@@ -1,10 +1,23 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { SystemCategoryPage } from './index'
-import { ClipboardPage } from './clipboard'
-import { ContentIslandPage } from './content-island'
-import { StoragePickersPage } from './storage-pickers'
 import { createGalleryRouteGroup } from '../route-group'
+
+const SystemCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).SystemCategoryPage,
+)
+
+const ClipboardPage = createLazyComponent(
+  () => (require('./clipboard') as typeof import('./clipboard')).ClipboardPage,
+)
+
+const ContentIslandPage = createLazyComponent(
+  () => (require('./content-island') as typeof import('./content-island')).ContentIslandPage,
+)
+
+const StoragePickersPage = createLazyComponent(
+  () => (require('./storage-pickers') as typeof import('./storage-pickers')).StoragePickersPage,
+)
 
 export function createSystemRoutes(
   context: AppContext,

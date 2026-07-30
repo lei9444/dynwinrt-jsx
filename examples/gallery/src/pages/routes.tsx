@@ -10,14 +10,12 @@ import {
   SymbolIcon,
 } from '#winapp/bindings'
 import type { AppContext } from '../gallery-ui'
+import { createLazyComponent } from 'dynwinrt-jsx'
 import {
   findGalleryPage,
   type GalleryRoute,
 } from '../gallery-data'
 import { HomePage } from './home'
-import { SearchPage } from './search'
-import { DiagnosticsPage } from './diagnostics'
-import { SettingsPage } from './settings'
 import { createFrameworkRoutes } from './framework/routes'
 import { createBasicInputRoutes } from './basic-input/routes'
 import { createCollectionsRoutes } from './collections/routes'
@@ -38,6 +36,16 @@ import { createFundamentalsRoutes } from './fundamentals/routes'
 import { createDesignRoutes } from './design/routes'
 import { createAccessibilityRoutes } from './accessibility/routes'
 import { createStylesRoutes } from './styles/routes'
+
+const SearchPage = createLazyComponent(
+  () => (require('./search') as typeof import('./search')).SearchPage,
+)
+const DiagnosticsPage = createLazyComponent(
+  () => (require('./diagnostics') as typeof import('./diagnostics')).DiagnosticsPage,
+)
+const SettingsPage = createLazyComponent(
+  () => (require('./settings') as typeof import('./settings')).SettingsPage,
+)
 
 export const galleryCategoryRouteIds =
   new Map<string, GalleryRoute>([

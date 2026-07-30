@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added scoped last-value event coalescers, CompositionTarget frame scheduling,
+  and immediate/frame/native ScrollViewer sampling modes.
+- Added `createLazyComponent()` and moved non-first-screen Gallery pages behind
+  cached synchronous loaders to reduce cold startup module loading.
 - Grouped implementation modules under core, renderer, winui, and runtime directories while preserving package entry points.
 - Added a reactive ScrollViewer controller and an owned, controlled SelectorBar adapter.
 - Added optional DispatcherQueue renderer heartbeats, Host timeout/recovery monitoring, shared acknowledgements, and Gallery inspector export.

@@ -3,6 +3,7 @@ import {
   Show,
   color,
   computed,
+  createCompositionFrameScheduler,
   createScrollViewerController,
   createSolidColorBrush,
   gridLength,
@@ -17,6 +18,7 @@ import {
   type ScrollViewerController,
 } from 'dynwinrt-jsx'
 import {
+  CompositionTarget,
   HorizontalAlignment,
   Orientation,
   ScrollBarVisibility,
@@ -232,10 +234,20 @@ function HomeSectionButton(props: {
 }
 
 export function HomePage(context: AppContext) {
+  const scheduleFrame =
+    createCompositionFrameScheduler(
+      CompositionTarget,
+    )
   const featureScroller =
-    createScrollViewerController<ScrollViewerInstance>()
+    createScrollViewerController<ScrollViewerInstance>({
+      sampling: 'frame',
+      scheduleFrame,
+    })
   const recentScroller =
-    createScrollViewerController<ScrollViewerInstance>()
+    createScrollViewerController<ScrollViewerInstance>({
+      sampling: 'frame',
+      scheduleFrame,
+    })
   const selectedSection = signal(0)
   const recentSelected = computed(
     () => selectedSection.value === 0,

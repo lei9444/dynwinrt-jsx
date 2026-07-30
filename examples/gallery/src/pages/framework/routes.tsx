@@ -1,7 +1,14 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { SelectionPage } from './selection'
-import { SignalsPage } from './signals'
+
+const SelectionPage = createLazyComponent(
+  () => (require('./selection') as typeof import('./selection')).SelectionPage,
+)
+
+const SignalsPage = createLazyComponent(
+  () => (require('./signals') as typeof import('./signals')).SignalsPage,
+)
 
 export function createFrameworkRoutes(
   context: AppContext,

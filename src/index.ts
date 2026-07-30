@@ -21,6 +21,18 @@ export {
 } from './core/reactive'
 
 export {
+  createLastValueCoalescer,
+  createScopedLastValueCoalescer,
+  type CoalescingScheduler,
+  type LastValueCoalescer,
+} from './core/coalescing'
+
+export {
+  createLazyComponent,
+  type LazyComponentLoader,
+} from './core/lazy'
+
+export {
   adapter,
   type NativeAdapter,
   type NativeAdapterMap,
@@ -122,9 +134,16 @@ export {
 } from './winui/combo-box'
 
 export {
+  createCompositionFrameScheduler,
+  type CompositionTargetBinding,
+} from './winui/event-coalescing'
+
+export {
   createScrollViewerController,
   type ScrollViewerController,
+  type ScrollViewerControllerOptions,
   type ScrollViewerInstance,
+  type ScrollViewerSamplingMode,
 } from './winui/scroll-viewer'
 
 export {

@@ -1130,6 +1130,40 @@ The controller tracks ViewChanged, SizeChanged, Loaded, and LayoutUpdated,
 clamps offset writes, uses `ChangeView`, and releases subscriptions when its
 ref is cleared.
 
+High-frequency views can publish at most once per composition frame:
+
+```tsx
+const scheduleFrame =
+  createCompositionFrameScheduler(CompositionTarget)
+const scroller =
+  createScrollViewerController<ScrollViewer>({
+    sampling: 'frame',
+    scheduleFrame,
+  })
+```
+
+`sampling: 'immediate'` is the default. `sampling: 'native'` installs no
+ViewChanged/layout subscriptions; call `refresh()` when JavaScript needs a
+snapshot. The same scheduler supports last-value-per-frame native events:
+
+```tsx
+const pointerMoved = createScopedLastValueCoalescer(
+  scheduleFrame,
+  (args: PointerRoutedEventArgs) => {
+    latestPointer.value = args
+  },
+)
+
+<UI.Canvas
+  onPointerMoved={(_sender, args) =>
+    pointerMoved.push(args)
+  }
+/>
+```
+
+Use `createLastValueCoalescer()` outside a component-owned scope and dispose it
+explicitly.
+
 Common automation metadata is available directly on native JSX controls:
 
 ```tsx
@@ -1315,6 +1349,25 @@ function Status() {
 ```
 
 Keyed entries retain their native control identity when moved. The item index is a `ReadonlySignal<number>` and updates without remounting the entry.
+
+Use `createLazyComponent()` to keep synchronous modules outside the startup
+path while preserving an independent component scope:
+
+```tsx
+const SettingsPage = createLazyComponent(
+  () => (
+    require('./settings') as
+      typeof import('./settings')
+  ).SettingsPage,
+)
+
+<SettingsPage context={context} />
+```
+
+The loader runs on the first component mount and caches only a successful
+component result. Loading errors remain visible to the nearest
+`ErrorBoundary`. The API is synchronous; it does not add Suspense or
+Promise-based rendering.
 
 `VirtualFor` bounds the mounted range for large fixed-height collections:
 

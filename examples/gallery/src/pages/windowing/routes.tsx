@@ -1,11 +1,27 @@
+import { createLazyComponent } from 'dynwinrt-jsx'
 import type { RouteDefinition } from 'dynwinrt-jsx'
 import type { AppContext } from '../../gallery-ui'
-import { WindowingCategoryPage } from './index'
-import { AppWindowPage } from './app-window'
-import { AppWindowTitleBarPage } from './app-window-title-bar'
-import { MultipleWindowsPage } from './multiple-windows'
-import { TitleBarPage } from './title-bar'
 import { createGalleryRouteGroup } from '../route-group'
+
+const WindowingCategoryPage = createLazyComponent(
+  () => (require('./index') as typeof import('./index')).WindowingCategoryPage,
+)
+
+const AppWindowPage = createLazyComponent(
+  () => (require('./app-window') as typeof import('./app-window')).AppWindowPage,
+)
+
+const AppWindowTitleBarPage = createLazyComponent(
+  () => (require('./app-window-title-bar') as typeof import('./app-window-title-bar')).AppWindowTitleBarPage,
+)
+
+const MultipleWindowsPage = createLazyComponent(
+  () => (require('./multiple-windows') as typeof import('./multiple-windows')).MultipleWindowsPage,
+)
+
+const TitleBarPage = createLazyComponent(
+  () => (require('./title-bar') as typeof import('./title-bar')).TitleBarPage,
+)
 
 export function createWindowingRoutes(
   context: AppContext,
