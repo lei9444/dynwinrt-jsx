@@ -6,6 +6,11 @@
   and immediate/frame/native ScrollViewer sampling modes.
 - Added `createLazyComponent()` and moved non-first-screen Gallery pages behind
   cached synchronous loaders to reduce cold startup module loading.
+- Added component-owned `createAsyncAction()` state, cancellation, stale-result
+  suppression, operation resource ownership, and `AsyncView`.
+- Added retryable native resource and Composition animation owners.
+- Added a generated public API index and unified quick/native/full validation
+  suite with per-step logs and JSON summaries.
 - Grouped implementation modules under core, renderer, winui, and runtime directories while preserving package entry points.
 - Added a reactive ScrollViewer controller and an owned, controlled SelectorBar adapter.
 - Added optional DispatcherQueue renderer heartbeats, Host timeout/recovery monitoring, shared acknowledgements, and Gallery inspector export.

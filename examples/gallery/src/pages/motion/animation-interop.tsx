@@ -1,5 +1,6 @@
 import {
   computed,
+  createCompositionOwner,
   effect,
   onCleanup,
   signal,
@@ -35,7 +36,6 @@ import {
 } from '../../components/gallery-components'
 import {
   MotionStatus,
-  releaseMotionResources,
   timeSpan,
   useMotionSettings,
 } from './shared'
@@ -45,8 +45,12 @@ const lorem =
 
 export function AnimationInteropPage(context: AppContext) {
   const motion = useMotionSettings()
-  const compositor =
-    CompositionTarget.getCompositorForCurrentThread()
+  const animations = createCompositionOwner({
+    releaseProjected,
+  })
+  const compositor = animations.ownProjected(
+    CompositionTarget.getCompositorForCurrentThread(),
+  )
   const dampingIndex = signal(2)
   const period = signal(50)
   const radius = signal(200)
@@ -59,9 +63,13 @@ export function AnimationInteropPage(context: AppContext) {
   const fontSizeSlider: RefObject<SliderInstance> = { current: null }
   const textMarginSlider: RefObject<SliderInstance> = { current: null }
   const springTargets = new Map<UIElement, number>()
-  let spring = compositor.createSpringVector3Animation()
+  const spring = animations.ownCloseable(
+    compositor.createSpringVector3Animation(),
+  )
   spring.target = 'Scale'
-  const springBase = spring.as(ICompositionAnimationBase)
+  const springBase = animations.ownProjected(
+    spring.as(ICompositionAnimationBase),
+  )
 
   const inverseSource: RefObject<Rectangle> = { current: null }
   const inverseTarget: RefObject<Ellipse> = { current: null }
@@ -83,7 +91,6 @@ export function AnimationInteropPage(context: AppContext) {
 
   const popupTarget: RefObject<TextBlock> = { current: null }
   const popup: RefObject<Popup> = { current: null }
-  let mountedPopup: Popup | null = null
   let popupAnimation:
     ReturnType<typeof compositor.createExpressionAnimation> | null = null
 
@@ -122,7 +129,7 @@ export function AnimationInteropPage(context: AppContext) {
   ) => {
     springTargets.set(element, finalValue)
     if (!motion.enabled.value) {
-      element.stopAnimation(springBase)
+      animations.stop(element, springBase)
       element.scale = {
         x: finalValue,
         y: finalValue,
@@ -131,7 +138,7 @@ export function AnimationInteropPage(context: AppContext) {
       return
     }
     updateSpring(finalValue)
-    element.startAnimation(springBase)
+    animations.start(element, springBase)
   }
 
   const setupInverseAnimation = () => {
@@ -142,15 +149,20 @@ export function AnimationInteropPage(context: AppContext) {
     ) {
       return
     }
-    inverseAnimation = compositor.createExpressionAnimation(
-      'Vector3(1/scaleElement.Scale.X, 1/scaleElement.Scale.Y, 1)',
+    inverseAnimation = animations.ownCloseable(
+      compositor.createExpressionAnimation(
+        'Vector3(1/scaleElement.Scale.X, 1/scaleElement.Scale.Y, 1)',
+      ),
     )
     inverseAnimation.target = 'Scale'
     inverseAnimation.setExpressionReferenceParameter(
       'scaleElement',
       inverseSource.current,
     )
-    inverseTarget.current.startAnimation(inverseAnimation)
+    animations.start(
+      inverseTarget.current,
+      inverseAnimation,
+    )
   }
 
   const setupStackedAnimations = () => {
@@ -163,14 +175,16 @@ export function AnimationInteropPage(context: AppContext) {
     for (let index = 1; index < stackedButtons.length; index += 1) {
       const above = stackedButtons[index - 1]!
       const current = stackedButtons[index]!
-      const animation = compositor.createExpressionAnimation(
-        '(above.Scale.Y - 1) * 50 + above.Translation.Y % (50 * index)',
+      const animation = animations.ownCloseable(
+        compositor.createExpressionAnimation(
+          '(above.Scale.Y - 1) * 50 + above.Translation.Y % (50 * index)',
+        ),
       )
       animation.target = 'Translation.Y'
       animation.setExpressionReferenceParameter('above', above)
       animation.setScalarParameter('index', index)
       stackedAnimations.push(animation)
-      current.startAnimation(animation)
+      animations.start(current, animation)
     }
   }
 
@@ -185,8 +199,9 @@ export function AnimationInteropPage(context: AppContext) {
     const expression =
       'Vector3((source.ActualSize.X / 2) * cos(.02 * (source.ActualSize.X / 2) + ((2 * Pi)/total)*index) + (source.ActualSize.X / 2), (source.ActualSize.X / 2) * sin(.02 * (source.ActualSize.X / 2) + ((2 * Pi)/total)*index), 0)'
     circleButtons.forEach((button, index) => {
-      const animation =
-        compositor.createExpressionAnimation(expression)
+      const animation = animations.ownCloseable(
+        compositor.createExpressionAnimation(expression),
+      )
       animation.target = 'Translation'
       animation.setScalarParameter('index', index + 1)
       animation.setScalarParameter(
@@ -198,7 +213,7 @@ export function AnimationInteropPage(context: AppContext) {
         circlePanel.current!,
       )
       circleAnimations.push(animation)
-      button!.startAnimation(animation)
+      animations.start(button!, animation)
     })
   }
 
@@ -210,22 +225,31 @@ export function AnimationInteropPage(context: AppContext) {
     ) {
       return
     }
-    popupAnimation = compositor.createExpressionAnimation(
-      'Vector3(source.ActualOffset.X + source.ActualSize.X, source.ActualOffset.Y + source.ActualSize.Y / 2 - 25, 0)',
+    const xamlRoot =
+      popupTarget.current.xamlRoot ??
+      context.window.content?.xamlRoot
+    if (!xamlRoot) {
+      return
+    }
+    popup.current.xamlRoot = xamlRoot
+    popupAnimation = animations.ownCloseable(
+      compositor.createExpressionAnimation(
+        'Vector3(source.ActualOffset.X + source.ActualSize.X, source.ActualOffset.Y + source.ActualSize.Y / 2 - 25, 0)',
+      ),
     )
     popupAnimation.target = 'Translation'
     popupAnimation.setExpressionReferenceParameter(
       'source',
       popupTarget.current,
     )
-    popup.current.startAnimation(popupAnimation)
+    animations.start(popup.current, popupAnimation)
     popup.current.isOpen = true
   }
 
   effect(() => {
     if (!motion.enabled.value) {
       for (const [target, finalValue] of springTargets) {
-        target.stopAnimation(springBase)
+        animations.stop(target, springBase)
         target.scale = {
           x: finalValue,
           y: finalValue,
@@ -236,61 +260,9 @@ export function AnimationInteropPage(context: AppContext) {
   })
 
   onCleanup(() => {
-    let firstError: unknown
-    const attempt = (action: () => void) => {
-      try {
-        action()
-      }
-      catch (error: unknown) {
-        firstError ??= error
-      }
-    }
-    for (const target of springTargets.keys()) {
-      attempt(() => target.stopAnimation(springBase))
-    }
-    if (inverseAnimation && inverseTarget.current) {
-      attempt(() =>
-        inverseTarget.current!.stopAnimation(inverseAnimation!),
-      )
-    }
-    stackedAnimations.forEach((animation, index) => {
-      const target = stackedButtons[index + 1]
-      if (target) {
-        attempt(() => target.stopAnimation(animation))
-      }
-    })
-    circleAnimations.forEach((animation, index) => {
-      const target = circleButtons[index]
-      if (target) {
-        attempt(() => target.stopAnimation(animation))
-      }
-    })
-    if (popupAnimation && mountedPopup) {
-      attempt(() => mountedPopup!.stopAnimation(popupAnimation!))
-    }
-    if (mountedPopup) {
-      attempt(() => {
-        mountedPopup!.isOpen = false
-      })
-    }
-    attempt(() => releaseProjected(springBase))
-    attempt(() =>
-      releaseMotionResources([
-        spring,
-        inverseAnimation,
-        ...stackedAnimations,
-        ...circleAnimations,
-        popupAnimation,
-      ]),
-    )
-    attempt(() => releaseProjected(compositor))
     inverseAnimation = null
     popupAnimation = null
-    mountedPopup = null
     springTargets.clear()
-    if (firstError !== undefined) {
-      throw firstError
-    }
   })
 
   return (
@@ -358,7 +330,12 @@ button.startAnimation(spring)`}
         <UI.StackPanel spacing={12}>
           <UI.TextBlock text="Hover over the button to animate its scale." />
           <UI.Button
-            ref={springButton}
+            ref={(value) => {
+              if (!value && springButton.current) {
+                animations.stopAll(springButton.current)
+              }
+              springButton.current = value
+            }}
             automationId="GalleryMotionAnimationInteropSpring"
             width={100}
             height={50}
@@ -406,6 +383,9 @@ ellipse.startAnimation(animation)`}
           <UI.Grid>
             <UI.Rectangle
               ref={(value) => {
+                if (!value && inverseSource.current) {
+                  animations.stopAll(inverseSource.current)
+                }
                 inverseSource.current = value
                 setupInverseAnimation()
               }}
@@ -426,6 +406,9 @@ ellipse.startAnimation(animation)`}
             />
             <UI.Ellipse
               ref={(value) => {
+                if (!value && inverseTarget.current) {
+                  animations.stopAll(inverseTarget.current)
+                }
                 inverseTarget.current = value
                 setupInverseAnimation()
               }}
@@ -454,6 +437,9 @@ button.startAnimation(animation)`}
             <UI.Button
               key={index}
               ref={(value) => {
+                if (!value && stackedButtons[index]) {
+                  animations.stopAll(stackedButtons[index]!)
+                }
                 stackedButtons[index] = value
                 setupStackedAnimations()
               }}
@@ -508,6 +494,9 @@ button.startAnimation(animation)`}
             <UI.Button
               key={index}
               ref={(value) => {
+                if (!value && circleButtons[index]) {
+                  animations.stopAll(circleButtons[index]!)
+                }
                 circleButtons[index] = value
                 setupCircleAnimations()
               }}
@@ -570,6 +559,8 @@ popup.isOpen = true`}
                 popupTarget.current = value
                 setupPopupAnimation()
               }}
+              onLoaded={setupPopupAnimation}
+              automationId="GalleryMotionAnimationInteropPopupTarget"
               width={300}
               margin={computed(() =>
                 thickness(textMargin.value))}
@@ -579,12 +570,11 @@ popup.isOpen = true`}
             />
             <UI.Popup
               ref={(value) => {
-                popup.current = value
-                if (value) {
-                  mountedPopup = value
-                  value.xamlRoot =
-                    context.window.content.xamlRoot
+                if (!value && popup.current) {
+                  popup.current.isOpen = false
+                  animations.stopAll(popup.current)
                 }
+                popup.current = value
                 setupPopupAnimation()
               }}
               margin={thickness(5)}

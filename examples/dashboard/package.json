@@ -6,15 +6,16 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "build:codegen": "cargo build --release -p dynwinrt-codegen --manifest-path ../../../dynwinrt/Cargo.toml",
-    "setup": "npm run build:codegen && winapp restore",
-    "generate": "winapp node generate-bindings",
+    "build:dynwinrt": "node scripts/build-local-dynwinrt.js",
+    "build:codegen": "npm run build:dynwinrt",
+    "setup": "npm run build:dynwinrt && winapp restore",
+    "generate": "npm run build:dynwinrt && winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
     "package:sea": "npm run build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-sea.ps1",
     "package:sea:clean-machine": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sea-clean-machine.ps1",
     "package:sea:servicing": "npm run build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-sea-servicing.ps1",
-    "dev": "node dev.js",
-    "start": "npm run build && node main.js"
+    "dev": "npm run build:dynwinrt && node dev.js",
+    "start": "npm run build:dynwinrt && npm run build && node main.js"
   },
   "engines": {
     "node": ">=20"

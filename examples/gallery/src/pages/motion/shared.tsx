@@ -1,6 +1,6 @@
 import {
   computed,
-  onCleanup,
+  createNativeResourceOwner,
   signal,
   type ReadonlySignal,
 } from 'dynwinrt-jsx'
@@ -18,30 +18,18 @@ export interface MotionSettings {
 }
 
 export function useMotionSettings(): MotionSettings {
-  const settings = new UISettings()
+  const resources = createNativeResourceOwner({
+    releaseProjected,
+  })
+  const settings = resources.ownProjected(
+    new UISettings(),
+  )
   const enabled = signal(settings.animationsEnabled)
   const update = () => {
     enabled.value = settings.animationsEnabled
   }
   const unsubscribe = settings.onAnimationsEnabledChanged(update)
-  onCleanup(() => {
-    let firstError: unknown
-    try {
-      unsubscribe()
-    }
-    catch (error: unknown) {
-      firstError = error
-    }
-    try {
-      releaseProjected(settings)
-    }
-    catch (error: unknown) {
-      firstError ??= error
-    }
-    if (firstError !== undefined) {
-      throw firstError
-    }
-  })
+  resources.defer(unsubscribe)
   return {
     enabled,
     status: computed(() =>

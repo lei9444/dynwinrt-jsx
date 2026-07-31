@@ -271,7 +271,24 @@ test('create configures sibling repositories in local mode', (t) => {
     manifest.devDependencies['@microsoft/dynwinrt-codegen'],
     'file:tools/local-codegen',
   )
-  assert.match(manifest.scripts.setup, /build:codegen/)
+  assert.match(manifest.scripts.setup, /build:dynwinrt/)
+  assert.match(manifest.scripts.generate, /build:dynwinrt/)
+  assert.match(manifest.scripts.dev, /build:dynwinrt/)
+  assert.match(manifest.scripts.start, /build:dynwinrt/)
+  const runtimeBuildScript = fs.readFileSync(
+    path.join(
+      target,
+      'scripts',
+      'build-local-dynwinrt.js',
+    ),
+    'utf8',
+  )
+  assert.match(
+    runtimeBuildScript,
+    /\[npmCli,\s*'run',\s*'build',\s*'--silent'\]/,
+  )
+  assert.match(runtimeBuildScript, /winrt\.js/)
+  assert.match(runtimeBuildScript, /com\.js/)
   assert.ok(
     fs.existsSync(
       path.join(target, 'tools', 'local-codegen', 'cli.js'),
@@ -588,12 +605,17 @@ test('Gallery keeps local dynwinrt runtime and codegen aligned', () => {
     manifest.scripts.start,
     /build:dynwinrt/,
   )
-  assert.match(buildScript, /-p',\s*'jswinrt_rs'/)
+  assert.match(
+    buildScript,
+    /\[npmCli,\s*'run',\s*'build',\s*'--silent'\]/,
+  )
   assert.match(buildScript, /-p',\s*'dynwinrt-codegen'/)
   assert.match(
     buildScript,
     /dynwinrt\.win32-x64-msvc\.node/,
   )
+  assert.match(buildScript, /winrt\.js/)
+  assert.match(buildScript, /com\.js/)
   assert.match(
     codegenWrapper,
     /\.winapp[\s\S]*tools[\s\S]*dynwinrt-codegen\.exe/,

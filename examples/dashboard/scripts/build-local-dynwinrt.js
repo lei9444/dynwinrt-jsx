@@ -4,24 +4,20 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-const galleryRoot = path.resolve(__dirname, '..')
+const dashboardRoot = path.resolve(__dirname, '..')
 const dynwinrtRoot = path.resolve(
-  galleryRoot,
+  dashboardRoot,
   '..',
   '..',
   '..',
   'dynwinrt',
 )
-const target = {
-  arm64: 'aarch64-pc-windows-msvc',
-  x64: 'x86_64-pc-windows-msvc',
-}[process.arch]
 const nativeName = {
   arm64: 'dynwinrt.win32-arm64-msvc.node',
   x64: 'dynwinrt.win32-x64-msvc.node',
 }[process.arch]
 
-if (!target || !nativeName) {
+if (!nativeName) {
   throw new Error(
     `Unsupported Node.js architecture: ${process.arch}`,
   )
@@ -32,11 +28,6 @@ if (!fs.existsSync(path.join(dynwinrtRoot, 'Cargo.toml'))) {
   )
 }
 
-const targetRoot = path.join(
-  dynwinrtRoot,
-  'target',
-  'dynwinrt-jsx-gallery',
-)
 const bindingsRoot = path.join(
   dynwinrtRoot,
   'bindings',
@@ -75,10 +66,6 @@ const codegenResult = spawnSync(
   [
     'build',
     '--release',
-    '--target',
-    target,
-    '--target-dir',
-    targetRoot,
     '-p',
     'dynwinrt-codegen',
   ],
@@ -91,23 +78,7 @@ if (codegenResult.status !== 0) {
   process.exit(codegenResult.status ?? 1)
 }
 
-const output = path.join(targetRoot, target, 'release')
-const codegenSource = path.join(
-  output,
-  'dynwinrt-codegen.exe',
-)
-const runtimeDirectory = path.join(
-  dynwinrtRoot,
-  'bindings',
-  'js',
-  'dist',
-)
-const codegenDirectory = path.join(
-  galleryRoot,
-  '.winapp',
-  'tools',
-)
-
+const runtimeDirectory = path.join(bindingsRoot, 'dist')
 for (const filePath of [
   path.join(runtimeDirectory, nativeName),
   path.join(runtimeDirectory, 'index.js'),
@@ -116,7 +87,12 @@ for (const filePath of [
   path.join(runtimeDirectory, 'winrt.d.ts'),
   path.join(runtimeDirectory, 'com.js'),
   path.join(runtimeDirectory, 'com.d.ts'),
-  codegenSource,
+  path.join(
+    dynwinrtRoot,
+    'target',
+    'release',
+    'dynwinrt-codegen.exe',
+  ),
 ]) {
   if (!fs.existsSync(filePath)) {
     throw new Error(
@@ -125,12 +101,6 @@ for (const filePath of [
   }
 }
 
-fs.mkdirSync(codegenDirectory, { recursive: true })
-fs.copyFileSync(
-  codegenSource,
-  path.join(codegenDirectory, 'dynwinrt-codegen.exe'),
-)
-
 console.log(
-  `Prepared dynwinrt runtime and codegen for ${target}.`,
+  `Prepared dynwinrt runtime and codegen for ${process.arch}.`,
 )

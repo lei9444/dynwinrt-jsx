@@ -63,9 +63,13 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "docs:api": "node scripts/generate-api-index.js",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "npm run build && node --test tests/*.test.js",
-    "check": "npm run typecheck && npm test",
+    "check": "npm run typecheck && npm test && npm run docs:api -- --check",
+    "validate:quick": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile quick",
+    "validate:native": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile native",
+    "validate:full": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile full",
     "prepack": "npm run check"
   },
   "devDependencies": {

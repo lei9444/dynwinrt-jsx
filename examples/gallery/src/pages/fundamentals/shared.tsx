@@ -1,8 +1,8 @@
 import {
+  createNativeResourceOwner,
   styles,
   thickness,
   tokens,
-  onCleanup,
   type Child,
   type RefObject,
 } from 'dynwinrt-jsx'
@@ -34,25 +34,15 @@ export function NativeXamlPreview(props: {
 }) {
   const host: RefObject<ContentControl> = { current: null }
   let mountedHost: ContentControl | null = null
-  const content = loadNativeContent(props.xaml, true)
-  onCleanup(() => {
-    let firstError: unknown
-    try {
-      if (mountedHost) {
-        mountedHost.content = null
-      }
-    }
-    catch (error: unknown) {
-      firstError = error
-    }
-    try {
-      releaseProjected(content)
-    }
-    catch (error: unknown) {
-      firstError ??= error
-    }
-    if (firstError !== undefined) {
-      throw firstError
+  const resources = createNativeResourceOwner({
+    releaseProjected,
+  })
+  const content = resources.ownProjected(
+    loadNativeContent(props.xaml, true),
+  )
+  resources.defer(() => {
+    if (mountedHost) {
+      mountedHost.content = null
     }
   })
   return (

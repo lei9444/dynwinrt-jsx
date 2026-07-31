@@ -33,6 +33,20 @@ export {
 } from './core/lazy'
 
 export {
+  AsyncView,
+  createAsyncAction,
+  type AsyncAction,
+  type AsyncActionConcurrency,
+  type AsyncActionContext,
+  type AsyncActionOperation,
+  type AsyncActionOptions,
+  type AsyncActionStatus,
+  type AsyncOperationScope,
+  type AsyncState,
+  type AsyncViewProps,
+} from './core/async'
+
+export {
   adapter,
   type NativeAdapter,
   type NativeAdapterMap,
@@ -137,6 +151,13 @@ export {
   createCompositionFrameScheduler,
   type CompositionTargetBinding,
 } from './winui/event-coalescing'
+
+export {
+  createCompositionOwner,
+  type CompositionOwner,
+  type CompositionPropertyTarget,
+  type XamlAnimationTarget,
+} from './winui/composition'
 
 export {
   createScrollViewerController,
@@ -326,6 +347,12 @@ export {
   type ProjectedOwnership,
   type ProjectedValueOwner,
 } from './runtime/projected-owner'
+
+export {
+  createNativeResourceOwner,
+  type NativeResourceOwner,
+  type NativeResourceOwnerOptions,
+} from './runtime/native-resource'
 
 export {
   createRenderer,

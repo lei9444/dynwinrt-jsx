@@ -42,6 +42,14 @@ The suite now also provides:
 .\run-micro.ps1 -Iterations 100 -Reps 5
 ```
 
+StockGrid comparison runs also capture framework startup stages when available.
+dynwinrt-jsx reports component/VNode build, native mount, activation, Loaded,
+and first-frame milestones. The instrumented ReactorOptimized leg emits
+`REACTOR_STARTUP_JSON` using its built-in `OnRenderComplete` tree-build,
+reconcile, and effects timings. These framework-specific buckets are preserved
+in `raw.jsonl` and summarized separately; they are not treated as identical
+internal architectures.
+
 Startup, KeyedList, VirtualList, and the comparable ControlModel micro subset
 have all completed one-repetition smoke comparisons. Baseline-quality results
 still require the documented warmups/repetitions and, for visual frame claims,

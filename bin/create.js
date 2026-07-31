@@ -101,6 +101,118 @@ process.exit(result.status ?? 1)
 `
 }
 
+function localDynwinrtBuildScript(target, dynwinrtRoot) {
+  const scriptDirectory = path.join(target, 'scripts')
+  const relativeRoot = path
+    .relative(scriptDirectory, dynwinrtRoot)
+    .replaceAll('\\', '/')
+
+  return `#!/usr/bin/env node
+'use strict'
+
+const fs = require('node:fs')
+const path = require('node:path')
+const { spawnSync } = require('node:child_process')
+
+const dynwinrtRoot = path.resolve(
+  __dirname,
+  ${JSON.stringify(relativeRoot)},
+)
+const nativeName = {
+  arm64: 'dynwinrt.win32-arm64-msvc.node',
+  x64: 'dynwinrt.win32-x64-msvc.node',
+}[process.arch]
+
+if (!nativeName) {
+  throw new Error(
+    \`Unsupported Node.js architecture: \${process.arch}\`,
+  )
+}
+if (!fs.existsSync(path.join(dynwinrtRoot, 'Cargo.toml'))) {
+  throw new Error(
+    \`The local dynwinrt repository was not found at \${dynwinrtRoot}.\`,
+  )
+}
+
+const bindingsRoot = path.join(
+  dynwinrtRoot,
+  'bindings',
+  'js',
+)
+const npmCli = [
+  process.env.npm_execpath,
+  path.join(
+    path.dirname(process.execPath),
+    'node_modules',
+    'npm',
+    'bin',
+    'npm-cli.js',
+  ),
+].find((candidate) =>
+  candidate && fs.existsSync(candidate))
+if (!npmCli) {
+  throw new Error(
+    'npm-cli.js was not found beside the current Node.js executable.',
+  )
+}
+const runtimeResult = spawnSync(
+  process.execPath,
+  [npmCli, 'run', 'build', '--silent'],
+  {
+    cwd: bindingsRoot,
+    stdio: 'inherit',
+  },
+)
+if (runtimeResult.status !== 0) {
+  process.exit(runtimeResult.status ?? 1)
+}
+
+const codegenResult = spawnSync(
+  'cargo.exe',
+  [
+    'build',
+    '--release',
+    '-p',
+    'dynwinrt-codegen',
+  ],
+  {
+    cwd: dynwinrtRoot,
+    stdio: 'inherit',
+  },
+)
+if (codegenResult.status !== 0) {
+  process.exit(codegenResult.status ?? 1)
+}
+
+const runtimeDirectory = path.join(bindingsRoot, 'dist')
+for (const filePath of [
+  path.join(runtimeDirectory, nativeName),
+  path.join(runtimeDirectory, 'index.js'),
+  path.join(runtimeDirectory, 'index.d.ts'),
+  path.join(runtimeDirectory, 'winrt.js'),
+  path.join(runtimeDirectory, 'winrt.d.ts'),
+  path.join(runtimeDirectory, 'com.js'),
+  path.join(runtimeDirectory, 'com.d.ts'),
+  path.join(
+    dynwinrtRoot,
+    'target',
+    'release',
+    'dynwinrt-codegen.exe',
+  ),
+]) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(
+      \`The dynwinrt build did not produce \${filePath}.\`,
+    )
+  }
+}
+
+console.log(
+  \`Prepared dynwinrt runtime and codegen for \${process.arch}.\`,
+)
+`
+}
+
 function configureLocalDependencies(target, manifest, localRoot) {
   const dynwinrtRoot = path.join(localRoot, 'dynwinrt')
   const jsxRoot = path.join(localRoot, 'dynwinrt-jsx')
@@ -124,12 +236,25 @@ function configureLocalDependencies(target, manifest, localRoot) {
     path.join(winappCliRoot, 'src', 'winapp-npm'),
   )
 
-  const relativeDynwinrt = path
-    .relative(target, dynwinrtRoot)
-    .replaceAll('\\', '/')
+  manifest.scripts['build:dynwinrt'] =
+    'node scripts/build-local-dynwinrt.js'
   manifest.scripts['build:codegen'] =
-    `cargo build --release -p dynwinrt-codegen --manifest-path "${relativeDynwinrt}/Cargo.toml"`
-  manifest.scripts.setup = 'npm run build:codegen && winapp restore'
+    'npm run build:dynwinrt'
+  manifest.scripts.setup =
+    'npm run build:dynwinrt && winapp restore'
+  manifest.scripts.generate =
+    'npm run build:dynwinrt && winapp node generate-bindings'
+  manifest.scripts.dev =
+    'npm run build:dynwinrt && node dev.js'
+  manifest.scripts.start =
+    'npm run build:dynwinrt && npm run build && node main.js'
+
+  const scriptDirectory = path.join(target, 'scripts')
+  fs.mkdirSync(scriptDirectory, { recursive: true })
+  fs.writeFileSync(
+    path.join(scriptDirectory, 'build-local-dynwinrt.js'),
+    localDynwinrtBuildScript(target, dynwinrtRoot),
+  )
 
   const wrapperDirectory = path.join(target, 'tools', 'local-codegen')
   fs.mkdirSync(wrapperDirectory, { recursive: true })

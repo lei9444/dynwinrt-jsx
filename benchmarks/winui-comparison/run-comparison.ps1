@@ -331,6 +331,26 @@ function Read-PresentMetrics {
     }
 }
 
+function Read-MarkedJson {
+    param(
+        [string]$Path,
+        [string]$Marker
+    )
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+    $line = Get-Content $Path |
+        Where-Object { $_.StartsWith($Marker) } |
+        Select-Object -Last 1
+    if (-not $line) {
+        return $null
+    }
+    return (
+        $line.Substring($Marker.Length).Trim() |
+            ConvertFrom-Json -AsHashtable
+    )
+}
+
 function Invoke-Variant {
     param(
         [string]$Name,
@@ -454,6 +474,33 @@ function Invoke-Variant {
     else {
         Read-ReactorMetrics $variant $Percent
     }
+    $startupProfile = if ($Name -eq "DynWinRTJsx") {
+        $milestones = $metrics.startupMilestones
+        if ($milestones) {
+            [ordered]@{
+                milestones = $milestones
+                componentBuildMs = (
+                    [double]$milestones.vnodeTreeBuilt -
+                    [double]$milestones.componentEntered
+                )
+                nativeMountMs = (
+                    [double]$milestones.'tree-rendered' -
+                    [double]$milestones.vnodeTreeBuilt
+                )
+                firstFrameMs =
+                    [double]$milestones.firstFrame
+            }
+        }
+        else { $null }
+    }
+    elseif ($Name -eq "Reactor") {
+        Read-MarkedJson `
+            $stdoutPath `
+            "REACTOR_STARTUP_JSON "
+    }
+    else {
+        $null
+    }
     $metrics.reportedRendersPerSec =
         [double]$metrics.rendersPerSec
     $metrics.rendersPerSec =
@@ -472,6 +519,7 @@ function Invoke-Variant {
         externalPeakRssMB = $peakRss / 1MB
         externalCpuMs = $process.TotalProcessorTime.TotalMilliseconds
         metrics = $metrics
+        startup = $startupProfile
         present = $present
     }
     Add-Content `
@@ -503,6 +551,28 @@ function Get-Median {
         [double]$sorted[$middle - 1] +
         [double]$sorted[$middle]
     ) / 2
+}
+
+function Get-StartupMetric {
+    param(
+        [object]$Sample,
+        [string]$Name
+    )
+    if ($null -eq $Sample.startup) {
+        return 0
+    }
+    $startup = $Sample.startup
+    if (
+        $startup -is [Collections.IDictionary] -and
+        $startup.Contains($Name)
+    ) {
+        return [double]$startup[$Name]
+    }
+    $property = $startup.PSObject.Properties[$Name]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return 0
+    }
+    return [double]$property.Value
 }
 
 function Get-MeanCi {
@@ -605,6 +675,26 @@ foreach ($percent in $Percents) {
                     if ($_.present) {
                         [double]$_.present.presentPerSec
                     } else { 0 }
+                }
+            )
+            startupFirstFrameMsMedian = Get-Median @(
+                $samples | ForEach-Object {
+                    Get-StartupMetric $_ "firstFrameMs"
+                }
+            )
+            startupTreeBuildMsMedian = Get-Median @(
+                $samples | ForEach-Object {
+                    Get-StartupMetric $_ "treeBuildMs"
+                }
+            )
+            startupReconcileMsMedian = Get-Median @(
+                $samples | ForEach-Object {
+                    Get-StartupMetric $_ "reconcileMs"
+                }
+            )
+            startupNativeMountMsMedian = Get-Median @(
+                $samples | ForEach-Object {
+                    Get-StartupMetric $_ "nativeMountMs"
                 }
             )
         })
@@ -765,5 +855,24 @@ $groups |
         @{n="window ms";e={[Math]::Round($_.windowReadyMsMedian, 1)}},
         @{n="present/s";e={[Math]::Round($_.presentPerSecMedian, 2)}} |
     Format-Table -AutoSize
+$startupGroups = @(
+    $groups |
+    Where-Object {
+        $_.startupFirstFrameMsMedian -gt 0
+    }
+)
+if ($startupGroups.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Startup stages"
+    $startupGroups |
+        Select-Object `
+            percent,
+            variant,
+            @{n="first frame ms";e={[Math]::Round($_.startupFirstFrameMsMedian, 1)}},
+            @{n="tree build ms";e={[Math]::Round($_.startupTreeBuildMsMedian, 1)}},
+            @{n="reconcile ms";e={[Math]::Round($_.startupReconcileMsMedian, 1)}},
+            @{n="native mount ms";e={[Math]::Round($_.startupNativeMountMsMedian, 1)}} |
+        Format-Table -AutoSize
+}
 Write-Host "Raw:     $rawPath"
 Write-Host "Summary: $summaryPath"

@@ -7,7 +7,8 @@ param(
     [string]$WinAppPath,
     [string]$OutputDirectory,
     [int]$TimeoutMilliseconds = 60000,
-    [switch]$IncludeUIA
+    [switch]$IncludeUIA,
+    [switch]$SkipDesktopInput
 )
 
 Set-StrictMode -Version Latest
@@ -390,12 +391,18 @@ function Invoke-DashboardUIAProfile([string]$Name) {
             throw "Dashboard profile '$Name' did not become ready."
         }
 
-        & $uiSmokeScript `
-            -WinAppPath $WinAppPath `
-            -ExpectedProcessId $process.Id `
-            -OutputDirectory $directory `
-            -TimeoutMilliseconds ([Math]::Min($TimeoutMilliseconds, 30000)) `
-            -KeepOpen | Out-Host
+        $uiSmokeArgs = @{
+            WinAppPath = $WinAppPath
+            ExpectedProcessId = $process.Id
+            OutputDirectory = $directory
+            TimeoutMilliseconds =
+                [Math]::Min($TimeoutMilliseconds, 30000)
+            KeepOpen = $true
+        }
+        if ($SkipDesktopInput) {
+            $uiSmokeArgs.SkipDesktopInput = $true
+        }
+        & $uiSmokeScript @uiSmokeArgs | Out-Host
         if ($LASTEXITCODE -ne 0) {
             throw "Dashboard profile '$Name' UIA smoke failed."
         }

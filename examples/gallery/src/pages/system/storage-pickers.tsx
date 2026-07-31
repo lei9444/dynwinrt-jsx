@@ -1,6 +1,6 @@
 import {
   computed,
-  onCleanup,
+  createAsyncAction,
   signal,
   type RefObject,
 } from 'dynwinrt-jsx'
@@ -24,13 +24,6 @@ type PickerAbortSignal = NonNullable<
   Parameters<FileOpenPicker['pickSingleFileAsync']>[0]
 >
 
-declare const AbortController: {
-  new(): {
-    readonly signal: PickerAbortSignal
-    abort(): void
-  }
-}
-
 declare const require: (id: string) => unknown
 
 interface FileSystemPromises {
@@ -43,52 +36,37 @@ function formatNativeError(error: unknown): string {
 
 export function StoragePickersPage(context: AppContext) {
   const capability = signal('Picker capability has not been checked.')
-  const result = signal('No picker result yet.')
-  const busy = signal(false)
   const fileContent = signal('Hello from dynwinrt-jsx Gallery!')
   const contentBox: RefObject<TextBoxInstance> = { current: null }
-  let currentAbort: {
-    readonly signal: PickerAbortSignal
-    abort(): void
-  } | undefined
-  let disposed = false
-
-  onCleanup(() => {
-    disposed = true
-    currentAbort?.abort()
-    currentAbort = undefined
+  const pickerAction = createAsyncAction<
+    (signal: PickerAbortSignal) => Promise<string>,
+    string
+  >(async (action, { signal }) => {
+    const message = await action(signal)
+    context.model.recordInteraction()
+    return message
   })
-
-  const createAbort = () => {
-    currentAbort?.abort()
-    currentAbort = new AbortController()
-    return currentAbort.signal
-  }
-
-  const runPicker = async (action: (signal: PickerAbortSignal) => Promise<string>) => {
-    if (busy.value) {
-      return
+  const result = computed(() => {
+    switch (pickerAction.status.value) {
+      case 'idle':
+        return 'No picker result yet.'
+      case 'pending':
+        return 'Picker operation in progress...'
+      case 'success':
+        return pickerAction.value.value ??
+          'Picker operation completed.'
+      case 'error':
+        return `Picker unavailable or failed: ${
+          formatNativeError(pickerAction.error.value)
+        }`
+      case 'disposed':
+        return 'Picker operation disposed.'
     }
-    busy.value = true
-    try {
-      const message = await action(createAbort())
-      if (!disposed) {
-        result.value = message
-        context.model.recordInteraction()
-      }
-    }
-    catch (error) {
-      if (!disposed) {
-        result.value =
-          `Picker unavailable or failed: ${formatNativeError(error)}`
-      }
-    }
-    finally {
-      currentAbort = undefined
-      if (!disposed) {
-        busy.value = false
-      }
-    }
+  })
+  const runPicker = (
+    action: (signal: PickerAbortSignal) => Promise<string>,
+  ) => {
+    pickerAction.run(action)
   }
 
   const configureOpenPicker = () => {
@@ -175,7 +153,7 @@ const file = await picker.pickSingleFileAsync(signal)`}
         <UI.StackPanel orientation={Orientation.Horizontal} spacing={8}>
           <UI.Button
             automationId="GallerySystemStoragePickerSingle"
-            isEnabled={computed(() => !busy.value)}
+            isEnabled={computed(() => !pickerAction.pending.value)}
             onClick={() => runPicker(async (abortSignal) => {
               const file = await configureOpenPicker()
                 .pickSingleFileAsync(abortSignal)
@@ -188,7 +166,7 @@ const file = await picker.pickSingleFileAsync(signal)`}
           </UI.Button>
           <UI.Button
             automationId="GallerySystemStoragePickerMultiple"
-            isEnabled={computed(() => !busy.value)}
+            isEnabled={computed(() => !pickerAction.pending.value)}
             onClick={() => runPicker(async (abortSignal) => {
               const files = await configureOpenPicker()
                 .pickMultipleFilesAsync(abortSignal)
@@ -226,7 +204,7 @@ if (file?.path) await fs.writeFile(file.path, content, 'utf8')`}
           />
           <UI.Button
             automationId="GallerySystemStoragePickerSave"
-            isEnabled={computed(() => !busy.value)}
+            isEnabled={computed(() => !pickerAction.pending.value)}
             onClick={() => runPicker(async (abortSignal) => {
               const picker = new FileSavePicker(
                 context.window.appWindow.id,
@@ -263,7 +241,7 @@ const folder = await picker.pickSingleFolderAsync(signal)`}
       >
         <UI.Button
           automationId="GallerySystemStoragePickerFolder"
-          isEnabled={computed(() => !busy.value)}
+          isEnabled={computed(() => !pickerAction.pending.value)}
           onClick={() => runPicker(async (abortSignal) => {
             const picker = new FolderPicker(
               context.window.appWindow.id,

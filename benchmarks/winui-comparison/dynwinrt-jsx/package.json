@@ -10,7 +10,7 @@
     "generate": "npm run build:dynwinrt && winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
     "test": "node scripts/verify-workload.js",
-    "start": "npm run build && node main.js"
+    "start": "npm run build:dynwinrt && npm run build && node main.js"
   },
   "engines": {
     "node": ">=20"

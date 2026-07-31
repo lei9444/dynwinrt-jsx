@@ -6,6 +6,7 @@ import {
   RouterProvider,
   Show,
   VirtualFor,
+  AsyncView,
   adapter,
   bind,
   boxNullable,
@@ -31,11 +32,13 @@ import {
   createItemsRepeaterControl,
   createVirtualizedItemsControl,
   createJsonStateStore,
+  createAsyncAction,
   createLazyComponent,
   createListViewControl,
   createListViewScrollTarget,
   createLastValueCoalescer,
   createNavigationHost,
+  createNativeResourceOwner,
   createNavigationItem,
   createNavigationViewControl,
   createReferenceBoxing,
@@ -57,6 +60,7 @@ import {
   createWinUIThemeController,
   createWinUIRendererPreset,
   createCompositionFrameScheduler,
+  createCompositionOwner,
   gridLength,
   mapCapability,
   native,
@@ -957,6 +961,27 @@ createScopedLastValueCoalescer(
   frameScheduler,
   (_value: number) => {},
 )
+const nativeResources = createNativeResourceOwner({
+  releaseProjected(_value) {},
+})
+nativeResources.ownCloseable({
+  close() {},
+})
+const compositionResources = createCompositionOwner()
+const typedAnimation = {}
+const typedAnimationTarget = {
+  startAnimation(_animation: typeof typedAnimation) {},
+  stopAnimation(_animation: typeof typedAnimation) {},
+}
+compositionResources.start(
+  typedAnimationTarget,
+  typedAnimation,
+)
+compositionResources.stopAll(typedAnimationTarget)
+compositionResources.stop(
+  typedAnimationTarget,
+  typedAnimation,
+)
 const LazyTypedPage = createLazyComponent(
   () => (_props: { readonly title: string }) => (
     <TypeTextBlock />
@@ -965,6 +990,34 @@ const LazyTypedPage = createLazyComponent(
 ;<LazyTypedPage title="Lazy" />
 // @ts-expect-error Lazy page props remain typed.
 ;<LazyTypedPage />
+const typedAction = createAsyncAction(
+  async (
+    id: number,
+    { signal, scope },
+  ) => {
+    signal.throwIfAborted()
+    return scope.disposable({
+      id,
+      dispose() {},
+    })
+  },
+  {
+    concurrency: 'replace',
+  },
+)
+typedAction.run(1)
+// @ts-expect-error Async action inputs remain typed.
+typedAction.run('invalid')
+;<AsyncView
+  state={typedAction}
+  pending={<TypeTextBlock />}
+  error={(_error) => <TypeTextBlock />}
+>
+  {(value) => {
+    value.id satisfies number
+    return <TypeTextBlock />
+  }}
+</AsyncView>
 const listScroll = createListViewScrollTarget<TypeListView>()
 const navItem = createNavigationItem(
   {

@@ -480,8 +480,8 @@ identity, and manifest dependencies in a provenance document.
 - [ ] Add package metadata, release automation, and artifact provenance.
 - [ ] Publish a compatible framework and tool package set.
 - [ ] Add API, control, lifecycle, troubleshooting, and packaging guides.
-- [ ] Generate a compact public API/signature index.
-- [ ] Add focused agent skills and compilable task recipes.
+- [x] Generate a compact public API/signature index.
+- [x] Add focused agent skills and compilable task recipes.
 - [ ] Maintain generated and representative compatibility applications.
 - [ ] Complete an upgrade using only consumer-facing documentation.
 
@@ -516,6 +516,11 @@ identity, and manifest dependencies in a provenance document.
       message forwarding, and deterministic process/port cleanup.
 - [x] Add retryable synchronous and asynchronous cleanup composition so Window
       close cancellation and cleanup ordering are framework-owned.
+- [x] Add component-owned `createAsyncAction()` with drop/replace concurrency,
+      AbortSignal cancellation, stale-result suppression, operation resource
+      ownership, disposable values, and `AsyncView`/ErrorBoundary integration.
+- [ ] Add source-driven `createAsyncResource()` after at least two applications
+      demonstrate the same reload/retain/release behavior.
 - [x] Split `src/renderer/renderer.ts` into focused mount, property, event, children,
       boundary, and lifecycle services without changing public behavior.
   - [x] Extract property conversion, reactive binding, resource observation,

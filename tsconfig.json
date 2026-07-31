@@ -4,7 +4,8 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "lib": [
-      "ES2022"
+      "ES2022",
+      "DOM"
     ],
     "rootDir": "src",
     "outDir": "dist",

@@ -38,7 +38,40 @@ const targetRoot = path.join(
   'target',
   'dynwinrt-jsx-benchmark',
 )
-const result = spawnSync(
+const bindingsRoot = path.join(
+  dynwinrtRoot,
+  'bindings',
+  'js',
+)
+const npmCli = [
+  process.env.npm_execpath,
+  path.join(
+    path.dirname(process.execPath),
+    'node_modules',
+    'npm',
+    'bin',
+    'npm-cli.js',
+  ),
+].find((candidate) =>
+  candidate && fs.existsSync(candidate))
+if (!npmCli) {
+  throw new Error(
+    'npm-cli.js was not found beside the current Node.js executable.',
+  )
+}
+const runtimeResult = spawnSync(
+  process.execPath,
+  [npmCli, 'run', 'build', '--silent'],
+  {
+    cwd: bindingsRoot,
+    stdio: 'inherit',
+  },
+)
+if (runtimeResult.status !== 0) {
+  process.exit(runtimeResult.status ?? 1)
+}
+
+const codegenResult = spawnSync(
   'cargo.exe',
   [
     'build',
@@ -48,8 +81,6 @@ const result = spawnSync(
     '--target-dir',
     targetRoot,
     '-p',
-    'jswinrt_rs',
-    '-p',
     'dynwinrt-codegen',
   ],
   {
@@ -57,12 +88,11 @@ const result = spawnSync(
     stdio: 'inherit',
   },
 )
-if (result.status !== 0) {
-  process.exit(result.status ?? 1)
+if (codegenResult.status !== 0) {
+  process.exit(codegenResult.status ?? 1)
 }
 
 const output = path.join(targetRoot, target, 'release')
-const nativeSource = path.join(output, 'jswinrt_rs.dll')
 const codegenSource = path.join(
   output,
   'dynwinrt-codegen.exe',
@@ -79,7 +109,16 @@ const codegenDirectory = path.join(
   'tools',
 )
 
-for (const filePath of [nativeSource, codegenSource]) {
+for (const filePath of [
+  path.join(runtimeDirectory, nativeName),
+  path.join(runtimeDirectory, 'index.js'),
+  path.join(runtimeDirectory, 'index.d.ts'),
+  path.join(runtimeDirectory, 'winrt.js'),
+  path.join(runtimeDirectory, 'winrt.d.ts'),
+  path.join(runtimeDirectory, 'com.js'),
+  path.join(runtimeDirectory, 'com.d.ts'),
+  codegenSource,
+]) {
   if (!fs.existsSync(filePath)) {
     throw new Error(
       `The dynwinrt build did not produce ${filePath}.`,
@@ -87,11 +126,6 @@ for (const filePath of [nativeSource, codegenSource]) {
   }
 }
 
-fs.mkdirSync(runtimeDirectory, { recursive: true })
-fs.copyFileSync(
-  nativeSource,
-  path.join(runtimeDirectory, nativeName),
-)
 fs.mkdirSync(codegenDirectory, { recursive: true })
 fs.copyFileSync(
   codegenSource,

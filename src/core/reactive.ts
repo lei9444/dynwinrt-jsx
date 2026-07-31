@@ -1071,3 +1071,9 @@ export function onCleanup(cleanup: Cleanup): Cleanup {
 
   return currentScope.add(cleanup)
 }
+
+export function registerScopedCleanup(
+  cleanup: Cleanup,
+): Cleanup {
+  return currentScope?.add(cleanup) ?? cleanup
+}

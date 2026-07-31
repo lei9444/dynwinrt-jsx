@@ -9,6 +9,8 @@ param(
     [switch]$ClipboardOnly,
     [switch]$SystemOnly,
     [switch]$ShellOnly,
+    [switch]$MotionOnly,
+    [switch]$CategoryOnly,
     [switch]$PackagedShellPositivePath,
     [string]$PackagedGalleryLaunchCommand,
     [switch]$WindowingOnly,
@@ -47,6 +49,56 @@ function Invoke-WinApp([string[]]$Arguments, [switch]$Capture) {
     if ($LASTEXITCODE -ne 0) {
         throw "winapp $($Arguments -join ' ') exited with code $LASTEXITCODE."
     }
+}
+
+function Invoke-LockSafeElement(
+    [int64]$WindowHandle,
+    [string]$Selector
+) {
+    for ($attempt = 1; $attempt -le 3; $attempt += 1) {
+        & $WinAppPath ui invoke $Selector -w "$WindowHandle"
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+        Start-Sleep -Milliseconds 150
+    }
+    if (-not $SkipKeyboardInput) {
+        Invoke-WinApp @(
+            "ui", "click", $Selector,
+            "-w", "$WindowHandle"
+        )
+        return
+    }
+    throw "Element '$Selector' did not expose an invoke pattern."
+}
+
+function Get-VisibleButtonSelector(
+    [int64]$WindowHandle,
+    [string]$Name
+) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds(
+        $TimeoutMilliseconds
+    )
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $searchJson = Invoke-WinApp @(
+            "ui", "search", $Name,
+            "-w", "$WindowHandle",
+            "--json"
+        ) -Capture
+        $match = @(
+            ($searchJson | ConvertFrom-Json).matches
+        ) | Where-Object {
+            $_.type -eq "Button" -and
+            $_.name -eq $Name -and
+            -not $_.isOffscreen -and
+            $_.isInvokable
+        } | Select-Object -First 1
+        if ($match) {
+            return $match.selector
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "Invokable Button '$Name' was not found."
 }
 
 function Get-ElementName(
@@ -273,6 +325,9 @@ Remove-Item -Path $inspectorExportPath -Force -ErrorAction SilentlyContinue
 $smokeInitialState = if ($RouterOnly) {
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"route":"toggle-switch","recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
 }
+elseif ($MotionOnly) {
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"route":"animation-interop","recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
+}
 else {
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
 }
@@ -481,6 +536,69 @@ try {
             throw "The Gallery Router smoke produced heartbeat timeout evidence."
         }
         Write-Host "Gallery Router smoke passed. Evidence: $evidenceRoot"
+        return
+    }
+
+    if ($MotionOnly) {
+        Invoke-WinApp @(
+            "ui", "wait-for", "AnimationInteropPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryMotionAnimationInteropPopupTarget",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "GalleryMotionAnimationInteropSpring",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryMotionAnimationInteropResult",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "PART_BackButton",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "MotionCategoryPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "PART_BackButton",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryHomeHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryRenderError",
+            "-w", "$windowHandle",
+            "--gone",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @("ui", "invoke", "Close", "-w", "$windowHandle")
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after Motion smoke."
+        }
+        $windowHandle = 0
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery Motion smoke exited with code $($appProcess.ExitCode)."
+        }
+        $stdout = Get-Content $stdoutPath -Raw
+        if ($stdout -notmatch "renderer disposed cleanly") {
+            throw "The Gallery Motion smoke did not report clean renderer disposal."
+        }
+        if (Test-Path $heartbeatEvidencePath) {
+            throw "The Gallery Motion smoke produced heartbeat timeout evidence."
+        }
+        Write-Host "Gallery Motion smoke passed. Evidence: $evidenceRoot"
         return
     }
 
@@ -1139,6 +1257,34 @@ try {
             $_.Heading -in $windowingHeadings
         })
     }
+    if ($CategoryOnly) {
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryRenderError",
+            "-w", "$windowHandle",
+            "--gone",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$windowHandle"
+        )
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after category smoke."
+        }
+        $windowHandle = 0
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery category smoke exited with code $($appProcess.ExitCode)."
+        }
+        $stdout = Get-Content $stdoutPath -Raw
+        if ($stdout -notmatch "renderer disposed cleanly") {
+            throw "The Gallery category smoke did not report clean renderer disposal."
+        }
+        if (Test-Path $heartbeatEvidencePath) {
+            throw "The Gallery category smoke produced heartbeat timeout evidence."
+        }
+        Write-Host "Gallery category smoke passed. Evidence: $evidenceRoot"
+        return
+    }
 
     foreach ($route in $routes) {
         Ensure-NavigationItem $windowHandle "GalleryHomeNavItem"
@@ -1165,10 +1311,10 @@ try {
             "ui", "scroll-into-view", $route.Name,
             "-w", "$windowHandle"
         )
-        Invoke-WinApp @(
-            "ui", "invoke", $route.Name,
-            "-w", "$windowHandle"
-        )
+        $routeSelector = Get-VisibleButtonSelector `
+            $windowHandle `
+            $route.Name
+        Invoke-LockSafeElement $windowHandle $routeSelector
         Invoke-WinApp @(
             "ui", "wait-for", $route.Heading,
             "-w", "$windowHandle",
@@ -1921,7 +2067,7 @@ try {
                 throw "The CheckBox interaction target was not found."
             }
             Invoke-WinApp @(
-                "ui", "click", $checkBox.selector,
+                "ui", "invoke", $checkBox.selector,
                 "-w", "$windowHandle"
             )
             Start-Sleep -Milliseconds 150
@@ -1959,7 +2105,7 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "click", $ringCheckBox.selector,
+                "ui", "invoke", $ringCheckBox.selector,
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
@@ -2080,7 +2226,7 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "click", "GalleryCollectionsFlipViewNext",
+                "ui", "invoke", "GalleryCollectionsFlipViewNext",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
@@ -2138,7 +2284,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "ItemsViewPageHeading") {
+        if (
+            $route.Heading -eq "ItemsViewPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             $itemsViewItemSearchJson = Invoke-WinApp @(
                 "ui", "search", "Cliff",
                 "-w", "$windowHandle",
@@ -2191,7 +2340,10 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "TreeViewPageHeading") {
+        if (
+            $route.Heading -eq "TreeViewPageHeading" -and
+            -not $SkipKeyboardInput
+        ) {
             $treeItemSearchJson = Invoke-WinApp @(
                 "ui", "search", "Documents",
                 "-w", "$windowHandle",

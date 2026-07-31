@@ -4,6 +4,15 @@
 
 Components use React-like composition and Solid-style fine-grained signals. A component runs once when mounted; signals update only the affected native properties or child ranges.
 
+Documentation:
+
+- [Capability matrix](docs/capabilities.md)
+- [Public API index](docs/api-index.md)
+- [Validation guide](docs/validation.md)
+- [Async actions](docs/recipes/async-actions.md)
+- [Startup and event coalescing](docs/recipes/startup-and-events.md)
+- [Native resource ownership](docs/recipes/native-resources.md)
+
 ```tsx
 import {
   computed,
@@ -1368,6 +1377,56 @@ The loader runs on the first component mount and caches only a successful
 component result. Loading errors remain visible to the nearest
 `ErrorBoundary`. The API is synchronous; it does not add Suspense or
 Promise-based rendering.
+
+Use `createAsyncAction()` for user-triggered asynchronous work:
+
+```tsx
+const pickFile = createAsyncAction(
+  async (_input, { signal }) => {
+    const picker = new FileOpenPicker(windowId)
+    picker.fileTypeFilter.append('*')
+    const file =
+      await picker.pickSingleFileAsync(signal)
+    return file?.path ?? 'Canceled'
+  },
+)
+
+<UI.Button
+  isEnabled={computed(() => !pickFile.pending.value)}
+  onClick={() => pickFile.run()}
+>
+  Pick file
+</UI.Button>
+
+<AsyncView
+  state={pickFile}
+  pending={<UI.ProgressRing isActive />}
+  error={(error) => (
+    <UI.TextBlock text={String(error)} />
+  )}
+>
+  {(path) => <UI.TextBlock text={path} />}
+</AsyncView>
+```
+
+The default `drop` concurrency ignores duplicate runs while pending.
+`concurrency: 'replace'` aborts the previous run. Actions created during
+component mount are disposed with their reactive scope. Late results cannot
+overwrite current state.
+
+Recipe authors can register partially created resources with the operation
+scope:
+
+```ts
+const capture = scope.closeable(new MediaCapture())
+const session = scope.disposable(createSession(capture))
+```
+
+Operation-owned resources are released in reverse order on failure,
+cancellation, stale completion, replacement, or component disposal.
+Successful values remain owned by the action until they are replaced or the
+action is disposed. `AsyncView` rethrows unrendered errors to the nearest
+`ErrorBoundary`.
 
 `VirtualFor` bounds the mounted range for large fixed-height collections:
 

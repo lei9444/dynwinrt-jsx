@@ -76,6 +76,8 @@ adoption map.
 | Signals, scheduling, scopes, lifecycle | `src/core/reactive.ts` |
 | VNode and JSX descriptors | `src/core/vnode.ts`, `src/jsx-runtime.ts` |
 | `Show`, `For`, boundaries, portals, windowing | `src/core/control-flow.ts` |
+| Lazy modules and async actions | `src/core/lazy.ts`, `src/core/async.ts` |
+| High-frequency event coalescing | `src/core/coalescing.ts`, `src/winui/event-coalescing.ts` |
 | Context and binding helpers | `src/core/context.ts`, `src/core/binding.ts` |
 | Native control typing and factories | `src/renderer/native.ts` |
 | Adapter descriptors and child strategies | `src/renderer/adapters.ts` |
@@ -99,6 +101,7 @@ adoption map.
 | Diagnostics and heartbeat | `src/runtime/diagnostics.ts`, `src/runtime/diagnostic-evidence.ts`, `src/runtime/heartbeat.ts`, `src/runtime/host-evidence.ts` |
 | Worker Window lifecycle and file hot reload | `src/worker.ts` |
 | Worker runtime and cleanup composition | `src/runtime/worker-session.ts`, `src/runtime/cleanup.ts` |
+| Native and Composition resource ownership | `src/runtime/native-resource.ts`, `src/winui/composition.ts` |
 | Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
@@ -236,6 +239,15 @@ The built-in WinUI layer currently provides:
   heartbeat/shared state, standard messages, and Worker exit cleanup.
 - Synchronous and asynchronous cleanup stacks continue after failures and
   retry only incomplete actions on the next close attempt.
+- `createLazyComponent()` keeps synchronous non-first-screen modules outside
+  the startup path while preserving normal component scopes.
+- `createAsyncAction()` owns cancellation, stale-result suppression, async
+  state, operation resources, and component disposal; `AsyncView` renders the
+  state and routes unrendered failures to `ErrorBoundary`.
+- Scoped last-value coalescers and ScrollViewer immediate/frame/native sampling
+  prevent high-frequency callbacks from synchronously flooding Signals.
+- Native resource and Composition owners release in reverse order, retry failed
+  cleanup, and stop tracked animations before releasing their resources.
 
 Add new behavior through `propertySetters`, `propertyConverters`,
 `convertProperty`, or a custom `native()` component setter. Keep converters
@@ -323,13 +335,17 @@ From the repository root:
 npm run typecheck
 npm test
 npm run check
+npm run docs:api
 npm pack --quiet
+.\scripts\run-validation-suite.ps1 -Profile quick
 .\scripts\run-native-selftest.ps1
 .\scripts\run-accessibility-matrix.ps1 -IncludeUIA
 ```
 
 Use `npm run check` for source or behavior changes. `npm pack --quiet` runs the
 prepack checks and refreshes the local tarball.
+Use `run-validation-suite.ps1` for one quick/native/full entry point with
+per-step logs and a versioned JSON summary.
 Use `run-native-selftest.ps1` for real WinUI property, event, keyed identity,
 error propagation, automation, focus, cleanup, and Worker failure evidence.
 Use `run-accessibility-matrix.ps1 -IncludeUIA` for reversible High Contrast,
@@ -359,6 +375,8 @@ versions unless the task is explicitly a dependency upgrade.
 Account for these limits when designing a feature:
 
 - Function components do not rerender like React components.
+- `createLazyComponent()` and `createAsyncAction()` are synchronous component
+  APIs; components still do not return Promises and there is no Suspense model.
 - `VirtualFor` is fixed-height application windowing; native dynamic-height
   virtualization uses `createItemsRepeaterControl()`.
 - ItemsRepeater keeps one projected observable vector and applies keyed
