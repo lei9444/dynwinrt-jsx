@@ -56,6 +56,16 @@ npm run setup
 npm start
 ```
 
+Release validation packs those exact versions into a local artifact set, then
+creates the application through the packaged CLI in normal mode:
+
+```powershell
+npm run validate:release
+```
+
+The smoke uses an isolated npm cache and verifies that the generated manifest
+retains exact registry-style versions instead of sibling `file:` dependencies.
+
 Use development hot reload after setup:
 
 ```powershell
@@ -1837,6 +1847,9 @@ repositories without installing npm packages:
 .\scripts\smoke-generated-app-local.ps1 `
   -DotNetPath C:\path\to\dotnet.exe `
   -TypeScriptPath C:\path\to\typescript\bin\tsc
+
+.\scripts\smoke-generated-app-release.ps1 `
+  -DotNetPath C:\path\to\dotnet.exe
 ```
 
 Add `-SkipDesktopInput` when running in a locked or non-interactive session.

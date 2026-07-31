@@ -13,6 +13,7 @@ scripts and writes one result directory containing per-step logs plus
 npm run validate:quick
 npm run validate:native
 npm run validate:full
+npm run validate:release
 ```
 
 ## Profiles
@@ -21,7 +22,7 @@ npm run validate:full
 |---|---|
 | `quick` | package typecheck/tests, Gallery lifecycle/module tests |
 | `native` | quick + Dashboard native selftest + Gallery Router UIA |
-| `full` | native + Dashboard soak/evidence + full Gallery UIA + accessibility matrix + generated app |
+| `full` | native + Dashboard soak/evidence + full Gallery UIA + accessibility matrix + pinned release-set app |
 
 Preview the plan without running commands:
 
@@ -51,6 +52,15 @@ checks. The normal unlocked profile retains every page interaction.
 Native scripts retain their own detailed evidence directories for inspector,
 heartbeat, route, UIA, hang capture, orphan-window, and final-idle data.
 
+The release-set step writes:
+
+- `release-set.json` with exact template specs, source commits, package
+  filenames, sizes, and SHA-256 hashes;
+- `compatibility.json` with the generated normal-mode manifest, installed
+  versions, process result, and renderer cleanup evidence;
+- an isolated npm cache and empty target directory, with no sibling junctions
+  or `file:` declarations in the generated application.
+
 ## Focused commands
 
 ```powershell
@@ -59,6 +69,7 @@ npm run check
 .\scripts\repeat-dashboard-smoke.ps1 -SkipDesktopInput
 .\scripts\run-accessibility-matrix.ps1 -IncludeUIA
 .\scripts\smoke-generated-app-local.ps1
+.\scripts\smoke-generated-app-release.ps1
 ```
 
 Use the smallest profile that proves the changed behavior. Use `full` before a

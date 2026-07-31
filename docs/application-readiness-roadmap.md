@@ -377,8 +377,8 @@ Keep each slice usable and independently reviewable:
 
 - [x] Select `lei9444/dynwinrt-jsx` as the source repository.
 - [x] Document the Windows, architecture, Node.js, and Windows App SDK matrix.
-- [ ] Pin compatible dynwinrt, codegen, winapp CLI, and JSX artifacts.
-- [ ] Select a tarball, local `file:`, or internal-feed distribution path.
+- [x] Pin compatible dynwinrt, codegen, winapp CLI, and JSX artifacts.
+- [x] Select a tarball, local `file:`, or internal-feed distribution path.
 - [x] Add automated build, type-contract, runtime, and package-content jobs.
 - [ ] Complete creation and launch from an empty directory on a clean machine.
 
@@ -482,7 +482,7 @@ identity, and manifest dependencies in a provenance document.
 - [ ] Add API, control, lifecycle, troubleshooting, and packaging guides.
 - [x] Generate a compact public API/signature index.
 - [x] Add focused agent skills and compilable task recipes.
-- [ ] Maintain generated and representative compatibility applications.
+- [x] Maintain generated and representative compatibility applications.
 - [ ] Complete an upgrade using only consumer-facing documentation.
 
 ### Framework evolution checklist

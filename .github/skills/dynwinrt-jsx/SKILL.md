@@ -105,6 +105,7 @@ adoption map.
 | Root replacement | `src/renderer/hot.ts` |
 | Public exports | `src/index.ts` |
 | Project creation | `bin/create.js`, `templates/winui` |
+| Pinned release-set validation | `scripts/pack-release-set.ps1`, `scripts/smoke-generated-app-release.ps1` |
 | Representative native app | `examples/dashboard` |
 | Gallery route modules | `examples/gallery/src/pages/routes.tsx`, `examples/gallery/src/pages/*/routes.tsx` |
 | Runtime and type contracts | `tests` |
@@ -337,6 +338,7 @@ npm test
 npm run check
 npm run docs:api
 npm pack --quiet
+npm run validate:release
 .\scripts\run-validation-suite.ps1 -Profile quick
 .\scripts\run-native-selftest.ps1
 .\scripts\run-accessibility-matrix.ps1 -IncludeUIA
@@ -346,6 +348,8 @@ Use `npm run check` for source or behavior changes. `npm pack --quiet` runs the
 prepack checks and refreshes the local tarball.
 Use `run-validation-suite.ps1` for one quick/native/full entry point with
 per-step logs and a versioned JSON summary.
+Use `validate:release` to pack the exact template dependency set and smoke a
+normal-mode generated app from an isolated npm cache without sibling links.
 Use `run-native-selftest.ps1` for real WinUI property, event, keyed identity,
 error propagation, automation, focus, cleanup, and Worker failure evidence.
 Use `run-accessibility-matrix.ps1 -IncludeUIA` for reversible High Contrast,

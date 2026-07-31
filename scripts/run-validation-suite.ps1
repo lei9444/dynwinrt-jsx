@@ -242,13 +242,13 @@ $steps = @(
         $repoRoot `
         @("full")
     New-Step `
-        "generated-app" `
-        "Create and smoke a fresh local generated application." `
+        "release-set-app" `
+        "Pack the pinned package set and smoke a normal-mode generated application." `
         $pwsh `
         @(
             "-NoProfile",
             "-File",
-            (Join-Path $PSScriptRoot "smoke-generated-app-local.ps1"),
+            (Join-Path $PSScriptRoot "smoke-generated-app-release.ps1"),
             "-NodePath",
             $node,
             "-DotNetPath",

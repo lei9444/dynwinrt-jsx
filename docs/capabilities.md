@@ -60,6 +60,7 @@ Function components mount once. They do not rerender as a unit.
 | Heartbeat and timeout evidence | Supported | Host evidence presets |
 | Structured evidence bundle | Supported | diagnostics APIs |
 | Unified validation suite | Supported | `scripts/run-validation-suite.ps1` |
+| Pinned tarball release set | Supported | `scripts/pack-release-set.ps1` |
 
 ## Performance guidance
 

@@ -296,6 +296,52 @@ test('create configures sibling repositories in local mode', (t) => {
   )
 })
 
+test('release validation preserves normal-mode exact packages', () => {
+  const root = path.join(__dirname, '..')
+  const manifest = readManifest(root)
+  const releasePack = fs.readFileSync(
+    path.join(root, 'scripts', 'pack-release-set.ps1'),
+    'utf8',
+  )
+  const releaseSmoke = fs.readFileSync(
+    path.join(root, 'scripts', 'smoke-generated-app-release.ps1'),
+    'utf8',
+  )
+  const validationSuite = fs.readFileSync(
+    path.join(root, 'scripts', 'run-validation-suite.ps1'),
+    'utf8',
+  )
+
+  assert.match(
+    manifest.scripts['validate:release'],
+    /smoke-generated-app-release\.ps1/,
+  )
+  for (const packageName of [
+    '@microsoft/dynwinrt',
+    '@microsoft/dynwinrt-codegen',
+    '@microsoft/winappcli',
+    'dynwinrt-jsx',
+  ]) {
+    assert.match(
+      releasePack,
+      new RegExp(packageName.replace('/', '\\/')),
+    )
+  }
+  assert.match(releasePack, /dynwinrt-jsx\.release-set/)
+  assert.match(releasePack, /Assert-ExactVersion/)
+  assert.match(releasePack, /process\.arch/)
+  assert.match(releaseSmoke, /--no-save/)
+  assert.match(releaseSmoke, /--package-lock=false/)
+  assert.match(releaseSmoke, /Assert-ReleaseArtifacts/)
+  assert.match(releaseSmoke, /Assert-ExactProjectManifest/)
+  assert.doesNotMatch(releaseSmoke, /--local-root/)
+  assert.doesNotMatch(releaseSmoke, /Set-DirectoryJunction/)
+  assert.match(
+    validationSuite,
+    /smoke-generated-app-release\.ps1/,
+  )
+})
+
 test('dashboard and template include Phase 2 and theme WinMD roots', () => {
   const template = readManifest(
     path.join(__dirname, '..', 'templates', 'winui'),
