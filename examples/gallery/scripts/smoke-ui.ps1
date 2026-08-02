@@ -11,6 +11,11 @@ param(
     [switch]$ShellOnly,
     [switch]$MotionOnly,
     [switch]$CategoryOnly,
+    [switch]$ControlledOnly,
+    [ValidateSet("pivot", "tab-view", "semantic-zoom", "tree-view")]
+    [string]$ControlledRoute = "pivot",
+    [switch]$SkipBuild,
+    [string]$EvidenceRoot,
     [switch]$PackagedShellPositivePath,
     [string]$PackagedGalleryLaunchCommand,
     [switch]$WindowingOnly,
@@ -122,6 +127,89 @@ function Assert-ElementName(
     $actualName = Get-ElementName $WindowHandle $AutomationId
     if ($actualName -cne $ExpectedName) {
         throw "$Description reported '$actualName'; expected '$ExpectedName'."
+    }
+}
+
+function Wait-ElementNameMatch(
+    [int64]$WindowHandle,
+    [string]$AutomationId,
+    [string]$Pattern,
+    [string]$Description
+) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds(
+        $TimeoutMilliseconds
+    )
+    $lastName = $null
+    while ([DateTime]::UtcNow -lt $deadline) {
+        try {
+            $name = Get-ElementName $WindowHandle $AutomationId
+            $lastName = $name
+            if ($name -match $Pattern) {
+                return $Matches
+            }
+        }
+        catch {
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    throw "$Description did not match '$Pattern'; last value was '$lastName'."
+}
+
+function Wait-IndexedControlledState(
+    [int64]$WindowHandle,
+    [string]$AutomationId,
+    [string]$CaptureAutomationId,
+    [int]$Expected,
+    [string]$Description
+) {
+    Start-Sleep -Milliseconds 250
+    Invoke-WinApp @(
+        "ui", "invoke", $CaptureAutomationId,
+        "-w", "$WindowHandle"
+    )
+    $match = Wait-ElementNameMatch `
+        $WindowHandle `
+        $AutomationId `
+        "^signal=(-?\d+);native=(-?\d+);events=(\d+)$" `
+        $Description
+    $signalValue = [int]$match[1]
+    $nativeValue = [int]$match[2]
+    $events = [int]$match[3]
+    if (
+        $signalValue -ne $Expected -or
+        $nativeValue -ne $Expected
+    ) {
+        throw "$Description settled at signal=$signalValue, native=$nativeValue; expected $Expected."
+    }
+    if ($events -gt 20) {
+        throw "$Description produced $events selection events."
+    }
+}
+
+function Wait-SemanticControlledState(
+    [int64]$WindowHandle,
+    [ValidateSet("in", "out")]
+    [string]$Expected,
+    [string]$Description
+) {
+    Start-Sleep -Milliseconds 350
+    Invoke-WinApp @(
+        "ui", "invoke", "GallerySemanticZoomCaptureControlled",
+        "-w", "$WindowHandle"
+    )
+    $match = Wait-ElementNameMatch `
+        $WindowHandle `
+        "GallerySemanticZoomControlledStatus" `
+        "^signal=(in|out);native=(in|out);events=(\d+)$" `
+        $Description
+    if (
+        $match[1] -cne $Expected -or
+        $match[2] -cne $Expected
+    ) {
+        throw "$Description settled at signal=$($match[1]), native=$($match[2]); expected $Expected."
+    }
+    if ([int]$match[3] -gt 20) {
+        throw "$Description produced $($match[3]) view events."
     }
 }
 
@@ -291,7 +379,10 @@ function Invoke-GalleryRoute(
     throw "Gallery route '$Selector' did not show '$Heading' after two attempts."
 }
 
-$evidenceRoot = Join-Path $galleryRoot ".winapp\smoke"
+if (-not $EvidenceRoot) {
+    $EvidenceRoot = Join-Path $galleryRoot ".winapp\smoke"
+}
+$evidenceRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $stdoutPath = Join-Path $evidenceRoot "gallery.stdout.log"
 $stderrPath = Join-Path $evidenceRoot "gallery.stderr.log"
@@ -328,6 +419,11 @@ $smokeInitialState = if ($RouterOnly) {
 elseif ($MotionOnly) {
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"route":"animation-interop","recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
 }
+elseif ($ControlledOnly) {
+    '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"route":"' +
+        $ControlledRoute +
+        '","recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
+}
 else {
     '{"version":1,"count":0,"darkTheme":false,"updatedAt":null,"recentPageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"],"favoritePageIds":["buttons","collections","overlays","range-progress","choices-status","layout","text-input","icons"]}'
 }
@@ -336,13 +432,15 @@ $env:DYNWINRT_JSX_STATE_PATH = $smokeStatePath
 $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
 $env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
 
-& npm.cmd --prefix $galleryRoot run build:dynwinrt
-if ($LASTEXITCODE -ne 0) {
-    throw "Gallery dynwinrt preparation failed."
-}
-& npm.cmd --prefix $galleryRoot run build
-if ($LASTEXITCODE -ne 0) {
-    throw "Gallery build failed."
+if (-not $SkipBuild) {
+    & npm.cmd --prefix $galleryRoot run build:dynwinrt
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gallery dynwinrt preparation failed."
+    }
+    & npm.cmd --prefix $galleryRoot run build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gallery build failed."
+    }
 }
 
 if ($PackagedShellPositivePath) {
@@ -599,6 +697,202 @@ try {
             throw "The Gallery Motion smoke produced heartbeat timeout evidence."
         }
         Write-Host "Gallery Motion smoke passed. Evidence: $evidenceRoot"
+        return
+    }
+
+    if ($ControlledOnly) {
+        switch ($ControlledRoute) {
+            "pivot" {
+                Invoke-WinApp @(
+                    "ui", "wait-for", "PivotPageHeading",
+                    "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
+                )
+                Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryPivotControlledStatus" `
+                "GalleryPivotCaptureControlled" `
+                0 `
+                "Pivot initial controlled state"
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPivotProgrammaticUrgent",
+                "-w", "$windowHandle"
+            )
+            Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryPivotControlledStatus" `
+                "GalleryPivotCaptureControlled" `
+                3 `
+                "Pivot Signal update"
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPivotFlagged",
+                "-w", "$windowHandle"
+            )
+            Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryPivotControlledStatus" `
+                "GalleryPivotCaptureControlled" `
+                2 `
+                "Pivot native update"
+            Invoke-WinApp @(
+                "ui", "invoke", "GalleryPivotRapidSelection",
+                "-w", "$windowHandle"
+            )
+            Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryPivotControlledStatus" `
+                "GalleryPivotCaptureControlled" `
+                0 `
+                "Pivot rapid update"
+            }
+            "tab-view" {
+                Invoke-WinApp @(
+                "ui", "wait-for", "TabViewPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+                )
+                Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryTabViewControlledStatus" `
+                "GalleryTabViewCaptureControlled" `
+                0 `
+                "TabView initial controlled state"
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTabViewSelectDocument2",
+                "-w", "$windowHandle"
+                )
+                Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryTabViewControlledStatus" `
+                "GalleryTabViewCaptureControlled" `
+                2 `
+                "TabView Signal update"
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTabViewTab1",
+                "-w", "$windowHandle"
+                )
+                Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryTabViewControlledStatus" `
+                "GalleryTabViewCaptureControlled" `
+                1 `
+                "TabView native update"
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTabViewRapidSelection",
+                "-w", "$windowHandle"
+                )
+                Wait-IndexedControlledState `
+                $windowHandle `
+                "GalleryTabViewControlledStatus" `
+                "GalleryTabViewCaptureControlled" `
+                0 `
+                "TabView rapid update"
+            }
+            "semantic-zoom" {
+                Invoke-WinApp @(
+                "ui", "wait-for", "SemanticZoomPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+                )
+                Wait-SemanticControlledState `
+                $windowHandle `
+                "in" `
+                "SemanticZoom initial controlled state"
+                Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomSignalOut",
+                "-w", "$windowHandle"
+                )
+                Wait-SemanticControlledState `
+                $windowHandle `
+                "out" `
+                "SemanticZoom Signal out"
+                Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomSignalIn",
+                "-w", "$windowHandle"
+                )
+                Wait-SemanticControlledState `
+                $windowHandle `
+                "in" `
+                "SemanticZoom Signal in"
+                Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomRapidViews",
+                "-w", "$windowHandle"
+                )
+                Wait-SemanticControlledState `
+                $windowHandle `
+                "out" `
+                "SemanticZoom rapid update"
+                Invoke-WinApp @(
+                "ui", "invoke", "GallerySemanticZoomToggle",
+                "-w", "$windowHandle"
+                )
+                Wait-SemanticControlledState `
+                $windowHandle `
+                "in" `
+                "SemanticZoom native update"
+            }
+            "tree-view" {
+                Invoke-WinApp @(
+                "ui", "wait-for", "TreeViewPageHeading",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
+                )
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTreeViewSelectTwo",
+                "-w", "$windowHandle"
+                )
+                Start-Sleep -Milliseconds 250
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTreeViewCaptureControlled",
+                "-w", "$windowHandle"
+                )
+                $null = Wait-ElementNameMatch `
+                $windowHandle `
+                "GalleryTreeViewControlledStatus" `
+                "^selected=8;events=0$" `
+                "TreeView programmatic selection"
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTreeViewClearSelection",
+                "-w", "$windowHandle"
+                )
+                Start-Sleep -Milliseconds 250
+                Invoke-WinApp @(
+                "ui", "invoke", "GalleryTreeViewCaptureControlled",
+                "-w", "$windowHandle"
+                )
+                $null = Wait-ElementNameMatch `
+                $windowHandle `
+                "GalleryTreeViewControlledStatus" `
+                "^selected=0;events=0$" `
+                "TreeView selection clear"
+            }
+        }
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryRenderError",
+            "-w", "$windowHandle",
+            "--gone",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$windowHandle"
+        )
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after controlled-value smoke."
+        }
+        $windowHandle = 0
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery controlled-value smoke exited with code $($appProcess.ExitCode)."
+        }
+        $stdout = Get-Content $stdoutPath -Raw
+        if ($stdout -notmatch "renderer disposed cleanly") {
+            throw "The Gallery controlled-value smoke did not report clean renderer disposal."
+        }
+        if (Test-Path $heartbeatEvidencePath) {
+            throw "The Gallery controlled-value smoke produced heartbeat timeout evidence."
+        }
+        Write-Host "Gallery $ControlledRoute controlled-value smoke passed. Evidence: $evidenceRoot"
         return
     }
 

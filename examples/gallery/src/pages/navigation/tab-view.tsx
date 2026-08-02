@@ -134,9 +134,12 @@ export function TabViewPage(context: AppContext) {
   )
   const widthModeIndex = signal(0)
   const closeModeIndex = signal(0)
+  const selectedIndex = signal(0)
+  const controlledStatus = signal('Not captured.')
   const selectedTitle = signal('Home')
   const status = signal('Ready.')
   const nativeTabCount = signal(3)
+  let selectionEvents = 0
   const addTab = () => {
     const id = nextId
     nextId += 1
@@ -208,6 +211,10 @@ const tabSource = IObservableVector_Object.create(initialTabs)
               automationId="GalleryTabViewStatus"
               text={status}
             />
+            <UI.TextBlock
+              automationId="GalleryTabViewControlledStatus"
+              text={controlledStatus}
+            />
           </UI.StackPanel>
         }
         options={
@@ -226,6 +233,46 @@ const tabSource = IObservableVector_Object.create(initialTabs)
                 <UI.TextBlock key={mode.name} text={mode.name} />
               ))}
             </GalleryComboBox>
+            <UI.Button
+              automationId="GalleryTabViewSelectDocument2"
+              onClick={() => {
+                selectedIndex.value = 2
+              }}
+            >
+              Select Document 2 from Signal
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryTabViewRapidSelection"
+              onClick={() => {
+                selectedIndex.value = 1
+                selectedIndex.value = 2
+                selectedIndex.value = 0
+              }}
+            >
+              Rapidly settle on Home
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryTabViewRemoveSelected"
+              onClick={() => {
+                const selected = tabs.peek()[selectedIndex.peek()]
+                if (selected) {
+                  removeTab(selected.id)
+                }
+              }}
+            >
+              Remove selected tab
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryTabViewCaptureControlled"
+              onClick={() => {
+                controlledStatus.value =
+                  `signal=${selectedIndex.peek()};native=${
+                    tabView.current?.selectedIndex ?? -99
+                  };events=${selectionEvents}`
+              }}
+            >
+              Capture controlled state
+            </UI.Button>
             <GalleryComboBox
               automationId="GalleryTabViewCloseMode"
               header={<UI.TextBlock text="Close button mode" />}
@@ -248,7 +295,7 @@ const tabSource = IObservableVector_Object.create(initialTabs)
           automationId="GalleryTabViewControl"
           minHeight={340}
           tabItemsSource={tabSource}
-          selectedIndex={0}
+          selectedIndex={selectedIndex}
           tabWidthMode={computed(
             () =>
               widthModes[widthModeIndex.value]?.value ??
@@ -264,12 +311,16 @@ const tabSource = IObservableVector_Object.create(initialTabs)
             nativeTabCount.value = sender.tabItems.size
           }}
           onSelectionChanged={() => {
-            const selectedIndex = tabView.current?.selectedIndex
+            selectionEvents += 1
+            const next = tabView.current?.selectedIndex
             const tab =
-              selectedIndex === undefined
+              next === undefined
                 ? undefined
-                : tabs.peek()[selectedIndex]
-            if (tab) {
+                : tabs.peek()[next]
+            if (next !== undefined && tab) {
+              if (next !== selectedIndex.peek()) {
+                selectedIndex.value = next
+              }
               selectedTitle.value = tab.title
               context.model.recordInteraction()
             }

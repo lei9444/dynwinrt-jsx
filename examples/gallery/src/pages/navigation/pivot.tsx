@@ -39,9 +39,11 @@ const sections = [
 
 export function PivotPage(context: AppContext) {
   const selectedIndex = signal(0)
+  const controlledStatus = signal('Not captured.')
   const locked = signal(false)
   const pivot: RefObject<Pivot> = { current: null }
   const lockToggle: RefObject<ToggleInstance> = { current: null }
+  let selectionEvents = 0
 
   return (
     <Page
@@ -59,8 +61,8 @@ export function PivotPage(context: AppContext) {
 <GalleryPivot
   title={PropertyValue.createString('EMAIL')}
   selectedIndex={selectedIndex}
-  onSelectionChanged={(sender: Pivot) => {
-    selectedIndex.value = sender.selectedIndex
+  onSelectedIndexChange={(index) => {
+    selectedIndex.value = index
   }}
 >
   <UI.PivotItem header="All">...</UI.PivotItem>
@@ -68,15 +70,21 @@ export function PivotPage(context: AppContext) {
 </GalleryPivot>
         `}
         output={
-          <UI.TextBlock
-            automationId="GalleryPivotStatus"
-            text={computed(
-              () =>
-                `Selected: ${
-                  sections[selectedIndex.value]?.name ?? 'None'
-                }`,
-            )}
-          />
+          <UI.StackPanel spacing={4}>
+            <UI.TextBlock
+              automationId="GalleryPivotStatus"
+              text={computed(
+                () =>
+                  `Selected: ${
+                    sections[selectedIndex.value]?.name ?? 'None'
+                  }`,
+              )}
+            />
+            <UI.TextBlock
+              automationId="GalleryPivotControlledStatus"
+              text={controlledStatus}
+            />
+          </UI.StackPanel>
         }
         options={
           <UI.StackPanel spacing={10}>
@@ -110,6 +118,35 @@ export function PivotPage(context: AppContext) {
                 }
               }}
             />
+            <UI.Button
+              automationId="GalleryPivotProgrammaticUrgent"
+              onClick={() => {
+                selectedIndex.value = 3
+              }}
+            >
+              Select Urgent from Signal
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryPivotRapidSelection"
+              onClick={() => {
+                selectedIndex.value = 1
+                selectedIndex.value = 3
+                selectedIndex.value = 0
+              }}
+            >
+              Rapidly settle on All
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryPivotCaptureControlled"
+              onClick={() => {
+                controlledStatus.value =
+                  `signal=${selectedIndex.peek()};native=${
+                    pivot.current?.selectedIndex ?? -99
+                  };events=${selectionEvents}`
+              }}
+            >
+              Capture controlled state
+            </UI.Button>
           </UI.StackPanel>
         }
       >
@@ -120,10 +157,9 @@ export function PivotPage(context: AppContext) {
           minHeight={280}
           selectedIndex={selectedIndex}
           isLocked={locked}
-          onSelectionChanged={() => {
-            const next = pivot.current?.selectedIndex
+          onSelectedIndexChange={(next) => {
+            selectionEvents += 1
             if (
-              next !== undefined &&
               next !== selectedIndex.value
             ) {
               selectedIndex.value = next

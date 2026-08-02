@@ -92,7 +92,7 @@ adoption map.
 | URI, image, brush, font, icon, and nullable values | `src/winui/values.ts`, `src/winui/icons.ts` |
 | Grid and navigation helpers | `src/winui/grid.ts`, `src/winui/navigation.ts` |
 | Signal-native routing | `src/core/router.ts`, `src/core/router-path.ts`, `src/core/router-matcher.ts`, `src/core/router-registry.ts`, `src/winui/router.ts` |
-| ListView, ComboBox, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/selector.ts` |
+| ListView, ComboBox, Pivot, and selector controls | `src/winui/list-view.ts`, `src/winui/combo-box.ts`, `src/winui/pivot.ts`, `src/winui/selector.ts` |
 | SelectorBar ownership and ScrollViewer state | `src/winui/selector-bar.ts`, `src/winui/scroll-viewer.ts` |
 | Native ItemsRepeater/ItemsView virtualization | `src/winui/items-repeater.ts`, `src/renderer/renderer-items-repeater.ts` |
 | Flyout, MenuFlyout, Popup, TeachingTip, dialog, and focus | `src/winui/overlays.ts`, `src/winui/dialog.ts`, `src/winui/focus.ts` |
@@ -108,6 +108,7 @@ adoption map.
 | Pinned release-set validation | `scripts/pack-release-set.ps1`, `scripts/smoke-generated-app-release.ps1` |
 | Representative native app | `examples/dashboard` |
 | Gallery route modules | `examples/gallery/src/pages/routes.tsx`, `examples/gallery/src/pages/*/routes.tsx` |
+| Controlled native validation | `examples/gallery/scripts/smoke-controlled-values.ps1` |
 | Runtime and type contracts | `tests` |
 
 ## Required invariants

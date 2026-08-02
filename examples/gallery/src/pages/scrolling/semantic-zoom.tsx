@@ -55,6 +55,8 @@ export function SemanticZoomPage(context: AppContext) {
   const listItems: Array<RefObject<ListViewItem>> =
     groups.map(() => ({ current: null }))
   const zoomedIn = signal(true)
+  const controlledStatus = signal('Not captured.')
+  let viewEvents = 0
   const selectedIndex = signal(0)
   const requireZoom = () => {
     const current = semanticZoom.current
@@ -143,6 +145,10 @@ export function SemanticZoomPage(context: AppContext) {
                   `Selected group: ${groups[selectedIndex.value]?.name ?? 'None'}`,
               )}
             />
+            <UI.TextBlock
+              automationId="GallerySemanticZoomControlledStatus"
+              text={controlledStatus}
+            />
           </UI.StackPanel>
         }
         options={
@@ -165,6 +171,45 @@ export function SemanticZoomPage(context: AppContext) {
             >
               Select Layout group
             </UI.Button>
+            <UI.Button
+              automationId="GallerySemanticZoomSignalOut"
+              onClick={() => {
+                zoomedIn.value = false
+              }}
+            >
+              Activate zoomed-out view from Signal
+            </UI.Button>
+            <UI.Button
+              automationId="GallerySemanticZoomSignalIn"
+              onClick={() => {
+                zoomedIn.value = true
+              }}
+            >
+              Activate zoomed-in view from Signal
+            </UI.Button>
+            <UI.Button
+              automationId="GallerySemanticZoomRapidViews"
+              onClick={() => {
+                zoomedIn.value = false
+                zoomedIn.value = true
+                zoomedIn.value = false
+              }}
+            >
+              Rapidly settle on zoomed-out
+            </UI.Button>
+            <UI.Button
+              automationId="GallerySemanticZoomCaptureControlled"
+              onClick={() => {
+                controlledStatus.value =
+                  `signal=${zoomedIn.peek() ? 'in' : 'out'};native=${
+                    semanticZoom.current?.isZoomedInViewActive
+                      ? 'in'
+                      : 'out'
+                  };events=${viewEvents}`
+              }}
+            >
+              Capture controlled state
+            </UI.Button>
           </UI.StackPanel>
         }
       >
@@ -172,10 +217,11 @@ export function SemanticZoomPage(context: AppContext) {
           ref={semanticZoom}
           automationId="GallerySemanticZoomControl"
           height={380}
-          isZoomedInViewActive
+          isZoomedInViewActive={zoomedIn}
           isZoomOutButtonEnabled
           onViewChangeStarted={mapDestination}
           onViewChangeCompleted={() => {
+            viewEvents += 1
             zoomedIn.value =
               requireZoom().isZoomedInViewActive
           }}

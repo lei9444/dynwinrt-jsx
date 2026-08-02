@@ -2,10 +2,12 @@ import {
   signal,
   theme,
   thickness,
+  type RefObject,
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
   PropertyValue,
+  TreeView,
   TreeViewNode,
   TreeViewSelectionMode,
 } from '#winapp/bindings'
@@ -87,6 +89,10 @@ export function TreeViewPage(context: AppContext) {
   } = createTreeNodeFactory()
   const invokedStatus = signal('Invoke or move a node.')
   const selectionStatus = signal('Selected nodes: 0')
+  const controlledStatus = signal('Not captured.')
+  const multiTree: RefObject<TreeView> = { current: null }
+  const multiRoots = createExplorerRoots()
+  let selectionEvents = 0
   const canDrag = signal(true)
   const dynamicRoots = signal<readonly TreeViewNode[]>(
     createExplorerRoots(),
@@ -174,10 +180,50 @@ root.children.append(projectsNode)
 />
         `}
         output={
-          <UI.TextBlock
-            automationId="GalleryCollectionsTreeViewSelectionStatus"
-            text={selectionStatus}
-          />
+          <UI.StackPanel spacing={4}>
+            <UI.TextBlock
+              automationId="GalleryCollectionsTreeViewSelectionStatus"
+              text={selectionStatus}
+            />
+            <UI.TextBlock
+              automationId="GalleryTreeViewControlledStatus"
+              text={controlledStatus}
+            />
+          </UI.StackPanel>
+        }
+        options={
+          <UI.StackPanel spacing={8}>
+            <UI.Button
+              automationId="GalleryTreeViewSelectTwo"
+              onClick={() => {
+                multiTree.current?.selectedNodes.replaceAll([
+                  multiRoots[0]!,
+                  multiRoots[1]!,
+                ])
+              }}
+            >
+              Select two nodes programmatically
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryTreeViewClearSelection"
+              onClick={() => {
+                multiTree.current?.selectedNodes.clear()
+              }}
+            >
+              Clear selection
+            </UI.Button>
+            <UI.Button
+              automationId="GalleryTreeViewCaptureControlled"
+              onClick={() => {
+                controlledStatus.value =
+                  `selected=${
+                    multiTree.current?.selectedNodes.size ?? -1
+                  };events=${selectionEvents}`
+              }}
+            >
+              Capture controlled state
+            </UI.Button>
+          </UI.StackPanel>
         }
       >
         <UI.Border
@@ -189,9 +235,11 @@ root.children.append(projectsNode)
           horizontalAlignment={HorizontalAlignment.Left}
         >
           <GalleryTreeView
-            rootNodes={createExplorerRoots()}
+            ref={multiTree}
+            rootNodes={multiRoots}
             selectionMode={TreeViewSelectionMode.Multiple}
             onSelectionChanged={(sender) => {
+              selectionEvents += 1
               selectionStatus.value =
                 `Selected nodes: ${sender.selectedNodes.size}`
               context.model.recordInteraction()

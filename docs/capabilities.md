@@ -38,7 +38,7 @@ Function components mount once. They do not rerender as a unit.
 |---|---|
 | Grid definitions and attached properties | Supported |
 | NavigationView route shell | Supported |
-| ListView, ComboBox, SelectorBar | Supported |
+| ListView, ComboBox, Pivot, SelectorBar | Supported |
 | ScrollViewer reactive state | Supported |
 | ScrollViewer immediate/frame/native sampling | Supported |
 | Dialog, flyout, popup, TeachingTip | Supported |

@@ -1277,6 +1277,12 @@ export class Renderer {
       onNodesChanged,
       () => {
         let firstError: unknown
+        try {
+          scope.dispose()
+        }
+        catch (error) {
+          firstError = error
+        }
         const retainedControllers: Array<
           ChildrenController | RendererItemsRepeaterController
         > = []
@@ -1300,12 +1306,6 @@ export class Renderer {
         }
         try {
           setRef(ref, null)
-        }
-        catch (error) {
-          firstError ??= error
-        }
-        try {
-          scope.dispose()
         }
         catch (error) {
           firstError ??= error

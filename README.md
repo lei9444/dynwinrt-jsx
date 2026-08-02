@@ -1104,6 +1104,29 @@ raw native ComboBox or its ref when `selectedItem` is required. Raw
 `onSelectionChanged`, `onDropDownOpened`, and `onDropDownClosed` remain
 available.
 
+Use `createPivotControl()` when a Pivot's selected index is Signal-owned:
+
+```tsx
+const MailPivot = createPivotControl({
+  Pivot,
+  selectedIndexProperty: Pivot.selectedIndexProperty,
+})
+
+<MailPivot
+  selectedIndex={section}
+  onSelectedIndexChange={(index) => {
+    section.value = index
+  }}
+>
+  <UI.PivotItem header="All">...</UI.PivotItem>
+  <UI.PivotItem header="Unread">...</UI.PivotItem>
+</MailPivot>
+```
+
+The property-changed subscription is released with the native scope, avoiding
+late `SelectionChanged` writes while Pivot removes its item containers during
+window teardown. Raw Pivot events and refs remain available.
+
 Use `createSelectorBarControl()` for owned native `SelectorBarItem` children
 and index-based controlled selection:
 

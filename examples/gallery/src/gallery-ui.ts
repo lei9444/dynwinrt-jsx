@@ -7,6 +7,7 @@ import {
   createItemsRepeaterControl,
   createListViewControl,
   createNavigationViewControl,
+  createPivotControl,
   createSelectorBarControl,
   createVirtualizedItemsControl,
   native,
@@ -307,15 +308,9 @@ export const GallerySplitView = native<
   },
   children: adapter.slot('content'),
 })
-export const GalleryPivot = native(Pivot, {
-  displayName: 'Pivot',
-  adapters: {
-    selectedIndex: adapter.withPhase(
-      adapter.oneWay(),
-      'afterChildren',
-    ),
-  },
-  children: adapter.collectionSlot('items'),
+export const GalleryPivot = createPivotControl({
+  Pivot,
+  selectedIndexProperty: Pivot.selectedIndexProperty,
 })
 export const GalleryTabView = native<
   TabView,

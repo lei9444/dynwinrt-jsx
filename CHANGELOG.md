@@ -13,6 +13,9 @@
   suite with per-step logs and JSON summaries.
 - Added a pinned tarball release-set manifest and normal-mode generated-app
   smoke using an isolated npm cache.
+- Added controlled Pivot `selectedIndex` ownership after real WinUI validation
+  found close-time selection events could otherwise write to a disconnected
+  control.
 - Grouped implementation modules under core, renderer, winui, and runtime directories while preserving package entry points.
 - Added a reactive ScrollViewer controller and an owned, controlled SelectorBar adapter.
 - Added optional DispatcherQueue renderer heartbeats, Host timeout/recovery monitoring, shared acknowledgements, and Gallery inspector export.

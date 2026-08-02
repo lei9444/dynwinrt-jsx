@@ -21,7 +21,7 @@ npm run validate:release
 | Profile | Steps |
 |---|---|
 | `quick` | package typecheck/tests, Gallery lifecycle/module tests |
-| `native` | quick + Dashboard native selftest + Gallery Router UIA |
+| `native` | quick + Dashboard native selftest + Gallery Router/Motion/controlled-state UIA |
 | `full` | native + Dashboard soak/evidence + full Gallery UIA + accessibility matrix + pinned release-set app |
 
 Preview the plan without running commands:
@@ -70,6 +70,7 @@ npm run check
 .\scripts\run-accessibility-matrix.ps1 -IncludeUIA
 .\scripts\smoke-generated-app-local.ps1
 .\scripts\smoke-generated-app-release.ps1
+.\examples\gallery\scripts\smoke-controlled-values.ps1
 ```
 
 Use the smallest profile that proves the changed behavior. Use `full` before a

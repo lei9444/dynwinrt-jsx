@@ -25,6 +25,7 @@ import {
   createCapabilityOwner,
   createProjectedOwnership,
   createProjectedValueOwner,
+  createPivotControl,
   createControls,
   createFocusTarget,
   createFontFamily,
@@ -249,6 +250,8 @@ class TypeComboBox {
     _token: bigint,
   ): void {}
 }
+
+class TypePivot extends TypeComboBox {}
 
 class TypeScrollViewer {
   horizontalOffset = 0
@@ -935,6 +938,18 @@ const Combo = createComboBoxControl({
   ComboBox: TypeComboBox,
   selectedIndexProperty: {},
 })
+const PivotControl = createPivotControl({
+  Pivot: TypePivot,
+  selectedIndexProperty: {},
+})
+;<PivotControl
+  selectedIndex={signal(0)}
+  onSelectedIndexChange={(_index, _sender) => {}}
+>
+  <TypeTextBlock />
+</PivotControl>
+// @ts-expect-error Pivot controlled props reject selectedItem.
+;<PivotControl selectedItem={{}} />
 const SelectorBar = createSelectorBarControl<
   TypeSelectorBar,
   TypeSelectorBarItem

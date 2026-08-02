@@ -542,10 +542,17 @@ identity, and manifest dependencies in a provenance document.
   - [x] Suppress dependency-property callbacks across native coercion.
 - [x] Add full-namespace WinUI renderer presets with capability reporting and
       actionable missing-binding errors.
-- [ ] Use the controlled adapter foundation for `ComboBox`, `TabView`,
-      `TreeView`, `CommandBar`, `NumberBox`, and date/range controls.
+- [ ] Use the controlled adapter foundation only where real WinUI validation
+      demonstrates native echo, coercion, or teardown hazards.
   - [x] Add ComboBox items/header ownership and controlled `selectedIndex`.
+  - [x] Add Pivot item ownership and controlled `selectedIndex` after direct
+        event handling reproduced a close-time write to a disconnected control.
   - [x] Add SelectorBar item ownership and controlled `selectedIndex`.
+  - [x] Validate TabView and SemanticZoom Signal/native synchronization across
+        rapid changes and repeated remounts without adding adapters.
+  - [x] Keep TreeView multiple selection on its mutable native selected-node
+        vector; programmatic parent selection cascades and does not echo through
+        `SelectionChanged`.
 - [x] Add a reactive ScrollViewer controller for offset, viewport, boundary,
       and ChangeView behavior.
 - [x] Add native `ItemsRepeater` virtualization with dynamic item size,

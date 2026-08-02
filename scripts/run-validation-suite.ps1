@@ -174,6 +174,33 @@ $steps = @(
         $galleryRoot `
         @("native", "full")
     New-Step `
+        "gallery-controlled-uia" `
+        "Validate controlled native state, rapid updates, remount, and teardown." `
+        $pwsh `
+        @(
+            "-NoProfile",
+            "-File",
+            (Join-Path $galleryRoot "scripts\smoke-controlled-values.ps1"),
+            "-Cycles",
+            $(if ($Profile -eq "full") {
+                "3"
+            } else {
+                "1"
+            }),
+            $(if ($WinAppPath) {
+                "-WinAppPath"
+            } else {
+                $null
+            }),
+            $(if ($WinAppPath) {
+                $WinAppPath
+            } else {
+                $null
+            })
+        ) `
+        $galleryRoot `
+        @("native", "full")
+    New-Step `
         "dashboard-soak" `
         "Run repeated Dashboard route/evidence/orphan/final-idle validation." `
         $pwsh `

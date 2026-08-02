@@ -148,6 +148,13 @@ export {
 } from './winui/combo-box'
 
 export {
+  createPivotControl,
+  type PivotControlBindings,
+  type PivotInstance,
+  type PivotProps,
+} from './winui/pivot'
+
+export {
   createCompositionFrameScheduler,
   type CompositionTargetBinding,
 } from './winui/event-coalescing'
