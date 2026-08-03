@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('node:fs')
+const crypto = require('node:crypto')
 const path = require('node:path')
 const ts = require('typescript')
 
@@ -10,14 +11,29 @@ const outputPath = path.join(
   'docs',
   'api-index.md',
 )
+const baselinePath = path.join(
+  repoRoot,
+  'docs',
+  'public-api-baseline.json',
+)
 const entries = [
   ['dynwinrt-jsx', 'src/index.ts'],
   ['dynwinrt-jsx/host', 'src/host.ts'],
   ['dynwinrt-jsx/worker', 'src/worker.ts'],
+  ['dynwinrt-jsx/jsx-runtime', 'src/jsx-runtime.ts'],
+  ['dynwinrt-jsx/jsx-dev-runtime', 'src/jsx-dev-runtime.ts'],
 ]
 
+function normalize(value) {
+  return value
+    .replaceAll('\\', '/')
+    .replaceAll(repoRoot.replaceAll('\\', '/'), '<repo>')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function compact(value, maximum = 220) {
-  const normalized = value.replace(/\s+/g, ' ').trim()
+  const normalized = normalize(value)
   return normalized.length <= maximum
     ? normalized
     : `${normalized.slice(0, maximum - 1)}…`
@@ -42,7 +58,7 @@ function signatureFor(checker, symbol, location, kind) {
     ts.SignatureKind.Call,
   )
   if (calls.length > 0) {
-    return compact(
+    return normalize(
       calls
         .map((signature) =>
           checker.signatureToString(
@@ -54,7 +70,7 @@ function signatureFor(checker, symbol, location, kind) {
         .join(' | '),
     )
   }
-  return compact(
+  return normalize(
     checker.typeToString(
       type,
       location,
@@ -172,12 +188,115 @@ for (const section of sections) {
   )
   for (const row of section.rows) {
     lines.push(
-      `| \`${row.name}\` | ${row.kind} | \`${row.signature.replaceAll('|', '\\|')}\` | \`${row.source}\` |`,
+      `| \`${row.name}\` | ${row.kind} | \`${compact(row.signature).replaceAll('|', '\\|')}\` | \`${row.source}\` |`,
     )
   }
   lines.push('')
 }
 const output = lines.join('\n')
+const packageVersion = JSON.parse(
+  fs.readFileSync(
+    path.join(repoRoot, 'package.json'),
+    'utf8',
+  ),
+).version
+const baselineRequested =
+  process.argv.includes('--update-baseline') ||
+  process.argv.includes('--check-baseline')
+
+function resolveDeclarationImport(fromFile, specifier) {
+  if (!specifier.startsWith('.')) {
+    return null
+  }
+  const unresolved = path.resolve(
+    path.dirname(fromFile),
+    specifier,
+  )
+  const candidates = specifier.endsWith('.js')
+    ? [unresolved.replace(/\.js$/, '.d.ts')]
+    : specifier.endsWith('.d.ts')
+      ? [unresolved]
+      : [
+          `${unresolved}.d.ts`,
+          path.join(unresolved, 'index.d.ts'),
+        ]
+  return candidates.find((candidate) =>
+    fs.existsSync(candidate)) ?? null
+}
+
+function collectDeclarationBaseline() {
+  const distRoot = path.join(repoRoot, 'dist')
+  const pending = [
+    'index.d.ts',
+    'host.d.ts',
+    'worker.d.ts',
+    'jsx-runtime.d.ts',
+    'jsx-dev-runtime.d.ts',
+  ].map((file) => path.join(distRoot, file))
+  const declarations = new Map()
+  while (pending.length > 0) {
+    const filePath = pending.pop()
+    if (declarations.has(filePath)) {
+      continue
+    }
+    if (!fs.existsSync(filePath)) {
+      throw new Error(
+        `Public declaration was not built: ${path.relative(repoRoot, filePath)}`,
+      )
+    }
+    const content = fs.readFileSync(filePath, 'utf8')
+      .replaceAll('\r\n', '\n')
+    declarations.set(
+      filePath,
+      crypto
+        .createHash('sha256')
+        .update(content)
+        .digest('hex'),
+    )
+    const preprocessed = ts.preProcessFile(
+      content,
+      true,
+      true,
+    )
+    for (const reference of [
+      ...preprocessed.importedFiles,
+      ...preprocessed.referencedFiles,
+    ]) {
+      const dependency = resolveDeclarationImport(
+        filePath,
+        reference.fileName,
+      )
+      if (dependency && !declarations.has(dependency)) {
+        pending.push(dependency)
+      }
+    }
+  }
+  return [...declarations]
+    .map(([filePath, sha256]) => ({
+      file: path.relative(distRoot, filePath)
+        .replaceAll('\\', '/'),
+      sha256,
+    }))
+    .sort((left, right) =>
+      left.file.localeCompare(right.file))
+}
+
+const baseline = {
+  schemaVersion: 1,
+  packageVersion,
+  entrypoints: sections.map((section) => ({
+    name: section.entryName,
+    symbols: section.rows.map((row) => ({
+      name: row.name,
+      kind: row.kind,
+      signature: row.signature,
+    })),
+  })),
+  declarations: baselineRequested
+    ? collectDeclarationBaseline()
+    : [],
+}
+const baselineOutput = `${JSON.stringify(baseline, null, 2)}\n`
 
 if (process.argv.includes('--check')) {
   const current = fs.existsSync(outputPath)
@@ -195,4 +314,22 @@ else {
   console.log(
     `Generated ${path.relative(repoRoot, outputPath)}.`,
   )
+}
+
+if (process.argv.includes('--update-baseline')) {
+  fs.writeFileSync(baselinePath, baselineOutput)
+  console.log(
+    `Generated ${path.relative(repoRoot, baselinePath)}.`,
+  )
+}
+if (process.argv.includes('--check-baseline')) {
+  const current = fs.existsSync(baselinePath)
+    ? fs.readFileSync(baselinePath, 'utf8')
+    : ''
+  if (current !== baselineOutput) {
+    console.error(
+      'Public API differs from docs/public-api-baseline.json. Review compatibility and run npm run api:baseline:update for an intentional release change.',
+    )
+    process.exitCode = 1
+  }
 }

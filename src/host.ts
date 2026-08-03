@@ -4,8 +4,16 @@ export {
   type MessageEndpoint,
   type MessageTransport,
   type StateBridge,
+  type StateBridgeCommandOptions,
+  type StateBridgeDiagnostic,
+  type StateBridgeDiagnosticCode,
+  StateBridgeError,
+  type StateBridgeEventOptions,
+  type StateBridgeMessageContext,
   type StateBridgeOptions,
+  type StateBridgePatchOptions,
   type StateBridgeRole,
+  type StateBridgeValidator,
 } from './runtime/bridge'
 
 export {

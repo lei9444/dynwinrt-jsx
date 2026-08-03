@@ -459,7 +459,7 @@ external release gates.
 ### Phase 5: Packaging and servicing
 
 - [x] Add package identity, manifest capabilities, and visual assets.
-- [ ] Produce x64 and ARM64 MSIX packages.
+- [x] Produce x64 and ARM64 MSIX packages plus a multi-architecture bundle.
 - [ ] Sign release packages.
 - [x] Define install, upgrade, rollback, and uninstall behavior.
 - [x] Keep unpackaged startup available for development.
@@ -474,12 +474,12 @@ identity, and manifest dependencies in a provenance document.
 
 ### Phase 6: Independent framework consumption
 
-- [ ] Freeze the supported public API.
-- [ ] Document version compatibility guarantees.
-- [ ] Split the renderer into smaller maintainable responsibilities.
-- [ ] Add package metadata, release automation, and artifact provenance.
+- [x] Freeze the supported public API.
+- [x] Document version compatibility guarantees.
+- [x] Split the renderer into smaller maintainable responsibilities.
+- [x] Add package metadata, release automation, and artifact provenance.
 - [ ] Publish a compatible framework and tool package set.
-- [ ] Add API, control, lifecycle, troubleshooting, and packaging guides.
+- [x] Add API, control, lifecycle, troubleshooting, and packaging guides.
 - [x] Generate a compact public API/signature index.
 - [x] Add focused agent skills and compilable task recipes.
 - [x] Maintain generated and representative compatibility applications.
@@ -566,11 +566,12 @@ identity, and manifest dependencies in a provenance document.
 
 #### State and development workflow
 
-- [ ] Add schema validation to the Worker state bridge.
-- [ ] Support typed incremental state patches instead of cloning complete
+- [x] Add schema validation to the Worker state bridge.
+- [x] Support typed incremental state patches instead of cloning complete
       state for every update.
-- [ ] Add revision-conflict diagnostics, typed commands/events, and optional
-      message compression.
+- [x] Add revision-conflict diagnostics and typed commands/events.
+- [ ] Add optional state-message compression only after application payload
+      evidence justifies the added protocol complexity.
 - [ ] Support page or boundary-level hot reload that preserves unaffected
       native identity and component-local signals.
 
@@ -580,12 +581,13 @@ identity, and manifest dependencies in a provenance document.
       Microsoft.UI.Reactor with interleaved warmups/repetitions, external
       RSS/CPU sampling, common JSON results, paired confidence intervals, and
       optional ETW Present tracing.
-- [ ] Prune generated WinRT bindings to runtime-reachable dependencies.
-- [ ] Exclude declarations and other development-only files from application
+- [x] Prune generated WinRT bindings to runtime-reachable dependencies.
+- [x] Exclude declarations and other development-only files from application
       runtime packages.
-- [ ] Evaluate bundling application and Worker JavaScript to reduce cold file
-      lookup and module parsing.
-- [ ] Profile and optimize renderer property, collection, and disposal hot
+- [x] Evaluate bundling application and Worker JavaScript; retain the small
+      CommonJS graph so file hot reload stays direct while generated bindings
+      and the Node executable dominate package size.
+- [x] Profile and optimize renderer property, collection, and disposal hot
       paths.
 - [ ] Revisit typed dynwinrt JavaScript projection fast paths only with
       runtime/codegen version gating, differential generated-binding

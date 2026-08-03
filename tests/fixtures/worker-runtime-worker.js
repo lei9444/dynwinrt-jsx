@@ -8,6 +8,15 @@ const runtime = createWinUIWorkerRuntime({
   channel: 'runtime-state',
   moduleId:
     './tests/fixtures/worker-runtime-module.js',
+  validateState(value) {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      value.version === 1 &&
+      Number.isInteger(value.count) &&
+      typeof value.status === 'string'
+    )
+  },
 })
 
 void runtime.run({

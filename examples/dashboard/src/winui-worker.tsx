@@ -5,6 +5,12 @@ import {
 import { roInitialize } from '@microsoft/dynwinrt'
 import type { DashboardState } from './dashboard-model'
 import {
+  applyDashboardStatePatch,
+  isDashboardState,
+  isDashboardStatePatch,
+  type DashboardStatePatch,
+} from './dashboard-state'
+import {
   runDashboardApplication,
 } from './worker/application'
 import type {
@@ -68,23 +74,44 @@ if (workerData.selfTestFailure === 'worker') {
   throw new Error('Intentional native selftest Worker failure.')
 }
 
-const stateBridge = createStateBridge<DashboardState>(
+const stateBridge = createStateBridge<
+  DashboardState,
+  DashboardStatePatch
+>(
   createMessageTransport(workerData.statePort),
   {
     role: 'client',
     channel: 'dashboard-state',
     initial: workerData.initialState,
+    validate: isDashboardState,
+    patch: {
+      validate: isDashboardStatePatch,
+      apply: applyDashboardStatePatch,
+    },
   },
 )
 postStartupStage('bridge-created')
 
-void runDashboardApplication({
-  parentPort: workerPort,
-  workerData,
-  stateBridge,
-  postStartupStage,
-}).then((exitCode) => {
-  stateBridge.dispose()
-  workerData.statePort.close()
-  process.exit(exitCode)
-})
+void stateBridge.ready.then(
+  () => runDashboardApplication({
+    parentPort: workerPort,
+    workerData,
+    stateBridge,
+    postStartupStage,
+  }),
+).then(
+  (exitCode) => {
+    stateBridge.dispose()
+    workerData.statePort.close()
+    process.exit(exitCode)
+  },
+  (error) => {
+    workerPort.postMessage({
+      type: 'error',
+      message: String(error),
+    })
+    stateBridge.dispose()
+    workerData.statePort.close()
+    process.exit(1)
+  },
+)

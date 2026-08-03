@@ -114,12 +114,24 @@ finally {
     }
 
     $installed = Get-AppxPackage -Name $packageName
+    $packageArchitecture = if ($installed) {
+        $installed.Architecture.ToString()
+    }
+    else {
+        $null
+    }
     $windowsAppRuntime = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.2" |
-        Where-Object Architecture -eq "X64" |
+        Where-Object {
+            $null -eq $packageArchitecture -or
+            $_.Architecture.ToString() -eq $packageArchitecture
+        } |
         Sort-Object Version -Descending |
         Select-Object -First 1
     $vcRuntime = Get-AppxPackage -Name "Microsoft.VCLibs.140.00.UWPDesktop" |
-        Where-Object Architecture -eq "X64" |
+        Where-Object {
+            $null -eq $packageArchitecture -or
+            $_.Architecture.ToString() -eq $packageArchitecture
+        } |
         Sort-Object Version -Descending |
         Select-Object -First 1
     $operatingSystem = Get-CimInstance Win32_OperatingSystem
@@ -133,6 +145,7 @@ finally {
         else {
             $null
         }
+        packageArchitecture = $packageArchitecture
         windows = [ordered]@{
             caption = $operatingSystem.Caption
             version = $operatingSystem.Version

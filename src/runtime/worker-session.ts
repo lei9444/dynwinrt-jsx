@@ -9,6 +9,10 @@ import {
   createStateBridge,
   type MessageEndpoint,
   type StateBridge,
+  type StateBridgeCommandOptions,
+  type StateBridgeEventOptions,
+  type StateBridgePatchOptions,
+  type StateBridgeValidator,
 } from './bridge'
 import { createWinUICleanup } from './cleanup'
 import {
@@ -177,9 +181,12 @@ export interface WinUIWorkerRuntimeApp {
 export interface WinUIWorkerRuntime<
   State,
   Data extends WinUIWorkerRuntimeData<State>,
+  Patch = never,
+  Command = never,
+  Event = never,
 > {
   readonly workerData: Data
-  readonly bridge: StateBridge<State>
+  readonly bridge: StateBridge<State, Patch, Command, Event>
   readonly inspectorExportPath: string | null
   readonly appCallbacks: {
     readonly onDiagnostics: (
@@ -204,9 +211,18 @@ export interface WinUIWorkerRuntime<
   dispose(): void
 }
 
-export interface CreateWinUIWorkerRuntimeOptions {
+export interface CreateWinUIWorkerRuntimeOptions<
+  State,
+  Patch = never,
+  Command = never,
+  Event = never,
+> {
   readonly channel?: string
   readonly moduleId: string
+  readonly validateState: StateBridgeValidator<State>
+  readonly patch?: StateBridgePatchOptions<State, Patch>
+  readonly commands?: StateBridgeCommandOptions<Command>
+  readonly events?: StateBridgeEventOptions<Event>
 }
 
 function describeError(error: unknown): string {
@@ -267,21 +283,33 @@ function createTimerController(
 export function createWinUIWorkerRuntimeBase<
   State,
   Extra extends object = Record<string, never>,
+  Patch = never,
+  Command = never,
+  Event = never,
 >(
-  options: CreateWinUIWorkerRuntimeOptions,
+  options: CreateWinUIWorkerRuntimeOptions<
+    State,
+    Patch,
+    Command,
+    Event
+  >,
   factories: WinUIWorkerRuntimeFactories,
 ): WinUIWorkerRuntime<
   State,
-  WinUIWorkerRuntimeData<State> & Extra
+  WinUIWorkerRuntimeData<State> & Extra,
+  Patch,
+  Command,
+  Event
 > {
   if (
     typeof options !== 'object' ||
     options === null ||
     typeof options.moduleId !== 'string' ||
-    options.moduleId.length === 0
+    options.moduleId.length === 0 ||
+    typeof options.validateState !== 'function'
   ) {
     throw new TypeError(
-      'createWinUIWorkerRuntime() requires a moduleId.',
+      'createWinUIWorkerRuntime() requires a moduleId and state validator.',
     )
   }
   const workerThreads = require(
@@ -310,12 +338,27 @@ export function createWinUIWorkerRuntimeBase<
     )
   }
   const parentPort = workerThreads.parentPort
-  const bridge = createStateBridge<State>(
+  const bridge = createStateBridge<
+    State,
+    Patch,
+    Command,
+    Event
+  >(
     createMessageTransport(workerData.statePort),
     {
       role: 'client',
       channel: options.channel ?? 'app-state',
       initial: workerData.initialState,
+      validate: options.validateState,
+      patch: options.patch,
+      commands: options.commands,
+      events: options.events,
+      onDiagnostic(diagnostic) {
+        parentPort.postMessage({
+          type: 'state-bridge-diagnostic',
+          value: diagnostic,
+        })
+      },
     },
   )
   const fileSystem = require(
@@ -383,7 +426,10 @@ export function createWinUIWorkerRuntimeBase<
 
   const runtime: WinUIWorkerRuntime<
     State,
-    WinUIWorkerRuntimeData<State> & Extra
+    WinUIWorkerRuntimeData<State> & Extra,
+    Patch,
+    Command,
+    Event
   > = {
     workerData,
     bridge,
@@ -584,6 +630,7 @@ export function createWinUIWorkerRuntimeBase<
     async complete(app) {
       let exitCode = 1
       try {
+        await bridge.ready
         exitCode = await app.run()
       }
       catch (error) {

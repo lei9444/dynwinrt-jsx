@@ -1,7 +1,20 @@
-# Changelog
+﻿# Changelog
 
 ## Unreleased
 
+- Added schema-validated Worker state, optimistic revision conflict recovery,
+  typed incremental patches, commands, and events.
+- Added x64/ARM64 SEA MSIX packaging, a multi-architecture bundle, verified
+  ARM64 dynwinrt cross-builds, and architecture-aware servicing evidence.
+- Pruned packaged generated bindings to the runtime dependency closure,
+  excluded declarations/source maps, and reduced the x64 Dashboard MSIX by
+  approximately 8%.
+- Deferred keyed child synchronization until reconciliation commits, reducing
+  the profiled 50% churn update from approximately 456 ms to 46 ms.
+- Made keyed reconciliation detach removed native nodes before projection
+  release and preserve the previous native entries when staging fails.
+- Added a reviewed public API baseline, compatibility policy, and verified
+  release-artifact workflow.
 - Added scoped last-value event coalescers, CompositionTarget frame scheduling,
   and immediate/frame/native ScrollViewer sampling modes.
 - Added `createLazyComponent()` and moved non-first-screen Gallery pages behind

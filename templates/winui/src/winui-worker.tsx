@@ -21,6 +21,7 @@ import {
   createAppModel,
   type AppState,
 } from './app-model'
+import { isAppState } from './app-state'
 import type { AppContext } from './app'
 
 interface AppModule {
@@ -31,6 +32,7 @@ const runtime =
   createWinUIWorkerRuntime<AppState>({
     channel: 'app-state',
     moduleId: './dist/app.js',
+    validateState: isAppState,
   })
 const {
   bridge,

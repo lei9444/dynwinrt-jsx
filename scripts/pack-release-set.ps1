@@ -148,6 +148,13 @@ function Assert-ExactVersion(
     }
 }
 
+function Remove-GitRemoteCredentials([string]$Remote) {
+    if ($Remote -match "^(https?://)[^/@]+@(.+)$") {
+        return "$($Matches[1])$($Matches[2])"
+    }
+    return $Remote
+}
+
 function Get-RepoState([string]$Root) {
     $status = @(
         git -C $Root status --porcelain=v1 --untracked-files=all
@@ -156,9 +163,9 @@ function Get-RepoState([string]$Root) {
         throw "Release source is dirty: $Root`n$($status -join "`n")"
     }
     return [ordered]@{
-        repository = (
-            git -C $Root config --get remote.origin.url
-        ).Trim()
+        repository = Remove-GitRemoteCredentials (
+            (git -C $Root config --get remote.origin.url).Trim()
+        )
         commit = (git -C $Root rev-parse HEAD).Trim()
         branch = (git -C $Root branch --show-current).Trim()
         dirty = $status.Count -gt 0

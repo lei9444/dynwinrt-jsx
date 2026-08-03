@@ -17,6 +17,7 @@ export interface ChildAdapter {
     current: unknown[],
     desired: readonly unknown[],
     allowCachedCollectionFallback?: boolean,
+    earlyRemovalProtected?: ReadonlySet<unknown>,
   ): unknown[]
 }
 
@@ -33,6 +34,17 @@ export class ChildSyncHookError extends Error {
     readonly originalError: unknown,
   ) {
     super('Child synchronization hook failed.')
+  }
+}
+
+export class ChildSyncRestoredError extends Error {
+  constructor(readonly originalError: unknown) {
+    super(
+      originalError instanceof Error
+        ? originalError.message
+        : String(originalError),
+    )
+    this.name = 'ChildSyncRestoredError'
   }
 }
 
@@ -64,42 +76,86 @@ class CollectionAdapter implements ChildAdapter {
   sync(
     current: unknown[],
     desired: readonly unknown[],
+    _allowCachedCollectionFallback?: boolean,
+    earlyRemovalProtected?: ReadonlySet<unknown>,
   ): unknown[] {
+    const original = [...current]
+    const desiredLastIndex = new Map<unknown, number>()
     for (
       let index = 0;
       index < desired.length;
       index += 1
     ) {
-      const desiredNode = desired[index]
-      if (current[index] === desiredNode) {
-        continue
-      }
-
-      const existingIndex = current.indexOf(
-        desiredNode,
-        index + 1,
-      )
-      if (existingIndex >= 0) {
-        this.collection.removeAt(existingIndex)
-        current.splice(existingIndex, 1)
-      }
-
-      if (index === current.length) {
-        this.collection.append(desiredNode)
-      }
-      else {
-        this.collection.insertAt(index, desiredNode)
-      }
-      current.splice(index, 0, desiredNode)
+      desiredLastIndex.set(desired[index], index)
     }
+    try {
+      for (
+        let index = 0;
+        index < desired.length;
+        index += 1
+      ) {
+        const desiredNode = desired[index]
+        while (
+          index < current.length &&
+          current[index] !== desiredNode &&
+          !earlyRemovalProtected?.has(current[index]) &&
+          (
+            desiredLastIndex.get(current[index]) ??
+            -1
+          ) <= index
+        ) {
+          this.collection.removeAt(index)
+          current.splice(index, 1)
+        }
+        if (current[index] === desiredNode) {
+          continue
+        }
 
-    while (current.length > desired.length) {
-      const index = current.length - 1
-      this.collection.removeAt(index)
-      current.pop()
+        const existingIndex = current.indexOf(
+          desiredNode,
+          index + 1,
+        )
+        if (existingIndex >= 0) {
+          this.collection.removeAt(existingIndex)
+          current.splice(existingIndex, 1)
+        }
+
+        if (index === current.length) {
+          this.collection.append(desiredNode)
+        }
+        else {
+          this.collection.insertAt(index, desiredNode)
+        }
+        current.splice(index, 0, desiredNode)
+      }
+
+      while (current.length > desired.length) {
+        const index = current.length - 1
+        this.collection.removeAt(index)
+        current.pop()
+      }
+      return current
     }
-
-    return current
+    catch (error) {
+      let rollbackError: unknown
+      try {
+        this.collection.clear()
+        for (const node of original) {
+          this.collection.append(node)
+        }
+        current.splice(0, current.length, ...original)
+      }
+      catch (failure) {
+        rollbackError = failure
+      }
+      if (rollbackError !== undefined) {
+        throw new AggregateError(
+          [error, rollbackError],
+          'Child collection synchronization and rollback failed.',
+        )
+      }
+      throw new ChildSyncRestoredError(error)
+    }
   }
 }
 
@@ -122,6 +178,7 @@ class GetterCollectionAdapter implements ChildAdapter {
     current: unknown[],
     desired: readonly unknown[],
     allowCachedCollectionFallback = false,
+    _earlyRemovalProtected?: ReadonlySet<unknown>,
   ): unknown[] {
     let collection: NativeCollection
     let resolveError: unknown
@@ -196,7 +253,7 @@ class GetterCollectionAdapter implements ChildAdapter {
           'Collection slot synchronization and rollback failed.',
         )
       }
-      throw clearError
+      throw new ChildSyncRestoredError(clearError)
     }
 
     try {
@@ -216,7 +273,7 @@ class GetterCollectionAdapter implements ChildAdapter {
           'Collection slot synchronization and rollback failed.',
         )
       }
-      throw error
+      throw new ChildSyncRestoredError(error)
     }
 
     this.ownedCollections = new Set([collection])
@@ -262,6 +319,8 @@ class SinglePropertyAdapter implements ChildAdapter {
   sync(
     current: unknown[],
     desired: readonly unknown[],
+    _allowCachedCollectionFallback?: boolean,
+    _earlyRemovalProtected?: ReadonlySet<unknown>,
   ): unknown[] {
     if (desired.length > 1) {
       throw new Error(
@@ -297,6 +356,7 @@ class SyncHookAdapter implements ChildAdapter {
     current: unknown[],
     desired: readonly unknown[],
     allowCachedCollectionFallback = false,
+    earlyRemovalProtected?: ReadonlySet<unknown>,
   ): unknown[] {
     let next: unknown[] | undefined
     let failure: unknown
@@ -306,6 +366,7 @@ class SyncHookAdapter implements ChildAdapter {
         current,
         desired,
         allowCachedCollectionFallback,
+        earlyRemovalProtected,
       )
       this.afterSync?.()
     }

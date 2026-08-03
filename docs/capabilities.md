@@ -54,7 +54,7 @@ Function components mount once. They do not rerender as a unit.
 |---|---|---|
 | Main-process host | Supported | `dynwinrt-jsx/host` |
 | Worker-owned WinUI app | Supported | `dynwinrt-jsx/worker` |
-| State bridge and persistence | Supported | root/host/worker APIs |
+| Validated state bridge, typed patches, and persistence | Supported | root/host/worker APIs |
 | Hot reload | Supported | Worker runtime and render handles |
 | Inspector and bounded operations | Supported | `Renderer.inspector` |
 | Heartbeat and timeout evidence | Supported | Host evidence presets |

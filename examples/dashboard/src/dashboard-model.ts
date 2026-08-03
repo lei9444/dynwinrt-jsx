@@ -5,11 +5,14 @@ import {
   effect,
   signal,
   type Cleanup,
+  type ReadonlySignal,
   type RendererDiagnostics,
   type Signal,
 } from 'dynwinrt-jsx'
 import {
+  createDashboardStatePatch,
   type DashboardState,
+  type DashboardStatePatch,
   type DashboardTask,
   type PersistedDashboardState,
 } from './dashboard-state'
@@ -27,7 +30,8 @@ export type DashboardRoute =
   | 'settings'
 
 export interface DashboardBridge {
-  set(value: DashboardState): void
+  readonly state: ReadonlySignal<DashboardState>
+  patch(value: DashboardStatePatch): void
 }
 
 export interface DashboardModel {
@@ -123,7 +127,14 @@ export function createDashboardModel(
         persistenceError: persistenceError.value,
     })
     effect(() => {
-      bridge.set(snapshot())
+      const next = snapshot()
+      const patch = createDashboardStatePatch(
+        bridge.state.value,
+        next,
+      )
+      if (Object.keys(patch).length > 0) {
+        bridge.patch(patch)
+      }
     })
 
     const markChanged = () => {

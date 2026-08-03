@@ -27,6 +27,7 @@ import {
   createAppModel,
   type AppState,
 } from './app-model'
+import { isAppState } from './app-state'
 import { createAppNotificationOwner } from './app-notification-owner'
 import {
   createGallerySecondaryWindowManager,
@@ -46,6 +47,7 @@ const runtime = createWinUIWorkerRuntime<
 >({
   channel: 'app-state',
   moduleId: './dist/app.js',
+  validateState: isAppState,
 })
 const {
   bridge,

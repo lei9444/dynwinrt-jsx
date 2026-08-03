@@ -52,6 +52,21 @@ export function isPersistedAppState(
   )
 }
 
+export function isAppState(value: unknown): value is AppState {
+  return (
+    isPersistedAppState(value) &&
+    (
+      (value as AppState).status === 'starting' ||
+      (value as AppState).status === 'running' ||
+      (value as AppState).status === 'closed'
+    ) &&
+    (
+      (value as AppState).persistenceError === null ||
+      typeof (value as AppState).persistenceError === 'string'
+    )
+  )
+}
+
 function isOptionalString(value: unknown): boolean {
   return value === undefined || typeof value === 'string'
 }

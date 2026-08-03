@@ -5,6 +5,7 @@ const {
 } = require('dynwinrt-jsx/host')
 const {
   createDefaultPersistedAppState,
+  isAppState,
   isPersistedAppState,
 } = require('./dist/app-state.js')
 
@@ -14,6 +15,7 @@ const host = defineWinUIHost({
     channel: 'app-state',
     defaultState: createDefaultPersistedAppState,
     validate: isPersistedAppState,
+    validateState: isAppState,
     initialize(loaded) {
       return {
         ...loaded.state,

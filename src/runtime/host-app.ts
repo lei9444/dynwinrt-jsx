@@ -3,6 +3,10 @@ import {
   createStateBridge,
   type MessageEndpoint,
   type StateBridge,
+  type StateBridgeCommandOptions,
+  type StateBridgeEventOptions,
+  type StateBridgePatchOptions,
+  type StateBridgeValidator,
 } from './bridge'
 import {
   createDiagnosticRecord,
@@ -140,13 +144,23 @@ export interface WinUIHostBootstrapOptions {
   readonly skipWhenPackaged?: boolean
 }
 
-export interface WinUIHostStateOptions<State, PersistedState> {
+export interface WinUIHostStateOptions<
+  State,
+  PersistedState,
+  Patch = never,
+  Command = never,
+  Event = never,
+> {
   readonly channel?: string
   readonly path?: string
   readonly defaultState: () => PersistedState
   readonly validate: (
     value: unknown,
   ) => value is PersistedState
+  readonly validateState: StateBridgeValidator<State>
+  readonly patch?: StateBridgePatchOptions<State, Patch>
+  readonly commands?: StateBridgeCommandOptions<Command>
+  readonly events?: StateBridgeEventOptions<Event>
   readonly initialize: (
     loaded: JsonStateLoadResult<PersistedState>,
   ) => State
@@ -177,6 +191,9 @@ export interface WinUIHostWorkerContext<State> {
 export interface DefineWinUIHostOptions<
   State,
   PersistedState,
+  Patch = never,
+  Command = never,
+  Event = never,
 > {
   readonly rootDirectory: string
   readonly applicationName?: string
@@ -184,7 +201,10 @@ export interface DefineWinUIHostOptions<
   readonly bootstrap?: false | WinUIHostBootstrapOptions
   readonly state: WinUIHostStateOptions<
     State,
-    PersistedState
+    PersistedState,
+    Patch,
+    Command,
+    Event
   >
   readonly workerData?:
     | Readonly<Record<string, unknown>>
@@ -202,9 +222,15 @@ export interface DefineWinUIHostOptions<
   ) => void
 }
 
-export interface DefinedWinUIHost<State> {
+export interface DefinedWinUIHost<
+  State,
+  Patch = never,
+  Command = never,
+  Event = never,
+> {
   readonly statePath: string
-  readonly bridge: StateBridge<State> | null
+  readonly bridge:
+    StateBridge<State, Patch, Command, Event> | null
   readonly worker: WinUIHostWorker | null
   readonly evidencePaths: WinUIHostEvidencePaths | null
   readonly started: boolean
@@ -336,9 +362,21 @@ function writeHotMessage(
   }
 }
 
-export function defineWinUIHost<State, PersistedState>(
-  options: DefineWinUIHostOptions<State, PersistedState>,
-): DefinedWinUIHost<State> {
+export function defineWinUIHost<
+  State,
+  PersistedState,
+  Patch = never,
+  Command = never,
+  Event = never,
+>(
+  options: DefineWinUIHostOptions<
+    State,
+    PersistedState,
+    Patch,
+    Command,
+    Event
+  >,
+): DefinedWinUIHost<State, Patch, Command, Event> {
   if (
     typeof options !== 'object' ||
     options === null ||
@@ -348,6 +386,7 @@ export function defineWinUIHost<State, PersistedState>(
     options.state === null ||
     typeof options.state.defaultState !== 'function' ||
     typeof options.state.validate !== 'function' ||
+    typeof options.state.validateState !== 'function' ||
     typeof options.state.initialize !== 'function' ||
     typeof options.state.persist !== 'function'
   ) {
@@ -370,7 +409,8 @@ export function defineWinUIHost<State, PersistedState>(
       applicationName,
       'state.json',
     )
-  let bridge: StateBridge<State> | null = null
+  let bridge:
+    StateBridge<State, Patch, Command, Event> | null = null
   let worker: WinUIHostWorker | null = null
   let hostPort: HostMessagePort | null = null
   let pendingWorkerPort: HostMessagePort | null = null
@@ -570,6 +610,11 @@ export function defineWinUIHost<State, PersistedState>(
         const loadedState = stateStore.load()
         const initialState =
           options.state.initialize(loadedState)
+        if (!options.state.validateState(initialState)) {
+          throw new TypeError(
+            'Initialized WinUI Host state failed schema validation.',
+          )
+        }
         if (loadedState.error) {
           writeDiagnostic(
             'warn',
@@ -596,6 +641,31 @@ export function defineWinUIHost<State, PersistedState>(
             channel:
               options.state.channel ?? 'app-state',
             initial: initialState,
+            validate: options.state.validateState,
+            patch: options.state.patch,
+            commands: options.state.commands,
+            events: options.state.events,
+            onDiagnostic(diagnostic) {
+              writeDiagnostic(
+                diagnostic.severity === 'error'
+                  ? 'error'
+                  : 'warn',
+                diagnosticSource,
+                `state.bridge.${diagnostic.code}`,
+                {
+                  channel: diagnostic.channel,
+                  direction: diagnostic.direction,
+                  expectedRevision:
+                    diagnostic.expectedRevision,
+                  receivedRevision:
+                    diagnostic.receivedRevision,
+                  message: diagnostic.message,
+                },
+              )
+              if (diagnostic.severity === 'error') {
+                workerFailed = true
+              }
+            },
           },
         )
 
@@ -682,6 +752,46 @@ export function defineWinUIHost<State, PersistedState>(
                   message.value,
                 ),
               )
+            }
+          } else if (
+            isRecord(message) &&
+            message.type === 'state-bridge-diagnostic'
+          ) {
+            const diagnostic = message.value
+            if (
+              !isRecord(diagnostic) ||
+              typeof diagnostic.code !== 'string' ||
+              typeof diagnostic.message !== 'string'
+            ) {
+              logger.error(
+                'The WinUI Worker sent an invalid state bridge diagnostic.',
+              )
+              workerFailed = true
+            } else {
+              const severity =
+                diagnostic.severity === 'warning'
+                  ? 'warn'
+                  : 'error'
+              writeDiagnostic(
+                severity,
+                workerDiagnosticSource,
+                `state.bridge.${diagnostic.code}`,
+                {
+                  channel: diagnostic.channel,
+                  direction: diagnostic.direction,
+                  expectedRevision:
+                    diagnostic.expectedRevision,
+                  receivedRevision:
+                    diagnostic.receivedRevision,
+                  message: diagnostic.message,
+                },
+              )
+              if (severity === 'error') {
+                logger.error(diagnostic.message)
+                workerFailed = true
+              } else {
+                logger.warn(diagnostic.message)
+              }
             }
           } else if (
             isRecord(message) &&

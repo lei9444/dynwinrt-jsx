@@ -4,10 +4,13 @@
 param(
     [ValidatePattern("^\d+\.\d+\.\d+\.\d+$")]
     [string]$Version = "1.0.0.0",
+    [ValidateSet("x64", "arm64")]
+    [string]$Architecture = "x64",
     [string]$Publisher = "CN=DynWinRTJSXDev",
     [string]$OutputDirectory,
     [string]$CertificatePath,
     [string]$CertificatePassword = $env:DYNWINRT_JSX_CERT_PASSWORD,
+    [string]$DynWinRTAddonPath,
     [string]$WinAppPath,
     [switch]$InstallCertificate,
     [switch]$RequireCleanSources
@@ -17,9 +20,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $nodeVersion = "24.18.0"
-$nodeArchiveName = "node-v$nodeVersion-win-x64.zip"
-$nodeArchiveSha256 = "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821"
-$nodeExeSha256 = "9a4eb5f1c29c6a2e93852ead46b999e284a6a5ca8bab4d4e241d587d025a52de"
+$nodeArtifacts = @{
+    x64 = [ordered]@{
+        archiveSha256 = "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821"
+        executableSha256 = "9a4eb5f1c29c6a2e93852ead46b999e284a6a5ca8bab4d4e241d587d025a52de"
+        machine = 0x8664
+    }
+    arm64 = [ordered]@{
+        archiveSha256 = "f274669adb93b1fd0fbf8f21fd078609e9dcc84333d4f2718d2dde3f9a161a01"
+        executableSha256 = "c7225670c3f477778e18c43a55867f7a0d76468221245e5981ab80eb953c8102"
+        machine = 0xAA64
+    }
+}
+$targetNodeArtifact = $nodeArtifacts[$Architecture]
+$targetMachine = [uint16]$targetNodeArtifact.machine
 $postjectVersion = "1.0.0-alpha.6"
 $postjectApiSha256 = "88931f26b4d3e99e08dc8219a45f576986952fad4d0c78444d27048232b2881b"
 $seaExecutableName = "DynWinRTJSXDashboard.exe"
@@ -31,8 +45,8 @@ $winappRepositoryRoot = [IO.Path]::GetFullPath((Join-Path $dashboardRoot "..\..\
 $packagingRoot = Join-Path $dashboardRoot "packaging"
 $stateRoot = Join-Path $dashboardRoot ".winapp\sea-package"
 $cacheRoot = Join-Path $stateRoot "cache"
-$workRoot = Join-Path $stateRoot "work\$Version"
-$layoutRoot = Join-Path $stateRoot "layout\$Version"
+$workRoot = Join-Path $stateRoot "work\$Architecture\$Version"
+$layoutRoot = Join-Path $stateRoot "layout\$Architecture\$Version"
 $artifactRoot = if ($OutputDirectory) {
     [IO.Path]::GetFullPath($OutputDirectory)
 }
@@ -131,6 +145,9 @@ function Get-GitRepositoryInfo(
             "remote", "get-url", "origin"
         ) "$Name remote"
     )[0].Trim()
+    if ($remote -match "^(https?://)[^/@]+@(.+)$") {
+        $remote = "$($Matches[1])$($Matches[2])"
+    }
 
     return [ordered]@{
         name = $Name
@@ -178,6 +195,53 @@ function Get-VerifiedDownload(
     Move-Item -LiteralPath $temporaryPath -Destination $Path
 }
 
+function Get-NodeDistribution([string]$TargetArchitecture) {
+    $artifact = $nodeArtifacts[$TargetArchitecture]
+    $archiveName = "node-v$nodeVersion-win-$TargetArchitecture.zip"
+    $archivePath = Join-Path $cacheRoot $archiveName
+    $directory = Join-Path `
+        $cacheRoot `
+        "node-v$nodeVersion-win-$TargetArchitecture"
+    $executable = Join-Path $directory "node.exe"
+    $license = Join-Path $directory "LICENSE"
+
+    Get-VerifiedDownload `
+        "https://nodejs.org/dist/v$nodeVersion/$archiveName" `
+        $archivePath `
+        $artifact.archiveSha256
+    if (
+        -not (Test-Path $executable) -or
+        (Get-Sha256 $executable) -ne $artifact.executableSha256
+    ) {
+        Remove-Item `
+            -LiteralPath $directory `
+            -Recurse `
+            -Force `
+            -ErrorAction SilentlyContinue
+        Expand-Archive `
+            -LiteralPath $archivePath `
+            -DestinationPath $cacheRoot `
+            -Force
+    }
+    if ((Get-Sha256 $executable) -ne $artifact.executableSha256) {
+        throw "The extracted $TargetArchitecture Node.js executable failed SHA256 verification."
+    }
+    if (
+        [DynWinRTJsxSeaPe]::GetMachine($executable) -ne
+        [uint16]$artifact.machine
+    ) {
+        throw "The pinned Node.js executable is not $TargetArchitecture."
+    }
+    return [pscustomobject]@{
+        Architecture = $TargetArchitecture
+        ArchiveName = $archiveName
+        ArchiveSha256 = $artifact.archiveSha256
+        Executable = $executable
+        ExecutableSha256 = $artifact.executableSha256
+        License = $license
+    }
+}
+
 function Copy-Directory(
     [string]$Source,
     [string]$Destination
@@ -189,6 +253,39 @@ function Copy-Directory(
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     Get-ChildItem -LiteralPath $Source -Force |
         Copy-Item -Destination $Destination -Recurse -Force
+}
+
+function Copy-JavaScriptTree(
+    [string]$Source,
+    [string]$Destination
+) {
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Required directory was not found: $Source"
+    }
+    $sourceRoot = (Resolve-Path -LiteralPath $Source).Path
+    foreach (
+        $file in Get-ChildItem `
+            -LiteralPath $sourceRoot `
+            -Filter "*.js" `
+            -File `
+            -Recurse
+    ) {
+        $relativePath = $file.FullName.Substring(
+            $sourceRoot.Length
+        ).TrimStart("\")
+        $destinationPath = Join-Path `
+            $Destination `
+            $relativePath
+        New-Item `
+            -ItemType Directory `
+            -Path (Split-Path $destinationPath -Parent) `
+            -Force |
+            Out-Null
+        Copy-Item `
+            -LiteralPath $file.FullName `
+            -Destination $destinationPath `
+            -Force
+    }
 }
 
 function Copy-RuntimeFile(
@@ -268,61 +365,90 @@ if ($RequireCleanSources) {
     }
 }
 
-$nodeArchive = Join-Path $cacheRoot $nodeArchiveName
-$nodeDirectory = Join-Path $cacheRoot "node-v$nodeVersion-win-x64"
-$nodeExecutable = Join-Path $nodeDirectory "node.exe"
-$nodeLicense = Join-Path $nodeDirectory "LICENSE"
 $postjectApi = Join-Path $cacheRoot "postject-$postjectVersion-api.js"
 
 New-Item -ItemType Directory -Force -Path $cacheRoot, $artifactRoot | Out-Null
 Get-VerifiedDownload `
-    "https://nodejs.org/dist/v$nodeVersion/$nodeArchiveName" `
-    $nodeArchive `
-    $nodeArchiveSha256
-Get-VerifiedDownload `
     "https://cdn.jsdelivr.net/npm/postject@$postjectVersion/dist/api.js" `
     $postjectApi `
     $postjectApiSha256
-
-if (-not (Test-Path $nodeExecutable) -or
-    (Get-Sha256 $nodeExecutable) -ne $nodeExeSha256) {
-    Remove-Item -LiteralPath $nodeDirectory -Recurse -Force -ErrorAction SilentlyContinue
-    Expand-Archive -LiteralPath $nodeArchive -DestinationPath $cacheRoot -Force
+$targetNode = Get-NodeDistribution $Architecture
+$buildNode = if ($Architecture -eq "x64") {
+    $targetNode
 }
-
-if ((Get-Sha256 $nodeExecutable) -ne $nodeExeSha256) {
-    throw "The extracted Node.js executable failed SHA256 verification."
-}
-
-if ([DynWinRTJsxSeaPe]::GetMachine($nodeExecutable) -ne 0x8664) {
-    throw "The pinned Node.js executable is not x64."
+else {
+    Get-NodeDistribution "x64"
 }
 
 $bindingsRoot = Join-Path $dashboardRoot ".winapp\bindings"
 $dashboardDist = Join-Path $dashboardRoot "dist"
 $jsxPackageRoot = Join-Path $dashboardRoot "node_modules\dynwinrt-jsx"
 $dynwinrtPackageRoot = Join-Path $dashboardRoot "node_modules\@microsoft\dynwinrt"
-$dynwinrtAddon = Join-Path $dynwinrtPackageRoot "dynwinrt.node"
 
 foreach ($required in @(
     (Join-Path $dashboardRoot "main.js"),
     $dashboardDist,
     $bindingsRoot,
     (Join-Path $jsxPackageRoot "dist"),
-    $dynwinrtAddon
+    $dynwinrtPackageRoot
 )) {
     if (-not (Test-Path $required)) {
         throw "Required build output was not found: $required"
     }
 }
 
-if ([DynWinRTJsxSeaPe]::GetMachine($dynwinrtAddon) -ne 0x8664) {
-    throw "The installed dynwinrt.node is not x64."
+function Resolve-DynWinRTAddon {
+    $candidates = @()
+    if ($DynWinRTAddonPath) {
+        $candidates += $DynWinRTAddonPath
+    }
+    if ($Architecture -eq "x64") {
+        $candidates += Join-Path $dynwinrtPackageRoot "dynwinrt.node"
+    }
+    $targetTriple = if ($Architecture -eq "arm64") {
+        "aarch64-pc-windows-msvc"
+    }
+    else {
+        "x86_64-pc-windows-msvc"
+    }
+    $targetNativeName = if ($Architecture -eq "arm64") {
+        "dynwinrt.win32-arm64-msvc.node"
+    }
+    else {
+        "dynwinrt.win32-x64-msvc.node"
+    }
+    $candidates += @(
+        (Join-Path $stateRoot "native\$Architecture\dynwinrt.node"),
+        (Join-Path $dynwinrtRoot "bindings\js\dist\$targetNativeName"),
+        (Join-Path $dynwinrtRoot "bindings\js\dist\dynwinrt.node"),
+        (Join-Path $dynwinrtRoot "target\$targetTriple\release\jswinrt_rs.dll"),
+        (Join-Path $dynwinrtPackageRoot "dynwinrt.node")
+    )
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        if (-not (Test-Path -LiteralPath $candidate)) {
+            continue
+        }
+        $resolved = (Resolve-Path -LiteralPath $candidate).Path
+        if ([DynWinRTJsxSeaPe]::GetMachine($resolved) -eq $targetMachine) {
+            return $resolved
+        }
+    }
+    throw "An $Architecture dynwinrt.node was not found. Pass -DynWinRTAddonPath after building target $targetTriple."
 }
+$dynwinrtAddon = Resolve-DynWinRTAddon
 
 Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $layoutRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $workRoot, $layoutRoot | Out-Null
+$prunedBindingsRoot = Join-Path $workRoot "bindings"
+$bindingPruneReportPath = Join-Path $workRoot "binding-prune.json"
+Invoke-Checked $buildNode.Executable @(
+    (Join-Path $PSScriptRoot "prune-winrt-bindings.js"),
+    $bindingsRoot,
+    $prunedBindingsRoot,
+    (Join-Path $dashboardRoot "src"),
+    $bindingPruneReportPath
+) "Generated binding pruning"
 
 Copy-RuntimeFile `
     (Join-Path $dashboardRoot "main.js") `
@@ -331,7 +457,9 @@ Copy-RuntimeFile `
     (Join-Path $dashboardRoot "package.json") `
     (Join-Path $layoutRoot "package.json")
 Copy-Directory $dashboardDist (Join-Path $layoutRoot "dist")
-Copy-Directory $bindingsRoot (Join-Path $layoutRoot ".winapp\bindings")
+Copy-Directory `
+    $prunedBindingsRoot `
+    (Join-Path $layoutRoot ".winapp\bindings")
 
 $jsxDestination = Join-Path $layoutRoot "node_modules\dynwinrt-jsx"
 Copy-RuntimeFile `
@@ -340,15 +468,29 @@ Copy-RuntimeFile `
 Copy-RuntimeFile `
     (Join-Path $jsxPackageRoot "LICENSE") `
     (Join-Path $jsxDestination "LICENSE")
-Copy-Directory `
+Copy-JavaScriptTree `
     (Join-Path $jsxPackageRoot "dist") `
     (Join-Path $jsxDestination "dist")
 
-Copy-Directory `
-    $dynwinrtPackageRoot `
-    (Join-Path $layoutRoot "node_modules\@microsoft\dynwinrt")
+$dynwinrtDestination = Join-Path `
+    $layoutRoot `
+    "node_modules\@microsoft\dynwinrt"
 Copy-RuntimeFile `
-    $nodeLicense `
+    (Join-Path $dynwinrtPackageRoot "package.json") `
+    (Join-Path $dynwinrtDestination "package.json")
+Copy-JavaScriptTree `
+    $dynwinrtPackageRoot `
+    $dynwinrtDestination
+if (Test-Path -LiteralPath (Join-Path $dynwinrtPackageRoot "LICENSE")) {
+    Copy-RuntimeFile `
+        (Join-Path $dynwinrtPackageRoot "LICENSE") `
+        (Join-Path $dynwinrtDestination "LICENSE")
+}
+Copy-RuntimeFile `
+    $dynwinrtAddon `
+    (Join-Path $dynwinrtDestination "dynwinrt.node")
+Copy-RuntimeFile `
+    $targetNode.License `
     (Join-Path $layoutRoot "licenses\node-LICENSE")
 
 $manifestPath = Join-Path $layoutRoot "Package.appxmanifest"
@@ -359,6 +501,10 @@ Copy-RuntimeFile `
 [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw
 $manifest.Package.Identity.SetAttribute("Version", $Version)
 $manifest.Package.Identity.SetAttribute("Publisher", $Publisher)
+$manifest.Package.Identity.SetAttribute(
+    "ProcessorArchitecture",
+    $Architecture
+)
 $manifest.Save($manifestPath)
 
 Invoke-Checked $winapp @(
@@ -381,24 +527,30 @@ $seaConfig |
     ConvertTo-Json |
     Set-Content -LiteralPath $configPath -Encoding UTF8
 
-Invoke-Checked $nodeExecutable @(
+Invoke-Checked $buildNode.Executable @(
     "--experimental-sea-config",
     $configPath
 ) "SEA blob generation"
 
 $seaExecutable = Join-Path $layoutRoot $seaExecutableName
-Copy-Item -LiteralPath $nodeExecutable -Destination $seaExecutable -Force
+Copy-Item `
+    -LiteralPath $targetNode.Executable `
+    -Destination $seaExecutable `
+    -Force
 Invoke-Checked $winapp @(
     "tool", "signtool",
     "remove", "/s", $seaExecutable
 ) "Node signature removal"
-Invoke-Checked $nodeExecutable @(
+Invoke-Checked $buildNode.Executable @(
     (Join-Path $packagingRoot "inject-sea.cjs"),
     $seaExecutable,
     $blobPath,
     $postjectApi
 ) "SEA blob injection"
 [DynWinRTJsxSeaPe]::SetWindowsSubsystem($seaExecutable)
+if ([DynWinRTJsxSeaPe]::GetMachine($seaExecutable) -ne $targetMachine) {
+    throw "The generated SEA executable is not $Architecture."
+}
 
 if (-not $CertificatePath) {
     $certificateRoot = Join-Path $stateRoot "certificate"
@@ -433,7 +585,9 @@ Invoke-Checked $winapp @(
     "--quiet"
 ) "SEA executable signing"
 
-$msixPath = Join-Path $artifactRoot "DynWinRTJSXDashboard_${Version}_x64_sea.msix"
+$msixPath = Join-Path `
+    $artifactRoot `
+    "DynWinRTJSXDashboard_${Version}_${Architecture}_sea.msix"
 Remove-Item -LiteralPath $msixPath -Force -ErrorAction SilentlyContinue
 Invoke-Checked $winapp @(
     "package",
@@ -498,9 +652,24 @@ $manifestDependencies = @(
             }
         }
 )
+$bindingPrune = Get-Content `
+    -LiteralPath $bindingPruneReportPath `
+    -Raw |
+    ConvertFrom-Json
+$applicationJavaScriptFiles = @(
+    Get-ChildItem `
+        -LiteralPath $dashboardDist `
+        -Filter "*.js" `
+        -File `
+        -Recurse
+)
+$applicationJavaScriptBytes = (
+    $applicationJavaScriptFiles |
+        Measure-Object -Property Length -Sum
+).Sum
 $provenancePath = Join-Path `
     $artifactRoot `
-    "DynWinRTJSXDashboard_${Version}_x64_sea.provenance.json"
+    "DynWinRTJSXDashboard_${Version}_${Architecture}_sea.provenance.json"
 $provenance = [ordered]@{
     schemaVersion = 1
     generatedAt = [DateTime]::UtcNow.ToString("O")
@@ -508,7 +677,7 @@ $provenance = [ordered]@{
         name = $manifest.Package.Identity.Name
         version = $Version
         publisher = $Publisher
-        architecture = "x64"
+        architecture = $Architecture
         file = [IO.Path]::GetFileName($msixPath)
         size = (Get-Item -LiteralPath $msixPath).Length
         sha256 = Get-Sha256 $msixPath
@@ -522,9 +691,12 @@ $provenance = [ordered]@{
     inputs = [ordered]@{
         node = [ordered]@{
             version = $nodeVersion
-            archive = $nodeArchiveName
-            archiveSha256 = $nodeArchiveSha256
-            executableSha256 = $nodeExeSha256
+            targetArchitecture = $Architecture
+            archive = $targetNode.ArchiveName
+            archiveSha256 = $targetNode.ArchiveSha256
+            executableSha256 = $targetNode.ExecutableSha256
+            buildHostArchitecture = $buildNode.Architecture
+            buildHostExecutableSha256 = $buildNode.ExecutableSha256
         }
         postject = [ordered]@{
             version = $postjectVersion
@@ -539,7 +711,29 @@ $provenance = [ordered]@{
             winappCliExecutable = $winappVersion.Trim()
         }
         dynwinrtAddonSha256 = Get-Sha256 $dynwinrtAddon
-        bindingsIndexSha256 = Get-Sha256 (Join-Path $bindingsRoot "index.js")
+        bindingsIndexSha256 = Get-Sha256 (
+            Join-Path $prunedBindingsRoot "index.js"
+        )
+        generatedBindings = [ordered]@{
+            sourceFiles = $bindingPrune.source.files
+            sourceBytes = $bindingPrune.source.bytes
+            runtimeFiles = $bindingPrune.runtime.files
+            runtimeBytes = $bindingPrune.runtime.bytes
+            savedFiles = $bindingPrune.saved.files
+            savedBytes = $bindingPrune.saved.bytes
+            savedPercent = $bindingPrune.saved.percent
+            selectedExports = $bindingPrune.selectedExports
+        }
+        applicationJavaScript = [ordered]@{
+            files = $applicationJavaScriptFiles.Count
+            bytes = $applicationJavaScriptBytes
+            bundled = $false
+            reason = "The application and Worker output is already a small hot-reloadable CommonJS graph; generated bindings and the Node executable dominate package size."
+        }
+        runtimePackageFiltering = [ordered]@{
+            declarationsIncluded = $false
+            sourceMapsIncluded = $false
+        }
         packageLockSha256 = Get-Sha256 (Join-Path $dashboardRoot "package-lock.json")
     }
     manifest = [ordered]@{

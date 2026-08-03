@@ -55,6 +55,15 @@ have all completed one-repetition smoke comparisons. Baseline-quality results
 still require the documented warmups/repetitions and, for visual frame claims,
 elevated ETW Present tracing.
 
+The 2026-08-02 focused JSX profile measured a single-leaf property update at
+approximately 6.2 microseconds and 1,000 changed properties at approximately
+12.3 milliseconds. It also identified repeated native-child synchronization
+while keyed entries were still being staged. Deferring those callbacks until
+the new keyed entry set commits reduced the 500-row, 50% churn scenario from
+456.3 ms to 46.3 ms average update time, reduced peak RSS from 737 MB to
+427 MB, and preserved keyed identity and close-time zero-active diagnostics.
+These are machine-local profiling results rather than cross-framework claims.
+
 The Direct and Reactor applications come from the sibling
 `microsoft-ui-reactor/tests/stress_perf` suite. The dynwinrt-jsx application
 ports its `StockDataSource` dimensions, 33 ms update interval, mutation

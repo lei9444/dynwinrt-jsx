@@ -123,6 +123,15 @@ test('defined WinUI Host owns state and Worker cleanup', async (t) => {
           status: 'starting',
         }
       },
+      validateState(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          Number.isInteger(value.count) &&
+          typeof value.status === 'string'
+        )
+      },
       persist(state) {
         return {
           version: 1,
@@ -210,6 +219,7 @@ test('defined WinUI Host terminates a failed startup Worker', async (t) => {
       }),
       validate: () => true,
       initialize: (loaded) => loaded.state,
+      validateState: () => true,
       persist: (state) => state,
     },
     onWorkerCreated() {
@@ -224,6 +234,58 @@ test('defined WinUI Host terminates a failed startup Worker', async (t) => {
   assert.equal(host.disposed, true)
   assert.equal(host.worker, null)
   assert.equal(host.bridge, null)
+})
+
+test('defined WinUI Host rejects invalid initialized state before Worker startup', async (t) => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'dynwinrt-jsx-host-state-'),
+  )
+  t.after(() => {
+    fs.rmSync(directory, {
+      recursive: true,
+      force: true,
+    })
+  })
+  let workerCreated = false
+  const { defineWinUIHost } =
+    require('../dist/host.js')
+  const host = defineWinUIHost({
+    rootDirectory: directory,
+    bootstrap: false,
+    state: {
+      path: path.join(directory, 'state.json'),
+      defaultState: () => ({
+        version: 1,
+        count: 0,
+      }),
+      validate: () => true,
+      initialize: () => ({
+        version: 1,
+        count: 'invalid',
+      }),
+      validateState(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          Number.isInteger(value.count)
+        )
+      },
+      persist: (state) => state,
+    },
+    onWorkerCreated() {
+      workerCreated = true
+    },
+  })
+
+  await assert.rejects(
+    host.run(),
+    /Initialized WinUI Host state failed schema validation/,
+  )
+  assert.equal(workerCreated, false)
+  assert.equal(host.bridge, null)
+  assert.equal(host.worker, null)
+  assert.equal(host.disposed, true)
 })
 
 test('Worker runtime owns bridge, module loading, and exit', async (t) => {
@@ -267,6 +329,15 @@ test('Worker runtime owns bridge, module loading, and exit', async (t) => {
         ...loaded.state,
         status: 'starting',
       }),
+      validateState(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          Number.isInteger(value.count) &&
+          typeof value.status === 'string'
+        )
+      },
       persist: (state) => ({
         version: 1,
         count: state.count,

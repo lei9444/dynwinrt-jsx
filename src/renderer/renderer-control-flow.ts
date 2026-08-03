@@ -8,12 +8,14 @@ import {
   type Signal,
 } from '../core/reactive'
 import {
+  ChildSyncRestoredError,
   resolveChildAdapter,
   type ChildAdapter,
   type ChildAdapterOptions,
 } from './renderer-children'
 import {
   RecordState,
+  runWithChildSynchronizationErrors,
   type MountedRecord,
 } from './renderer-lifecycle'
 import type { RendererErrorContext } from './renderer'
@@ -28,6 +30,7 @@ interface ListEntry<Item> {
   readonly key: Key
   readonly item: Item
   readonly index: Signal<number>
+  active: boolean
   nodes: readonly unknown[]
   record: MountedRecord
 }
@@ -133,53 +136,92 @@ export class RendererControlFlowService {
     })
     let entries: ListEntry<Item>[] = []
     let fallback: MountedRecord | undefined
+    let retiredEntries: ListEntry<Item>[] = []
+    let retiredFallbacks: MountedRecord[] = []
     const disposeEntries = (
       values: Iterable<ListEntry<Item>>,
-    ): unknown => {
+    ): {
+      readonly error: unknown
+      readonly retained: ListEntry<Item>[]
+    } => {
       let firstError: unknown
+      const retained: ListEntry<Item>[] = []
       for (const entry of values) {
+        entry.active = false
         try {
           entry.record.dispose()
         }
         catch (error) {
           firstError ??= error
         }
+        if (!entry.record.disposed) {
+          retained.push(entry)
+        }
       }
-      return firstError
+      return {
+        error: firstError,
+        retained,
+      }
+    }
+    const disposeFallbacks = (
+      values: Iterable<MountedRecord>,
+    ): {
+      readonly error: unknown
+      readonly retained: MountedRecord[]
+    } => {
+      let firstError: unknown
+      const retained: MountedRecord[] = []
+      for (const value of values) {
+        try {
+          value.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        if (!value.disposed) {
+          retained.push(value)
+        }
+      }
+      return {
+        error: firstError,
+        retained,
+      }
     }
 
     const record = new RecordState(
       onNodesChanged,
       () => {
         let firstError: unknown
-        let retainedFallback: MountedRecord | undefined
-        try {
-          fallback?.dispose()
+        if (fallback) {
+          const result = disposeFallbacks([fallback])
+          firstError = result.error
+          fallback = result.retained[0]
         }
-        catch (error) {
-          firstError = error
-          if (fallback && !fallback.disposed) {
-            retainedFallback = fallback
-          }
-        }
-        fallback = retainedFallback
-        const retainedEntries: ListEntry<Item>[] = []
+        const retiredFallbackResult =
+          disposeFallbacks(retiredFallbacks)
+        firstError ??= retiredFallbackResult.error
+        retiredFallbacks = retiredFallbackResult.retained
+        const entryResult = disposeEntries(entries)
+        firstError ??= entryResult.error
+        entries = entryResult.retained
         for (const entry of entries) {
-          try {
-            entry.record.dispose()
-          }
-          catch (error) {
-            firstError ??= error
-          }
-          if (!entry.record.disposed) {
-            retainedEntries.push(entry)
-          }
+          entry.active = true
         }
-        entries = retainedEntries
+        const retiredEntryResult =
+          disposeEntries(retiredEntries)
+        firstError ??= retiredEntryResult.error
+        retiredEntries = retiredEntryResult.retained
         if (
           fallback !== undefined ||
-          entries.length > 0
+          retiredFallbacks.length > 0 ||
+          entries.length > 0 ||
+          retiredEntries.length > 0
         ) {
+          if (firstError === undefined) {
+            firstError = new Error(
+              'Keyed list cleanup retained undisposed records.',
+            )
+          }
           throw firstError
         }
         try {
@@ -195,68 +237,57 @@ export class RendererControlFlowService {
       true,
     )
 
-    const updateNodes = () => {
-      if (fallback) {
-        record.setNodes(fallback.nodes)
+    const updateNodes = (
+      propagateSynchronizationErrors = false,
+      allowCachedCollectionFallback = false,
+      skipNativeSynchronization = false,
+    ) => {
+      const apply = () => {
+        if (fallback) {
+          record.setNodes(fallback.nodes)
+        }
+        else {
+          record.setNodes(
+            entries.flatMap((entry) => [...entry.nodes]),
+          )
+        }
+      }
+      if (propagateSynchronizationErrors) {
+        runWithChildSynchronizationErrors(
+          apply,
+          allowCachedCollectionFallback,
+          skipNativeSynchronization,
+        )
       }
       else {
-        record.setNodes(
-          entries.flatMap((entry) => [...entry.nodes]),
-        )
+        apply()
       }
     }
 
     runInScope(scope, () => {
       effect(() => {
         const items = list.readItems()
-        if (items.length === 0) {
-          const disposalError = disposeEntries(entries)
-          entries = []
-
-          if (!fallback && list.fallback != null) {
-            fallback = this.host.mount(
-              list.fallback,
-              () => updateNodes(),
-              scope,
-            )
-          }
-
-          updateNodes()
-          if (disposalError !== undefined) {
-            throw disposalError
-          }
-          return
-        }
-
-        let disposalError: unknown
-        try {
-          fallback?.dispose()
-        }
-        catch (error) {
-          disposalError = error
-        }
-        fallback = undefined
-
         const seenKeys = new Set<Key>()
-        const keyedItems = items.map(
-          (item, visibleIndex) => {
-            const index = list.getSourceIndex(
-              item,
-              visibleIndex,
-            )
-            const key = list.getKey(item, index)
-            if (seenKeys.has(key)) {
-              throw new Error(
-                `Duplicate For key: ${String(key)}`,
+        const keyedItems = items.length === 0
+          ? []
+          : items.map((item, visibleIndex) => {
+              const index = list.getSourceIndex(
+                item,
+                visibleIndex,
               )
-            }
-            seenKeys.add(key)
-            return { item, index, key }
-          },
-        )
-
+              const key = list.getKey(item, index)
+              if (seenKeys.has(key)) {
+                throw new Error(
+                  `Duplicate For key: ${String(key)}`,
+                )
+              }
+              seenKeys.add(key)
+              return { item, index, key }
+            })
+        const previousEntries = entries
+        const previousFallback = fallback
         const oldEntries = new Map<Key, ListEntry<Item>>()
-        for (const entry of entries) {
+        for (const entry of previousEntries) {
           if (oldEntries.has(entry.key)) {
             throw new Error(
               `Duplicate existing For key: ${String(entry.key)}`,
@@ -265,13 +296,51 @@ export class RendererControlFlowService {
           oldEntries.set(entry.key, entry)
         }
 
+        let cleanupError: unknown
+        const retiredEntryRetry =
+          disposeEntries(retiredEntries)
+        cleanupError = retiredEntryRetry.error
+        retiredEntries = retiredEntryRetry.retained
+        const retiredFallbackRetry =
+          disposeFallbacks(retiredFallbacks)
+        cleanupError ??= retiredFallbackRetry.error
+        retiredFallbacks =
+          retiredFallbackRetry.retained
+
         const nextEntries: ListEntry<Item>[] = []
         const createdEntries: ListEntry<Item>[] = []
-        const disposedEntries = new Set<ListEntry<Item>>()
         const previousIndexes =
           new Map<ListEntry<Item>, number>()
+        let nextFallback = previousFallback
+        let createdFallback: MountedRecord | undefined
+        for (const entry of previousEntries) {
+          entry.active = false
+        }
 
         try {
+          if (items.length === 0) {
+            if (
+              !nextFallback &&
+              list.fallback != null
+            ) {
+              let candidate: MountedRecord | undefined
+              candidate = this.host.mount(
+                list.fallback,
+                () => {
+                  if (fallback === candidate) {
+                    updateNodes()
+                  }
+                },
+                scope,
+              )
+              createdFallback = candidate
+              nextFallback = candidate
+            }
+          }
+          else {
+            nextFallback = undefined
+          }
+
           keyedItems.forEach(({ item, index, key }) => {
             const previous = oldEntries.get(key)
             if (
@@ -289,16 +358,13 @@ export class RendererControlFlowService {
               return
             }
 
-            if (previous) {
-              disposedEntries.add(previous)
-              previous.record.dispose()
-            }
             oldEntries.delete(key)
 
             const entry: ListEntry<Item> = {
               key,
               item,
               index: signal(index),
+              active: false,
               nodes: [],
               record:
                 undefined as unknown as MountedRecord,
@@ -308,7 +374,9 @@ export class RendererControlFlowService {
               () => list.renderItem(item, entry.index),
               (nodes) => {
                 entry.nodes = nodes
-                updateNodes()
+                if (entry.active) {
+                  updateNodes()
+                }
               },
               scope,
             )
@@ -317,27 +385,31 @@ export class RendererControlFlowService {
           })
         }
         catch (error) {
-          let cleanupError =
+          const stagedEntryCleanup =
             disposeEntries(createdEntries)
+          cleanupError ??= stagedEntryCleanup.error
+          retiredEntries.push(
+            ...stagedEntryCleanup.retained,
+          )
+          if (createdFallback) {
+            const stagedFallbackCleanup =
+              disposeFallbacks([createdFallback])
+            cleanupError ??= stagedFallbackCleanup.error
+            retiredFallbacks.push(
+              ...stagedFallbackCleanup.retained,
+            )
+          }
           for (const [entry, previousIndex] of
             previousIndexes) {
-            if (!disposedEntries.has(entry)) {
-              try {
-                entry.index.value = previousIndex
-              }
-              catch (failure) {
-                cleanupError ??= failure
-              }
+            try {
+              entry.index.value = previousIndex
+            }
+            catch (failure) {
+              cleanupError ??= failure
             }
           }
-          entries = entries.filter(
-            (entry) => !disposedEntries.has(entry),
-          )
-          try {
-            updateNodes()
-          }
-          catch (failure) {
-            cleanupError ??= failure
+          for (const entry of previousEntries) {
+            entry.active = true
           }
           if (cleanupError !== undefined) {
             throw new AggregateError(
@@ -348,15 +420,112 @@ export class RendererControlFlowService {
           throw error
         }
 
-        const oldEntriesError =
-          disposeEntries(oldEntries.values())
-        disposalError ??= oldEntriesError
-
         entries = nextEntries
-        updateNodes()
-        if (disposalError !== undefined) {
-          throw disposalError
+        fallback = nextFallback
+        let synchronizationError: unknown
+        try {
+          updateNodes(true)
         }
+        catch (error) {
+          synchronizationError = error
+        }
+        if (synchronizationError !== undefined) {
+          const nativeStateRestored =
+            synchronizationError instanceof
+              ChildSyncRestoredError
+          const reportedSynchronizationError =
+            nativeStateRestored
+              ? (
+                  synchronizationError as
+                    ChildSyncRestoredError
+                ).originalError
+              : synchronizationError
+          entries = previousEntries
+          fallback = previousFallback
+          for (const entry of previousEntries) {
+            entry.active = true
+          }
+          try {
+            updateNodes(
+              true,
+              true,
+              nativeStateRestored,
+            )
+          }
+          catch (error) {
+            cleanupError ??= error
+          }
+          const stagedEntryCleanup =
+            disposeEntries(createdEntries)
+          cleanupError ??= stagedEntryCleanup.error
+          retiredEntries.push(
+            ...stagedEntryCleanup.retained,
+          )
+          if (createdFallback) {
+            const stagedFallbackCleanup =
+              disposeFallbacks([createdFallback])
+            cleanupError ??= stagedFallbackCleanup.error
+            retiredFallbacks.push(
+              ...stagedFallbackCleanup.retained,
+            )
+          }
+          for (const [entry, previousIndex] of
+            previousIndexes) {
+            try {
+              entry.index.value = previousIndex
+            }
+            catch (error) {
+              cleanupError ??= error
+            }
+          }
+          if (cleanupError !== undefined) {
+            throw new AggregateError(
+              [
+                reportedSynchronizationError,
+                cleanupError,
+              ],
+              'Keyed native synchronization and rollback failed.',
+            )
+          }
+          throw reportedSynchronizationError
+        }
+
+        for (const entry of entries) {
+          entry.active = true
+        }
+        const nextEntrySet = new Set(entries)
+        const removedEntries = previousEntries.filter(
+          (entry) => !nextEntrySet.has(entry),
+        )
+        const removedEntryCleanup =
+          disposeEntries(removedEntries)
+        cleanupError ??= removedEntryCleanup.error
+        retiredEntries.push(
+          ...removedEntryCleanup.retained,
+        )
+        if (
+          previousFallback &&
+          previousFallback !== fallback
+        ) {
+          const removedFallbackCleanup =
+            disposeFallbacks([previousFallback])
+          cleanupError ??=
+            removedFallbackCleanup.error
+          retiredFallbacks.push(
+            ...removedFallbackCleanup.retained,
+          )
+        }
+        if (cleanupError !== undefined) {
+          throw cleanupError
+        }
+      }, {
+        onError: (error) => {
+          this.host.handleError(
+            error,
+            { phase: 'children' },
+            scope,
+          )
+        },
       })
     })
 

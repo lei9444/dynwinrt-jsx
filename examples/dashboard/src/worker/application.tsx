@@ -16,6 +16,7 @@ import {
 import * as WinUIBindings from '#winapp/bindings'
 import {
   ApplicationTheme,
+  MicaBackdrop,
   TitleBarTheme,
   XamlRoot,
 } from '#winapp/bindings'
@@ -26,6 +27,9 @@ import {
   createDashboardModel,
   type DashboardState,
 } from '../dashboard-model'
+import type {
+  DashboardStatePatch,
+} from '../dashboard-state'
 import type { NativeSelfTest } from '../native-selftest'
 import {
   createDashboardAppLoader,
@@ -48,7 +52,8 @@ interface NodeRequire {
 export interface RunDashboardApplicationOptions {
   readonly parentPort: DashboardWorkerParentPort
   readonly workerData: DashboardWorkerData
-  readonly stateBridge: StateBridge<DashboardState>
+  readonly stateBridge:
+    StateBridge<DashboardState, DashboardStatePatch>
   readonly postStartupStage: DashboardStartupStageReporter
 }
 
@@ -129,7 +134,7 @@ export function runDashboardApplication(
       ownProjected,
       createProjected,
     }) {
-      window.systemBackdrop = new bindings.MicaBackdrop()
+      window.systemBackdrop = new MicaBackdrop()
       const model = createDashboardModel(
         stateBridge,
         workerData.initialState,
@@ -299,7 +304,7 @@ export function runDashboardApplication(
       return {
         child: initialTree,
         beforeClose() {
-          stateBridge.set(model.snapshot('closed'))
+          model.status.value = 'closed'
         },
         disposeAfterRender() {
           let firstError: unknown

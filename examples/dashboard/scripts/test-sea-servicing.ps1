@@ -6,9 +6,12 @@ param(
     [string]$BaseVersion = "1.0.20.0",
     [ValidatePattern("^\d+\.\d+\.\d+\.\d+$")]
     [string]$UpgradeVersion = "1.0.21.0",
+    [ValidateSet("x64", "arm64")]
+    [string]$Architecture = "x64",
     [string]$Publisher = "CN=DynWinRTJSXDev",
     [string]$CertificatePath,
     [string]$CertificatePassword = $env:DYNWINRT_JSX_CERT_PASSWORD,
+    [string]$DynWinRTAddonPath,
     [string]$WinAppPath,
     [switch]$InstallCertificate,
     [switch]$SkipBuild,
@@ -90,24 +93,31 @@ function Get-Sha256([string]$Path) {
     }
 }
 
-function Get-PackagePath([string]$Version) {
+function Get-PackagePath(
+    [string]$Version,
+    [string]$TargetArchitecture = $Architecture
+) {
     return Join-Path `
         $artifactRoot `
-        "DynWinRTJSXDashboard_${Version}_x64_sea.msix"
+        "DynWinRTJSXDashboard_${Version}_${TargetArchitecture}_sea.msix"
 }
 
 function Get-ProvenancePath([string]$Version) {
     return Join-Path `
         $artifactRoot `
-        "DynWinRTJSXDashboard_${Version}_x64_sea.provenance.json"
+        "DynWinRTJSXDashboard_${Version}_${Architecture}_sea.provenance.json"
 }
 
 function Build-Package([string]$Version) {
     $arguments = @{
         Version = $Version
+        Architecture = $Architecture
         Publisher = $Publisher
         CertificatePassword = $CertificatePassword
         WinAppPath = $script:resolvedWinApp
+    }
+    if ($DynWinRTAddonPath) {
+        $arguments.DynWinRTAddonPath = $DynWinRTAddonPath
     }
     if ($CertificatePath) {
         $arguments.CertificatePath = $CertificatePath
@@ -143,7 +153,8 @@ function Assert-Provenance(
 
 function Install-PackageVersion(
     [string]$Version,
-    [string]$PackagePath
+    [string]$PackagePath,
+    [string]$ExpectedArchitecture = $Architecture
 ) {
     Add-AppxPackage `
         -Path $PackagePath `
@@ -156,6 +167,11 @@ function Install-PackageVersion(
     }
     if ($installed.Version.ToString() -ne $Version) {
         throw "Expected installed version $Version, received $($installed.Version)."
+    }
+    $installedArchitecture =
+        $installed.Architecture.ToString().ToLowerInvariant()
+    if ($installedArchitecture -cne $ExpectedArchitecture.ToLowerInvariant()) {
+        throw "Expected installed architecture $ExpectedArchitecture, received $installedArchitecture."
     }
     return $installed
 }
@@ -413,8 +429,14 @@ $initialVersion = if ($initialPackage) {
 else {
     $null
 }
+$initialArchitecture = if ($initialPackage) {
+    $initialPackage.Architecture.ToString().ToLowerInvariant()
+}
+else {
+    $null
+}
 $initialPackagePath = if ($initialVersion) {
-    Get-PackagePath $initialVersion
+    Get-PackagePath $initialVersion $initialArchitecture
 }
 else {
     $null
@@ -459,8 +481,8 @@ try {
     Assert-Provenance $BaseVersion $basePackage
     Assert-Provenance $UpgradeVersion $upgradePackage
 
-    $installed = Install-PackageVersion $BaseVersion $basePackage
     $packageMutationStarted = $true
+    $installed = Install-PackageVersion $BaseVersion $basePackage
     $transitions += [ordered]@{
         action = "install"
         version = $installed.Version.ToString()
@@ -537,7 +559,8 @@ finally {
             if ($initialVersion) {
                 Install-PackageVersion `
                     $initialVersion `
-                    $initialPackagePath |
+                    $initialPackagePath `
+                    $initialArchitecture |
                     Out-Null
             }
             else {
@@ -583,11 +606,20 @@ finally {
     $summary = [ordered]@{
         runId = $runId
         passed = $null -eq $failureMessage
+        architecture = $Architecture
         baseVersion = $BaseVersion
         upgradeVersion = $UpgradeVersion
         initialInstalledVersion = $initialVersion
+        initialInstalledArchitecture = $initialArchitecture
         finalInstalledVersion = if (Get-AppxPackage -Name $packageName) {
             (Get-AppxPackage -Name $packageName).Version.ToString()
+        }
+        else {
+            $null
+        }
+        finalInstalledArchitecture = if (Get-AppxPackage -Name $packageName) {
+            (Get-AppxPackage -Name $packageName).
+                Architecture.ToString().ToLowerInvariant()
         }
         else {
             $null

@@ -1,0 +1,45 @@
+name: Release package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: windows-2025
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24.18.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Prepare verified release artifact
+        shell: pwsh
+        run: |
+          $arguments = @(
+            "-OutputDirectory", ".winapp\release-artifact",
+            "-RequireCleanSources"
+          )
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $arguments += "-RequireTagMatch"
+          }
+          .\scripts\prepare-release.ps1 @arguments
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynwinrt-jsx-${{ github.ref_name }}
+          path: .winapp/release-artifact/
+          if-no-files-found: error

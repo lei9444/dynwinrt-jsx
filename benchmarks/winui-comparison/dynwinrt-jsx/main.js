@@ -159,6 +159,13 @@ const host = defineWinUIHost({
       )
     },
     initialize: (loaded) => loaded.state,
+    validateState(value) {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        value.version === 1
+      )
+    },
     persist: (state) => state,
   },
   workerData: {

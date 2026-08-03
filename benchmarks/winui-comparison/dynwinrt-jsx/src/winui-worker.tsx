@@ -38,6 +38,13 @@ const runtime = createWinUIWorkerRuntime<
   }
 >({
   moduleId: './dist/app.js',
+  validateState(value): value is BenchmarkState {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      (value as { version?: unknown }).version === 1
+    )
+  },
 })
 const startupEpochMs =
   runtime.workerData.benchmarkOptions.startupEpochMs

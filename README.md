@@ -9,6 +9,9 @@ Documentation:
 - [Capability matrix](docs/capabilities.md)
 - [Public API index](docs/api-index.md)
 - [Validation guide](docs/validation.md)
+- [SEA and MSIX packaging](docs/sea-packaging.md)
+- [Versioning and compatibility](docs/versioning.md)
+- [Release preparation](docs/releasing.md)
 - [Async actions](docs/recipes/async-actions.md)
 - [Startup and event coalescing](docs/recipes/startup-and-events.md)
 - [Native resource ownership](docs/recipes/native-resources.md)
@@ -147,6 +150,7 @@ const host = defineWinUIHost({
   state: {
     defaultState: createDefaultPersistedAppState,
     validate: isPersistedAppState,
+    validateState: isAppState,
     initialize: (loaded) => ({
       ...loaded.state,
       status: 'starting',
@@ -245,6 +249,7 @@ messages, manages heartbeat/Host shared state, and closes the state port:
 const runtime = createWinUIWorkerRuntime<AppState>({
   channel: 'app-state',
   moduleId: './dist/app.js',
+  validateState: isAppState,
 })
 
 const app = defineWinUIApp({
@@ -1597,14 +1602,32 @@ const bridge = createStateBridge(
     role: 'client',
     channel: 'app-state',
     initial: { count: 0 },
+    validate: isAppState,
+    patch: {
+      validate: isAppStatePatch,
+      apply: (state, patch) => ({ ...state, ...patch }),
+    },
   },
 )
 
 await bridge.ready
-bridge.update((state) => ({ ...state, count: state.count + 1 }))
+bridge.patch({ count: bridge.state.value.count + 1 })
 ```
 
-The host is authoritative and assigns monotonically increasing revisions. Client writes are optimistic and then replaced by the host response. Both creation orders are supported: clients request state and hosts publish their initial state. State is transferred as a complete structured-clone value, not as patches.
+The Host is authoritative and assigns monotonically increasing revisions.
+Initial state, local writes, snapshots, and patches are schema-validated before
+application. Client writes are optimistic; stale writes receive an
+authoritative rollback plus a `revision-conflict` diagnostic, and later writes
+from the same speculative generation are rejected. Initial readiness uses a
+request/state/ack/ready handshake so the Worker starts from the Host revision
+acknowledged at the end of synchronization. `set()` and
+`update()` remain available for full snapshots, while `patch()` sends an
+application-defined typed incremental value. Optional typed commands flow from
+Client to Host and typed events flow from Host to Client. Invalid initial
+synchronization rejects `ready`; later failures preserve the last valid state
+and update `lastDiagnostic`. Client updates and commands are rejected until
+`ready` resolves; `createWinUIWorkerRuntime()` waits automatically before
+starting the application.
 
 ### Rendering and hot refresh
 
@@ -1821,7 +1844,7 @@ See [`docs/migration-v1.md`](docs/migration-v1.md) for examples.
 - `Show`, hot-root refresh, and changed keyed item objects remount their affected subtree.
 - `VirtualFor` remains fixed-height application-managed windowing; use
   `createItemsRepeaterControl()` for native dynamic-height virtualization.
-- The state bridge clones complete state and does not provide schema validation or incremental patches.
+- State patch, command, and event schemas remain application-defined; the bridge does not infer domain validation or compress messages.
 - WinRT object properties still require projected objects unless a registered converter handles that property.
 - All WinUI object creation, reads, and writes must remain on the UI STA.
 

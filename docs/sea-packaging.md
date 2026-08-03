@@ -12,27 +12,30 @@ The workflow is implemented by:
 - `examples/dashboard/packaging/inject-sea.cjs`
 - `examples/dashboard/packaging/Package.appxmanifest`
 
-## Build command
+## Build commands
 
 From `examples/dashboard`:
 
 ```powershell
-npm run package:sea
+npm run package:sea:x64
+npm run package:sea:arm64
+npm run package:sea:bundle
 ```
 
-This expands to:
+`package:sea` remains an alias for the x64 build. The ARM64 and bundle commands
+cross-build the native dynwinrt addon with the installed Rust and Visual Studio
+ARM64 toolchain before packaging.
 
-```text
-npm run build
-→ powershell -File scripts/package-sea.ps1
-```
-
-The default output is:
+The bundle command produces:
 
 ```text
 .winapp\sea-package\artifacts\
   DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+  DynWinRTJSXDashboard_1.0.0.0_arm64_sea.msix
+  DynWinRTJSXDashboard_1.0.0.0_x64_arm64_sea.msixbundle
   DynWinRTJSXDashboard_1.0.0.0_x64_sea.provenance.json
+  DynWinRTJSXDashboard_1.0.0.0_arm64_sea.provenance.json
+  DynWinRTJSXDashboard_1.0.0.0_x64_arm64_sea.provenance.json
 ```
 
 All downloads, temporary files, certificates, package layouts, and output
@@ -40,28 +43,32 @@ artifacts remain under `.winapp\sea-package`, which is ignored by Git.
 
 ## Pinned build inputs
 
-The x64 workflow pins:
+Both architecture workflows pin:
 
-| Input | Version |
+| Input | Version/target |
 |---|---|
-| Node.js | 24.18.0 |
+| Node.js | 24.18.0 x64 and ARM64 |
+| dynwinrt addon | x86_64-pc-windows-msvc and aarch64-pc-windows-msvc |
 | postject | 1.0.0-alpha.6 |
 
-The script downloads the official Node Windows x64 ZIP and the bundled
-postject API. Both files are accepted only when their SHA256 values match the
-constants in `package-sea.ps1`.
+The script downloads the official Node Windows ZIP for the target architecture
+and the bundled postject API. ARM64 packaging also uses the pinned x64 Node
+executable as the build host for SEA preparation and PE injection because the
+target executable cannot run on an x64 build machine. All files are accepted
+only when their SHA256 values match the constants in `package-sea.ps1`.
 
 The Node ZIP is extracted to:
 
 ```text
 .winapp\sea-package\cache\
-  node-v24.18.0-win-x64\
+  node-v24.18.0-win-<architecture>\
     node.exe
     LICENSE
 ```
 
-The extracted `node.exe` is also checked independently and must have an x64 PE
-machine type. The staged `dynwinrt.node` native addon must be x64 as well.
+The extracted `node.exe`, generated SEA executable, and staged
+`dynwinrt.node` are checked independently and must match the requested PE
+machine type (`0x8664` for x64 or `0xAA64` for ARM64).
 
 Every package writes a provenance document containing:
 
@@ -113,7 +120,7 @@ npm run dev
 The packaging script creates:
 
 ```text
-.winapp\sea-package\layout\<version>\
+.winapp\sea-package\layout\<architecture>\<version>\
 ```
 
 It stages only files required at runtime:
@@ -127,6 +134,23 @@ node_modules\dynwinrt-jsx\
 node_modules\@microsoft\dynwinrt\
 licenses\node-LICENSE
 ```
+
+Before staging generated bindings, the packaging script scans runtime imports
+from the Dashboard source, adds the fixed binding surface used by
+`defineWinUIApp()` and the renderer preset, and follows every relative
+CommonJS dependency. It writes a compact lazy `index.js` and copies only that
+runtime closure. Declarations, source maps, codegen metadata, and unreachable
+binding modules are excluded.
+
+The current Dashboard closure reduced generated bindings from 3,278 files and
+36.9 MB to 995 JavaScript files and 21.4 MB, a 41.9% byte reduction. The x64
+MSIX decreased from 41.14 MB to 38.04 MB before the additional runtime-package
+source-map/declaration filtering.
+
+The compiled application and Worker graph is nine JavaScript files totaling
+less than 100 KB. It remains unbundled because separate modules preserve direct
+file hot reload, while Node and generated bindings dominate both package size
+and cold-start I/O.
 
 The root `package.json` is required because the UI Worker imports generated
 bindings through the package import alias:
@@ -166,7 +190,7 @@ winappCli generates all image scales from the source SVG:
 ```powershell
 winapp manifest update-assets `
   packaging\dashboard-logo.svg `
-  --manifest .winapp\sea-package\layout\<version>\Package.appxmanifest
+  --manifest .winapp\sea-package\layout\<architecture>\<version>\Package.appxmanifest
 ```
 
 ## 4. Generate the SEA preparation blob
@@ -176,7 +200,7 @@ The script writes a temporary SEA configuration equivalent to:
 ```json
 {
   "main": "packaging/sea-bootstrap.cjs",
-  "output": ".winapp/sea-package/work/<version>/sea-prep.blob",
+  "output": "  .winapp/sea-package/work/<architecture>/<version>/sea-prep.blob",
   "disableExperimentalSEAWarning": true,
   "useSnapshot": false,
   "useCodeCache": false
@@ -310,10 +334,10 @@ The final packaging command is equivalent to:
 
 ```powershell
 winapp package `
-  .winapp\sea-package\layout\<version> `
+  .winapp\sea-package\layout\<architecture>\<version> `
   --manifest Package.appxmanifest `
   --executable DynWinRTJSXDashboard.exe `
-  --output DynWinRTJSXDashboard_<version>_x64_sea.msix `
+  --output DynWinRTJSXDashboard_<version>_<architecture>_sea.msix `
   --cert DynWinRTJSXDashboard-dev.pfx
 ```
 
@@ -338,6 +362,8 @@ node.exe
 launcher.exe
 postject
 TypeScript sources
+TypeScript declarations
+source maps
 ```
 
 ## Runtime startup
@@ -455,7 +481,7 @@ Install the package:
 
 ```powershell
 Add-AppxPackage `
-  .\.winapp\sea-package\artifacts\DynWinRTJSXDashboard_1.0.0.0_x64_sea.msix
+  .\.winapp\sea-package\artifacts\DynWinRTJSXDashboard_1.0.0.0_x64_arm64_sea.msixbundle
 ```
 
 A development certificate is only suitable for local testing. Public
@@ -464,11 +490,13 @@ signing.
 
 ## Servicing contract
 
-The x64 servicing workflow uses two versioned packages and an isolated state
-file:
+The servicing workflow defaults to x64 and can run on an ARM64 validation
+machine with `-Architecture arm64`. It uses two versioned packages and an
+isolated state file:
 
 ```powershell
 npm run package:sea:servicing -- `
+  -Architecture x64 `
   -BaseVersion 1.0.20.0 `
   -UpgradeVersion 1.0.21.0 `
   -CertificatePath C:\secure\test-signing.pfx
@@ -546,13 +574,10 @@ Use `-KeepInstalled` only when the clean machine should retain the package.
 
 ## Current scope
 
-The checked-in workflow produces and services an x64 package. Remaining release
-gates are:
+The checked-in workflow produces x64 and ARM64 packages plus a signed
+multi-architecture development bundle. Remaining external release gates are:
 
-- an ARM64 Node binary and pinned checksums;
-- an ARM64 `dynwinrt.node`;
-- an ARM64 native UI validation environment;
-- a multi-architecture MSIX bundle.
+- execution of the native UI and servicing suites on ARM64 Windows hardware;
 - a trusted production signing certificate or Store signing;
 - execution of `test-sea-clean-machine.ps1` on an external clean Windows
   machine.

@@ -64,13 +64,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "docs:api": "node scripts/generate-api-index.js",
+    "api:baseline": "npm run build && node scripts/generate-api-index.js --check-baseline --check",
+    "api:baseline:update": "npm run build && node scripts/generate-api-index.js --update-baseline",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "npm run build && node --test tests/*.test.js",
-    "check": "npm run typecheck && npm test && npm run docs:api -- --check",
+    "check": "npm run typecheck && npm test && npm run api:baseline",
     "validate:quick": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile quick",
     "validate:native": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile native",
     "validate:full": "pwsh -NoProfile -File scripts/run-validation-suite.ps1 -Profile full",
     "validate:release": "pwsh -NoProfile -File scripts/smoke-generated-app-release.ps1",
+    "release:prepare": "pwsh -NoProfile -File scripts/prepare-release.ps1",
     "prepack": "npm run check"
   },
   "devDependencies": {

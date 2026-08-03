@@ -42,6 +42,9 @@ import {
 } from './renderer-children'
 import {
   RecordState,
+  shouldAllowCachedChildCollectionFallback,
+  shouldPropagateChildSynchronizationErrors,
+  shouldSkipChildNativeSynchronization,
   type MountedRecord,
 } from './renderer-lifecycle'
 import { RendererBoundaryService } from './renderer-boundary'
@@ -173,6 +176,7 @@ interface MutableRendererDiagnostics {
 class ChildrenController {
   private slots: ChildSlot[] = []
   private current: unknown[]
+  private readonly baselineNodes: ReadonlySet<unknown>
   private suspended = true
   private disposed = false
   private disposeFailed = false
@@ -187,6 +191,7 @@ class ChildrenController {
   ) {
     this.current = adapter.snapshot()
     const original = [...this.current]
+    this.baselineNodes = new Set(original)
     try {
       this.mountChildren(children)
       this.suspended = false
@@ -201,6 +206,8 @@ class ChildrenController {
         this.current = this.adapter.sync(
           this.current,
           original,
+          false,
+          this.baselineNodes,
         )
       }
       catch (failure) {
@@ -316,6 +323,8 @@ class ChildrenController {
         this.current = this.adapter.sync(
           this.current,
           [],
+          false,
+          this.baselineNodes,
         )
       }
       catch (failure) {
@@ -364,7 +373,14 @@ class ChildrenController {
         child,
         (nodes) => {
           slot.nodes = nodes
-          this.synchronize()
+          if (shouldSkipChildNativeSynchronization()) {
+            return
+          }
+          this.synchronizeTo(
+            this.desiredNodes,
+            !shouldPropagateChildSynchronizationErrors(),
+            shouldAllowCachedChildCollectionFallback(),
+          )
         },
         this.scope,
       )
@@ -464,6 +480,7 @@ class ChildrenController {
         this.current,
         desired,
         allowCachedCollectionFallback,
+        this.baselineNodes,
       )
     } catch (error) {
       const failure =

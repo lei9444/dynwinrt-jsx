@@ -57,7 +57,10 @@ recordStartup('host-api.loaded', {
   ) / 10,
 })
 const {
+  applyDashboardStatePatch,
   createDefaultPersistedDashboardState,
+  isDashboardStatePatch,
+  isDashboardState,
   isPersistedDashboardState,
 } = require('./dist/dashboard-state.js')
 
@@ -196,6 +199,11 @@ const stateBridge = createStateBridge(
     role: 'host',
     channel: 'dashboard-state',
     initial: initialState,
+    validate: isDashboardState,
+    patch: {
+      validate: isDashboardStatePatch,
+      apply: applyDashboardStatePatch,
+    },
   },
 )
 recordStartup('bridge.created')

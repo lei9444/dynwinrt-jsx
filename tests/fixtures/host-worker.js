@@ -31,7 +31,7 @@ const inspection = {
 
 statePort.on('message', (message) => {
   if (
-    message?.protocol !== 'dynwinrt-jsx.state.v1' ||
+    message?.protocol !== 'dynwinrt-jsx.state.v2' ||
     message?.type !== 'state'
   ) {
     return
@@ -42,6 +42,9 @@ statePort.on('message', (message) => {
       protocol: message.protocol,
       channel: message.channel,
       type: 'set',
+      baseRevision: message.revision,
+      generation: 1,
+      requestId: 1,
       value: {
         ...message.value,
         status: 'running',

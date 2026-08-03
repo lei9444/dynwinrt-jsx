@@ -1,5 +1,32 @@
 # Migrating to dynwinrt-jsx 1.0
 
+## Worker state schemas and protocol
+
+`createStateBridge()`, `createWinUIWorkerRuntime()`, and `defineWinUIHost()`
+now require runtime-state validators. Persisted-state validation remains
+separate because the initialized Worker state can contain additional fields:
+
+```ts
+createStateBridge(transport, {
+  role: 'client',
+  initial,
+  validate: isAppState,
+})
+
+createWinUIWorkerRuntime<AppState>({
+  moduleId: './dist/app.js',
+  validateState: isAppState,
+})
+```
+
+`defineWinUIHost()` uses `state.validate` for persisted JSON and
+`state.validateState` for the initialized and bridged state. The internal wire
+protocol is now `dynwinrt-jsx.state.v2`; both Host and Worker must use the same
+framework release. Applications can add typed incremental `patch`, Client to
+Host `commands`, and Host to Client `events`. Invalid synchronization rejects
+`ready`, while later invalid or conflicting messages retain or restore the
+last authoritative state and publish `lastDiagnostic`.
+
 ## Keyed list indexes
 
 `For` now keeps an entry mounted when it moves. Read its index signal inside a computed value:

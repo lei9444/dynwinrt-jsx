@@ -1012,7 +1012,7 @@ test('nested native detachment failures propagate to the root handle', () => {
   )
 })
 
-test('failed keyed reconciliation does not reuse disposed entries', () => {
+test('failed keyed staging preserves the previous native entries', () => {
   const first = { id: 'a', label: 'A' }
   const second = { id: 'b', label: 'B' }
   const items = signal([first, second])
@@ -1035,6 +1035,7 @@ test('failed keyed reconciliation does not reuse disposed entries', () => {
     new FakeWindow(),
   )
   const panel = handle.roots[0]
+  const previousControls = panel.children.toArray()
 
   assert.throws(
     () => {
@@ -1045,11 +1046,19 @@ test('failed keyed reconciliation does not reuse disposed entries', () => {
     },
     /item failed/,
   )
-  assert.equal(panel.children.length, 0)
+  assert.deepEqual(
+    panel.children.toArray(),
+    previousControls,
+  )
+  assert.equal(nativeRenderer.diagnostics.activeNative, 3)
 
   items.value = [first, second]
 
   assert.equal(panel.children.length, 2)
+  assert.deepEqual(
+    panel.children.toArray(),
+    previousControls,
+  )
   const nativeNodes =
     nativeRenderer.inspector.snapshot().nodes.filter(
       (node) => node.kind === 'native',

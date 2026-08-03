@@ -54,6 +54,8 @@ import {
   createSecondaryWindowManager,
   createSelectorBarControl,
   createSolidColorBrush,
+  createMessageTransport,
+  createStateBridge,
   createStyleRecipe,
   createSymbolIcon,
   createTeachingTip,
@@ -657,6 +659,15 @@ const typeWorkerRuntime =
     readonly count: number
   }>({
     moduleId: './dist/app.js',
+    validateState(value): value is {
+      readonly count: number
+    } {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { count?: unknown }).count === 'number'
+      )
+    },
   })
 void typeWorkerRuntime.workerData.rootDirectory
 void typeWorkerRuntime.createRenderedHooks
@@ -1098,6 +1109,84 @@ const stateStore = createJsonStateStore({
 })
 stateStore.save({ version: 1, count: 1 })
 
+declare const stateEndpoint: {
+  postMessage(message: unknown): void
+  on(
+    type: 'message',
+    listener: (message: unknown) => void,
+  ): unknown
+  off(
+    type: 'message',
+    listener: (message: unknown) => void,
+  ): unknown
+}
+type TypeState = { readonly count: number }
+type TypePatch = { readonly delta: number }
+type TypeCommand = { readonly type: 'increment' }
+type TypeEvent = { readonly type: 'saved' }
+const stateBridge = createStateBridge<
+  TypeState,
+  TypePatch,
+  TypeCommand,
+  TypeEvent
+>(
+  createMessageTransport(stateEndpoint),
+  {
+    role: 'client',
+    initial: { count: 0 },
+    validate(value): value is TypeState {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { count?: unknown }).count === 'number'
+      )
+    },
+    patch: {
+      validate(value): value is TypePatch {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          typeof (value as { delta?: unknown }).delta === 'number'
+        )
+      },
+      apply: (state, patch) => ({
+        count: state.count + patch.delta,
+      }),
+    },
+    commands: {
+      validate(value): value is TypeCommand {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          (value as { type?: unknown }).type === 'increment'
+        )
+      },
+    },
+    events: {
+      validate(value): value is TypeEvent {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          (value as { type?: unknown }).type === 'saved'
+        )
+      },
+      handle(event, context) {
+        event.type satisfies 'saved'
+        context.revision satisfies number
+      },
+    },
+  },
+)
+stateBridge.patch({ delta: 1 })
+stateBridge.sendCommand({ type: 'increment' })
+if (stateBridge.lastDiagnostic.value) {
+  stateBridge.lastDiagnostic.value.code satisfies string
+}
+// @ts-expect-error Patch shape is schema-specific.
+stateBridge.patch({ count: 1 })
+// @ts-expect-error Command shape is schema-specific.
+stateBridge.sendCommand({ type: 'saved' })
+
 const count = signal(0)
 const hardwareCapability: Capability<
   string,
@@ -1172,6 +1261,17 @@ const typeHost = defineWinUIHost({
       return (
         typeof value === 'object' &&
         value !== null
+      )
+    },
+    validateState(value): value is {
+      readonly version: 1
+      readonly count: number
+      readonly status: 'starting'
+    } {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        (value as { status?: unknown }).status === 'starting'
       )
     },
     initialize: (loaded) => ({

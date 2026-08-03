@@ -1920,15 +1920,29 @@ export function createFileHotReloadController(
 export function createWinUIWorkerRuntime<
   State,
   Extra extends object = Record<string, never>,
+  Patch = never,
+  Command = never,
+  Event = never,
 >(
-  options: CreateWinUIWorkerRuntimeOptions,
+  options: CreateWinUIWorkerRuntimeOptions<
+    State,
+    Patch,
+    Command,
+    Event
+  >,
 ): WinUIWorkerRuntime<
   State,
-  WinUIWorkerRuntimeData<State> & Extra
+  WinUIWorkerRuntimeData<State> & Extra,
+  Patch,
+  Command,
+  Event
 > {
   return createWinUIWorkerRuntimeBase<
     State,
-    Extra
+    Extra,
+    Patch,
+    Command,
+    Event
   >(options, {
     createHotReload:
       createFileHotReloadController,

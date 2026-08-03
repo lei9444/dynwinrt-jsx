@@ -23,6 +23,7 @@ const {
   FakeButton,
   FakePanel,
   FakeTextBlock,
+  FakeVector,
   FakeWindow,
 } = require('./fakes')
 
@@ -387,6 +388,68 @@ test('keyed lists preserve identity under large reorder and repeated disposal', 
   handle.dispose()
   handle.dispose()
   assert.equal(panel.children.size, 0)
+  assert.equal(nativeRenderer.diagnostics.activeNative, 0)
+})
+
+test('keyed removals detach before releasing native records', () => {
+  class RetryVector extends FakeVector {
+    failRemove = false
+
+    removeAt(index) {
+      if (this.failRemove) {
+        this.failRemove = false
+        throw new Error('keyed remove failed')
+      }
+      super.removeAt(index)
+    }
+  }
+  class RetryPanel {
+    children = new RetryVector()
+  }
+
+  const errors = []
+  const released = []
+  const nativeRenderer = createRenderer({
+    onError(error) {
+      errors.push(error.message)
+    },
+    releaseNative(value) {
+      released.push(value)
+    },
+  })
+  const first = { id: 1, label: 'First' }
+  const second = { id: 2, label: 'Second' }
+  const items = signal([first, second])
+  const panel = new RetryPanel()
+  const handle = nativeRenderer.render(
+    jsx(For, {
+      each: items,
+      key: (item) => item.id,
+      children: (item) =>
+        jsx(UI.TextBlock, { text: item.label }),
+    }),
+    panel,
+  )
+  const firstControl = panel.children.getAt(0)
+  const secondControl = panel.children.getAt(1)
+  panel.children.failRemove = true
+
+  items.value = [second]
+
+  assert.deepEqual(errors, ['keyed remove failed'])
+  assert.deepEqual(
+    panel.children.toArray(),
+    [firstControl, secondControl],
+  )
+  assert.equal(released.includes(firstControl), false)
+  assert.equal(nativeRenderer.diagnostics.activeNative, 2)
+
+  items.value = [second]
+
+  assert.deepEqual(panel.children.toArray(), [secondControl])
+  assert.equal(released.includes(firstControl), true)
+  assert.equal(nativeRenderer.diagnostics.activeNative, 1)
+  handle.dispose()
   assert.equal(nativeRenderer.diagnostics.activeNative, 0)
 })
 
