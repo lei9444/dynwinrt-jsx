@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Added progressive `core`, `controls`, `winui`, `diagnostics`, and `native`
+  package entry points while preserving the complete compatibility root.
+- Added a task Dashboard tutorial series that grows a generated project from
+  first launch through state, routing, collections, persistence, diagnostics,
+  validation, and x64/ARM64 packaging.
+- Added a `minimal` project template, lazy `createWinUIControls()` namespaces,
+  object-form ContentDialog options, generated-binding theme options, and
+  `AsyncActionContext.throwIfAborted()`.
+- Moved template and Dashboard renderer/projected-ownership context types into
+  dedicated shell modules so ordinary screens avoid native-layer imports.
 - Added schema-validated Worker state, optimistic revision conflict recovery,
   typed incremental patches, commands, and events.
 - Added x64/ARM64 SEA MSIX packaging, a multi-architecture bundle, verified

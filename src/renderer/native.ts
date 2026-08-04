@@ -166,6 +166,22 @@ export type NativeComponents<
   >
 }
 
+type NativeConstructorKeys<Bindings extends object> = {
+  [Name in keyof Bindings]:
+    Bindings[Name] extends NativeConstructor
+      ? Name
+      : never
+}[keyof Bindings]
+
+export type WinUIControls<Bindings extends object> = {
+  readonly [Name in NativeConstructorKeys<Bindings>]:
+    Bindings[Name] extends NativeConstructor<
+      infer Instance extends object
+    >
+      ? NativeComponent<Instance>
+      : never
+}
+
 export function native<
   Instance extends object,
   ExtraProps extends object = {},
@@ -207,6 +223,50 @@ export function createControls<
   }
 
   return components
+}
+
+export function createWinUIControls<
+  const Bindings extends object,
+>(bindings: Bindings): WinUIControls<Bindings> {
+  const components = {} as Record<
+    PropertyKey,
+    unknown
+  >
+  return new Proxy(components, {
+    get(target, property, receiver) {
+      if (property in target) {
+        return Reflect.get(target, property, receiver)
+      }
+      if (typeof property !== 'string') {
+        return Reflect.get(target, property, receiver)
+      }
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          bindings,
+          property,
+        )
+      ) {
+        return undefined
+      }
+      const constructorType = (
+        bindings as Record<string, unknown>
+      )[property]
+      if (typeof constructorType !== 'function') {
+        throw new TypeError(
+          `Generated WinUI binding "${property}" is not a native constructor.`,
+        )
+      }
+      const component = native(
+        constructorType as NativeConstructor,
+        { displayName: property },
+      )
+      Object.defineProperty(target, property, {
+        enumerable: true,
+        value: component,
+      })
+      return component
+    },
+  }) as WinUIControls<Bindings>
 }
 
 export function isNativeComponent(

@@ -1,7 +1,9 @@
 import {
   assertRendererIdle,
-  type Renderer,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/diagnostics'
+import type {
+  Renderer,
+} from 'dynwinrt-jsx/native'
 import type {
   NativeSelfTest,
   NativeSelfTestResult,

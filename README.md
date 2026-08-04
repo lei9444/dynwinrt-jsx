@@ -7,6 +7,8 @@ Components use React-like composition and Solid-style fine-grained signals. A co
 Documentation:
 
 - [Capability matrix](docs/capabilities.md)
+- [Progressive API layers](docs/api-layers.md)
+- [Task Dashboard tutorial](docs/tutorial-dashboard/README.md)
 - [Public API index](docs/api-index.md)
 - [Validation guide](docs/validation.md)
 - [SEA and MSIX packaging](docs/sea-packaging.md)
@@ -19,17 +21,17 @@ Documentation:
 ```tsx
 import {
   computed,
-  createControls,
-  createWinUIRendererPreset,
   signal,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/core'
+import {
+  createWinUIControls,
+} from 'dynwinrt-jsx/controls'
+import {
+  createWinUIRendererPreset,
+} from 'dynwinrt-jsx/winui'
 import * as bindings from './.winapp/bindings/index.js'
 
-const UI = createControls({
-  Button: bindings.Button,
-  StackPanel: bindings.StackPanel,
-  TextBlock: bindings.TextBlock,
-})
+const UI = createWinUIControls(bindings)
 const renderer = createWinUIRendererPreset(bindings).createRenderer()
 
 function Counter() {
@@ -47,6 +49,18 @@ function Counter() {
 }
 ```
 
+New applications should use the progressive entry points:
+
+| Entry point | Normal use |
+|---|---|
+| `dynwinrt-jsx/core` | Signals, control flow, routing, async work |
+| `dynwinrt-jsx/controls` | Control factories, lists, dialogs, navigation |
+| `dynwinrt-jsx/winui` | Values, resources, themes, styles |
+| `dynwinrt-jsx/diagnostics` | Diagnostics and inspector evidence |
+| `dynwinrt-jsx/native` | Deliberate low-level escape hatches |
+
+The root `dynwinrt-jsx` entry remains compatible with existing 1.0 imports.
+
 ## Create an app
 
 Dependencies in the generated project use exact versions; the command does not resolve npm `latest`.
@@ -58,6 +72,16 @@ npm install
 npm run setup
 npm start
 ```
+
+The default `dashboard` starter demonstrates routing, themes, diagnostics, and
+hot reload. Start with only a Counter and the production Host/Worker lifecycle:
+
+```powershell
+npx dynwinrt-jsx@1.0.0 create my-winui-app --template minimal
+```
+
+Follow the [Task Dashboard tutorial](docs/tutorial-dashboard/README.md) to
+replace the generated sample one runnable chapter at a time.
 
 Release validation packs those exact versions into a local artifact set, then
 creates the application through the packaged CLI in normal mode:
@@ -361,7 +385,9 @@ an independently consumable framework.
 }
 ```
 
-The library has no direct runtime dependency on dynwinrt. Applications provide generated classes to `createControls()` and `createWinUIRenderer()`.
+The library has no direct runtime dependency on dynwinrt. Applications provide
+generated classes through lazy `createWinUIControls()`, explicit
+`createControls()`, or renderer configuration.
 
 ## Source layout
 
@@ -378,6 +404,15 @@ are grouped by responsibility:
 ## Core API
 
 ### Native controls
+
+```tsx
+import * as WinUIBindings from '#winapp/bindings'
+
+const UI = createWinUIControls(WinUIBindings)
+```
+
+The namespace is lazy: `UI.Button` resolves only the generated Button binding.
+Use an explicit map for custom constructors or deliberately narrow surfaces:
 
 ```tsx
 const UI = createControls({
@@ -609,10 +644,8 @@ const controller = createWinUIThemeController({
   isDark: model.darkTheme,
   setDark: model.setDarkTheme,
   application: Application.current,
-  applicationTheme: ApplicationTheme,
-  elementTheme: ElementTheme,
+  bindings: WinUIBindings,
   titleBar: window.appWindow.titleBar,
-  titleBarTheme: TitleBarTheme,
 })
 ```
 
@@ -1292,13 +1325,13 @@ strict.
 Render dialog content with a renderer-owned scope:
 
 ```tsx
-const result = await showContentDialog(
+const result = await showContentDialog({
   renderer,
   dialog,
-  window.content.xamlRoot,
-  <UI.TextBlock text="Native dialog content" />,
-  { restoreFocus: () => trigger.focus() },
-)
+  xamlRoot: window.content.xamlRoot,
+  content: <UI.TextBlock text="Native dialog content" />,
+  restoreFocus: () => trigger.focus(),
+})
 ```
 
 The content is disposed from the native `Closed` event, even when Promise
@@ -1420,11 +1453,12 @@ Use `createAsyncAction()` for user-triggered asynchronous work:
 
 ```tsx
 const pickFile = createAsyncAction(
-  async (_input, { signal }) => {
+  async (_input, { signal, throwIfAborted }) => {
     const picker = new FileOpenPicker(windowId)
     picker.fileTypeFilter.append('*')
     const file =
       await picker.pickSingleFileAsync(signal)
+    throwIfAborted()
     return file?.path ?? 'Canceled'
   },
 )

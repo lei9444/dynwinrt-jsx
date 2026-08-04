@@ -1,9 +1,11 @@
 import {
+  type Child,
+} from 'dynwinrt-jsx/core'
+import {
   createDiagnosticBuffer,
   createDiagnosticChannel,
   createDiagnosticEvidenceBundle,
-  type Child,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/diagnostics'
 import type { StateBridge } from 'dynwinrt-jsx/host'
 import {
   createRendererHeartbeatController,
@@ -22,7 +24,7 @@ import {
 } from '#winapp/bindings'
 import type {
   DashboardAppContext,
-} from '../dashboard-app'
+} from '../dashboard-shell'
 import {
   createDashboardModel,
   type DashboardState,

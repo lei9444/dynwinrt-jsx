@@ -38,6 +38,7 @@ export interface AsyncOperationScope {
 export interface AsyncActionContext {
   readonly signal: AbortSignal
   readonly scope: AsyncOperationScope
+  throwIfAborted(): void
 }
 
 export type AsyncActionOperation<Input, Value> = (
@@ -301,6 +302,9 @@ export function createAsyncAction<Input = void, Value = void>(
         {
           signal: controller.signal,
           scope,
+          throwIfAborted() {
+            controller.signal.throwIfAborted()
+          },
         },
       )
     }

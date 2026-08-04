@@ -6,11 +6,12 @@ component-scope disposal.
 
 ```tsx
 const pickFile = createAsyncAction(
-  async (_input, { signal }) => {
+  async (_input, { signal, throwIfAborted }) => {
     const picker = new FileOpenPicker(windowId)
     picker.fileTypeFilter.append('*')
     const file =
       await picker.pickSingleFileAsync(signal)
+    throwIfAborted()
     return file?.path ?? 'Canceled'
   },
 )
@@ -47,9 +48,10 @@ Recipe authors can transfer partially created resources to the operation:
 
 ```ts
 const action = createAsyncAction(
-  async (_input, { signal, scope }) => {
+  async (_input, { signal, scope, throwIfAborted }) => {
     const capture = scope.closeable(new MediaCapture())
     await capture.initializeAsync(settings, signal)
+    throwIfAborted()
     return scope.disposable(
       createCameraSession(capture),
     )

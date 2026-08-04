@@ -84,23 +84,41 @@ test('dialog content is scoped to the asynchronous show operation', async () => 
   const dialog = new TestDialog()
   const root = { id: 'xaml-root' }
   let focusRestored = 0
-  const result = await showContentDialog(
-    nativeRenderer,
+  const result = await showContentDialog({
+    renderer: nativeRenderer,
     dialog,
-    root,
-    UI.Panel({}),
-    {
-      restoreFocus(result) {
-        assert.equal(result, 1)
-        focusRestored += 1
-      },
+    xamlRoot: root,
+    content: UI.Panel({}),
+    restoreFocus(result) {
+      assert.equal(result, 1)
+      focusRestored += 1
     },
-  )
+  })
 
   assert.equal(result, 1)
   assert.equal(dialog.xamlRoot, root)
   assert.equal(dialog.content, null)
   assert.equal(focusRestored, 1)
+})
+
+test('dialog positional arguments remain compatible', async () => {
+  const renderer = createRenderer({
+    asCollection(value) {
+      return value instanceof TestVector ? value : null
+    },
+  })
+  const UI = createControls({ Panel: TestPanel })
+  const dialog = new TestDialog()
+
+  const result = await showContentDialog(
+    renderer,
+    dialog,
+    { id: 'legacy-root' },
+    UI.Panel({}),
+  )
+
+  assert.equal(result, 1)
+  assert.equal(dialog.content, null)
 })
 
 test('focus targets retain refs and invoke native focus', () => {

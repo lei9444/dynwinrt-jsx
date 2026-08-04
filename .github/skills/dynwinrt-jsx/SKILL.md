@@ -103,8 +103,8 @@ adoption map.
 | Worker runtime and cleanup composition | `src/runtime/worker-session.ts`, `src/runtime/cleanup.ts` |
 | Native and Composition resource ownership | `src/runtime/native-resource.ts`, `src/winui/composition.ts` |
 | Root replacement | `src/renderer/hot.ts` |
-| Public exports | `src/index.ts` |
-| Project creation | `bin/create.js`, `templates/winui` |
+| Public exports | `src/index.ts`, `src/core.ts`, `src/controls.ts`, `src/winui.ts`, `src/native.ts`, `src/diagnostics.ts`, `src/host.ts`, `src/worker.ts` |
+| Project creation | `bin/create.js`, `templates/winui`, `templates/winui-minimal` |
 | Pinned release-set validation | `scripts/pack-release-set.ps1`, `scripts/smoke-generated-app-release.ps1` |
 | Representative native app | `examples/dashboard` |
 | Gallery route modules | `examples/gallery/src/pages/routes.tsx`, `examples/gallery/src/pages/*/routes.tsx` |
@@ -227,6 +227,8 @@ The built-in WinUI layer currently provides:
   native record mounts.
 - Full generated binding namespaces can create renderer presets with capability
   reporting and actionable missing-binding errors.
+- `createWinUIControls()` lazily resolves typed native components from a full
+  generated binding namespace; use `createControls()` for explicit custom maps.
 - `Renderer.inspector` exposes bounded operation records plus active
   native/component, reactive graph, subscription, resource, and ownership
   snapshots without property or signal values.
@@ -296,14 +298,17 @@ service over adding another unrelated responsibility to it.
 ## Changing the public API
 
 1. Add the implementation under `src`.
-2. Export it from `src/index.ts` and, if needed, the JSX runtime entry points.
+2. Export it from `src/index.ts` for compatibility and from the narrowest
+   progressive entry point (`core`, `controls`, `winui`, `diagnostics`, or
+   `native`). Update JSX runtime entry points only when required.
 3. Add declaration-level coverage in `tests/types.tsx`.
 4. Add behavior coverage in the nearest runtime test.
 5. Update `README.md`.
-6. Update `docs/migration-v1.md` for a breaking or behavior-changing API.
-7. Update the template and dashboard when they should demonstrate the new
+6. Update `docs/api-layers.md` when the recommended discovery path changes.
+7. Update `docs/migration-v1.md` for a breaking or behavior-changing API.
+8. Update the template and dashboard when they should demonstrate the new
    preferred path.
-8. Rebuild the package and regenerate `dynwinrt-jsx-1.0.0.tgz`.
+9. Rebuild the package and regenerate `dynwinrt-jsx-1.0.0.tgz`.
 
 ## Changing the project creator or template
 
@@ -311,6 +316,8 @@ Keep normal and local modes aligned:
 
 - Normal mode uses exact package versions.
 - `--local-root` uses sibling `file:` dependencies.
+- `--template minimal` creates the Counter starter; `dashboard` remains the
+  default full shell.
 - Local codegen is built from the sibling dynwinrt repository.
 - Neither mode resolves npm `latest`.
 

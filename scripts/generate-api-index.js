@@ -18,6 +18,11 @@ const baselinePath = path.join(
 )
 const entries = [
   ['dynwinrt-jsx', 'src/index.ts'],
+  ['dynwinrt-jsx/core', 'src/core.ts'],
+  ['dynwinrt-jsx/controls', 'src/controls.ts'],
+  ['dynwinrt-jsx/winui', 'src/winui.ts'],
+  ['dynwinrt-jsx/native', 'src/native.ts'],
+  ['dynwinrt-jsx/diagnostics', 'src/diagnostics.ts'],
   ['dynwinrt-jsx/host', 'src/host.ts'],
   ['dynwinrt-jsx/worker', 'src/worker.ts'],
   ['dynwinrt-jsx/jsx-runtime', 'src/jsx-runtime.ts'],
@@ -228,6 +233,11 @@ function collectDeclarationBaseline() {
   const distRoot = path.join(repoRoot, 'dist')
   const pending = [
     'index.d.ts',
+    'core.d.ts',
+    'controls.d.ts',
+    'winui.d.ts',
+    'native.d.ts',
+    'diagnostics.d.ts',
     'host.d.ts',
     'worker.d.ts',
     'jsx-runtime.d.ts',

@@ -66,6 +66,7 @@
           "classes": [
             "Button",
             "BitmapIcon",
+            "CheckBox",
             "ComboBox",
             "ContentDialog",
             "ContentControl",
@@ -89,6 +90,7 @@
             "SymbolIcon",
             "TeachingTip",
             "TextBlock",
+            "TextBox",
             "ToggleSwitch"
           ]
         },

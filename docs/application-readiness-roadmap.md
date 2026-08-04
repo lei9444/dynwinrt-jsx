@@ -481,6 +481,11 @@ identity, and manifest dependencies in a provenance document.
 - [ ] Publish a compatible framework and tool package set.
 - [x] Add API, control, lifecycle, troubleshooting, and packaging guides.
 - [x] Generate a compact public API/signature index.
+- [x] Add progressive package entry points and a chaptered task Dashboard
+      tutorial for independent application authors.
+- [x] Add minimal/dashboard starter selection plus lazy generated controls,
+      object-form dialogs, binding-aware themes, async abort convenience, and
+      shell/native type separation.
 - [x] Add focused agent skills and compilable task recipes.
 - [x] Maintain generated and representative compatibility applications.
 - [ ] Complete an upgrade using only consumer-facing documentation.

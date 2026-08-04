@@ -4,6 +4,11 @@
 points:
 
 - `dynwinrt-jsx`
+- `dynwinrt-jsx/core`
+- `dynwinrt-jsx/controls`
+- `dynwinrt-jsx/winui`
+- `dynwinrt-jsx/native`
+- `dynwinrt-jsx/diagnostics`
 - `dynwinrt-jsx/host`
 - `dynwinrt-jsx/worker`
 - `dynwinrt-jsx/jsx-runtime`
@@ -12,7 +17,7 @@ points:
 ## Public API baseline
 
 `docs/public-api-baseline.json` is the reviewed API contract for the current
-package version. `npm run check` compares all five public entry points, every
+package version. `npm run check` compares every public entry point, every
 exported symbol, and the SHA-256 of the reachable emitted declaration graph
 with that baseline.
 

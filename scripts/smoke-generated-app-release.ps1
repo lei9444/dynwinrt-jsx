@@ -8,6 +8,8 @@ param(
     [string]$OutputDirectory,
     [string]$TargetRoot,
     [string]$ReleaseSetDirectory,
+    [ValidateSet("dashboard", "minimal")]
+    [string]$Template = "dashboard",
     [int]$TimeoutMilliseconds = 30000,
     [switch]$SkipReleaseBuild,
     [switch]$AllowDirtySources
@@ -247,6 +249,7 @@ $result = [ordered]@{
     version = 1
     startedAt = [DateTime]::UtcNow.ToString("o")
     status = "running"
+    template = $Template
     releaseSet = $null
     target = $null
     projectManifest = $null
@@ -321,14 +324,20 @@ try {
 
     New-Item -ItemType Directory -Path $TargetRoot -Force |
         Out-Null
-    $target = Join-Path $TargetRoot "app-$stamp"
+    $target = Join-Path $TargetRoot "$Template-app-$stamp"
     $result.target = $target
     $creator = Join-Path `
         $creatorRoot `
         "node_modules\dynwinrt-jsx\bin\create.js"
     Invoke-Checked `
         $NodePath `
-        @($creator, "create", $target) `
+        @(
+            $creator,
+            "create",
+            $target,
+            "--template",
+            $Template
+        ) `
         $creatorRoot
 
     $tarballs = @(
@@ -433,50 +442,68 @@ try {
     }
     $window = Wait-ForWindow $process.Id $winappPath
     $windowHandle = [long]$window.hwnd
-    Invoke-WinApp $winappPath @(
-        "ui", "wait-for", "HomePageHeading",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "IncrementButton",
-        "-w", "$windowHandle"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "wait-for", "Native count: 1",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "AboutButton",
-        "-w", "$windowHandle"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "wait-for", "AboutDialog",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "Done",
-        "-w", "$windowHandle"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "Settings",
-        "-w", "$windowHandle"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "wait-for", "SettingsPageHeading",
-        "-w", "$windowHandle",
-        "--timeout", "$TimeoutMilliseconds"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "ThemeToggle",
-        "-w", "$windowHandle"
-    )
-    Invoke-WinApp $winappPath @(
-        "ui", "invoke", "ThemeToggle",
-        "-w", "$windowHandle"
-    )
+    if ($Template -eq "minimal") {
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "Count: 0",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "IncrementButton",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "Count: 1",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+    }
+    else {
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "HomePageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "IncrementButton",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "Native count: 1",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "AboutButton",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "AboutDialog",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "Done",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "Settings",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "wait-for", "SettingsPageHeading",
+            "-w", "$windowHandle",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "ThemeToggle",
+            "-w", "$windowHandle"
+        )
+        Invoke-WinApp $winappPath @(
+            "ui", "invoke", "ThemeToggle",
+            "-w", "$windowHandle"
+        )
+    }
     Invoke-WinApp $winappPath @(
         "ui", "invoke", "Close",
         "-w", "$windowHandle"

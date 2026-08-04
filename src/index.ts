@@ -61,6 +61,7 @@ export {
 
 export {
   createControls,
+  createWinUIControls,
   native,
   type NativeCommonProps,
   type NativeComponent,
@@ -75,6 +76,7 @@ export {
   type NativeValueForProperty,
   type Ref,
   type RefObject,
+  type WinUIControls,
 } from './renderer/native'
 
 export {
@@ -225,6 +227,7 @@ export {
   showContentDialog,
   type ContentDialogLike,
   type ContentDialogOptions,
+  type ShowContentDialogOptions,
 } from './winui/dialog'
 
 export {
@@ -517,8 +520,10 @@ export {
 
 export {
   createWinUIThemeController,
+  type WinUIThemeControllerBindingOptions,
   type WinUIThemeController,
   type WinUIThemeControllerOptions,
+  type WinUIThemePair,
 } from './winui/theme-controller'
 
 export type {

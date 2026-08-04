@@ -142,8 +142,16 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.match(workerSource, /defineWinUIApp/)
   assert.match(workerSource, /bindings: WinUIBindings/)
   assert.match(workerSource, /createDiagnosticChannel/)
+  assert.match(workerSource, /createWinUIControls/)
   assert.match(workerSource, /createWinUIWorkerRuntime/)
   assert.match(workerSource, /diagnostics,/)
+  assert.match(workerSource, /from 'dynwinrt-jsx\/core'/)
+  assert.match(workerSource, /from 'dynwinrt-jsx\/controls'/)
+  assert.match(workerSource, /from 'dynwinrt-jsx\/winui'/)
+  assert.match(
+    workerSource,
+    /from 'dynwinrt-jsx\/diagnostics'/,
+  )
   assert.doesNotMatch(
     workerSource,
     /releaseNative: releaseProjected/,
@@ -161,6 +169,31 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.match(appSource, /styles\.button/)
   assert.match(appSource, /tokens\.spacing/)
   assert.match(appSource, /createWinUIThemeController/)
+  assert.match(appSource, /bindings: WinUIBindings/)
+  assert.match(appSource, /showContentDialog\(\{/)
+  assert.match(appSource, /createWinUIControls/)
+  assert.match(appSource, /from 'dynwinrt-jsx\/core'/)
+  assert.match(appSource, /from 'dynwinrt-jsx\/controls'/)
+  assert.match(appSource, /from 'dynwinrt-jsx\/winui'/)
+  assert.doesNotMatch(appSource, /from 'dynwinrt-jsx\/native'/)
+  assert.match(
+    appSource,
+    /from 'dynwinrt-jsx\/diagnostics'/,
+  )
+  const shellSource = fs.readFileSync(
+    path.join(target, 'src', 'app-shell.ts'),
+    'utf8',
+  )
+  assert.match(shellSource, /from 'dynwinrt-jsx\/native'/)
+  const modelSource = fs.readFileSync(
+    path.join(target, 'src', 'app-model.ts'),
+    'utf8',
+  )
+  assert.match(modelSource, /from 'dynwinrt-jsx\/core'/)
+  assert.match(
+    modelSource,
+    /from 'dynwinrt-jsx\/diagnostics'/,
+  )
   const mainSource = fs.readFileSync(
     path.join(target, 'main.js'),
     'utf8',
@@ -175,6 +208,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     .classes
   for (const control of [
     'BitmapIcon',
+    'CheckBox',
     'ComboBox',
     'ContentControl',
     'ContentDialog',
@@ -191,6 +225,7 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
     'SymbolIcon',
     'StackLayout',
     'TeachingTip',
+    'TextBox',
   ]) {
     assert.ok(controls.includes(control))
   }
@@ -219,6 +254,47 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   }
 })
 
+test('create offers a minimal Counter starter', (t) => {
+  const temp = createTempDirectory(t)
+  const target = path.join(temp, 'minimal-app')
+  createProject(target, { template: 'minimal' })
+
+  const manifest = readManifest(target)
+  assert.equal(
+    manifest.description,
+    'Minimal native WinUI 3 app built with dynwinrt-jsx.',
+  )
+  assert.deepEqual(
+    generatedClasses(
+      manifest,
+      'Microsoft.UI.Xaml.Controls',
+    ),
+    ['Button', 'StackPanel', 'TextBlock'],
+  )
+  assert.equal(
+    fs.existsSync(path.join(target, 'dev.js')),
+    false,
+  )
+  assert.equal(
+    fs.existsSync(path.join(target, 'src', 'app-shell.ts')),
+    false,
+  )
+  const appSource = fs.readFileSync(
+    path.join(target, 'src', 'app.tsx'),
+    'utf8',
+  )
+  const workerSource = fs.readFileSync(
+    path.join(target, 'src', 'winui-worker.tsx'),
+    'utf8',
+  )
+  assert.match(appSource, /createWinUIControls/)
+  assert.doesNotMatch(appSource, /createRouter|diagnostics|native/)
+  assert.match(workerSource, /defineWinUIApp/)
+  assert.match(workerSource, /beforeClose\(\)/)
+  assert.match(workerSource, /disposeAfterRender/)
+  assert.doesNotMatch(workerSource, /createRenderedHooks/)
+})
+
 test('dashboard and template keep lifetime teardown retry-safe', () => {
   for (const workerPath of [
     path.join(
@@ -240,6 +316,56 @@ test('dashboard and template keep lifetime teardown retry-safe', () => {
     ),
   ]) {
     assertLifetimeTeardownSource(fs.readFileSync(workerPath, 'utf8'))
+  }
+})
+
+test('screen modules keep native shell context separate', () => {
+  for (const [screenPath, shellPath] of [
+    [
+      path.join(
+        __dirname,
+        '..',
+        'templates',
+        'winui',
+        'src',
+        'app.tsx',
+      ),
+      path.join(
+        __dirname,
+        '..',
+        'templates',
+        'winui',
+        'src',
+        'app-shell.ts',
+      ),
+    ],
+    [
+      path.join(
+        __dirname,
+        '..',
+        'examples',
+        'dashboard',
+        'src',
+        'dashboard-app.tsx',
+      ),
+      path.join(
+        __dirname,
+        '..',
+        'examples',
+        'dashboard',
+        'src',
+        'dashboard-shell.ts',
+      ),
+    ],
+  ]) {
+    assert.doesNotMatch(
+      fs.readFileSync(screenPath, 'utf8'),
+      /from 'dynwinrt-jsx\/native'/,
+    )
+    assert.match(
+      fs.readFileSync(shellPath, 'utf8'),
+      /from 'dynwinrt-jsx\/native'/,
+    )
   }
 })
 
@@ -293,6 +419,25 @@ test('create configures sibling repositories in local mode', (t) => {
     fs.existsSync(
       path.join(target, 'tools', 'local-codegen', 'cli.js'),
     ),
+  )
+
+  const minimalTarget = path.join(
+    temp,
+    'projects',
+    'minimal-local-app',
+  )
+  createProject(minimalTarget, {
+    localRoot,
+    template: 'minimal',
+  })
+  const minimalManifest = readManifest(minimalTarget)
+  assert.equal(
+    minimalManifest.scripts.dev,
+    'npm run build:dynwinrt && npm run build && node main.js',
+  )
+  assert.equal(
+    minimalManifest.scripts.start,
+    'npm run build:dynwinrt && npm run build && node main.js',
   )
 })
 
@@ -783,4 +928,6 @@ test('CLI exposes create usage', () => {
   )
   assert.equal(result.status, 0)
   assert.match(result.stdout, /dynwinrt-jsx create <directory>/)
+  assert.match(result.stdout, /--template/)
+  assert.match(result.stdout, /dashboard\|minimal/)
 })

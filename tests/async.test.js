@@ -72,6 +72,25 @@ test('drop concurrency ignores duplicate pending runs', async () => {
   assert.equal(action.value.value, 'first')
 })
 
+test('async action context exposes abort checks', () => {
+  let context
+  const action = createAsyncAction(
+    (_input, operationContext) => {
+      context = operationContext
+      context.throwIfAborted()
+      return new Promise(() => {})
+    },
+  )
+
+  action.run()
+  action.cancel()
+
+  assert.throws(
+    () => context.throwIfAborted(),
+    { name: 'AbortError' },
+  )
+})
+
 test('replace concurrency aborts and releases stale work', async () => {
   const operations = new Map()
   const released = []

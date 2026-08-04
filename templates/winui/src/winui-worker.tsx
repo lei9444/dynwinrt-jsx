@@ -1,9 +1,15 @@
 import {
-  createControls,
-  createDiagnosticChannel,
-  thickness,
   type Child,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/core'
+import {
+  createWinUIControls,
+} from 'dynwinrt-jsx/controls'
+import {
+  thickness,
+} from 'dynwinrt-jsx/winui'
+import {
+  createDiagnosticChannel,
+} from 'dynwinrt-jsx/diagnostics'
 import {
   createWinUIWorkerRuntime,
   defineWinUIApp,
@@ -13,8 +19,6 @@ import { roInitialize } from '@microsoft/dynwinrt'
 import * as WinUIBindings from '#winapp/bindings'
 import {
   ApplicationTheme,
-  StackPanel,
-  TextBlock,
   TitleBarTheme,
 } from '#winapp/bindings'
 import {
@@ -22,7 +26,7 @@ import {
   type AppState,
 } from './app-model'
 import { isAppState } from './app-state'
-import type { AppContext } from './app'
+import type { AppContext } from './app-shell'
 
 interface AppModule {
   renderApp(context: AppContext): Child
@@ -38,10 +42,7 @@ const {
   bridge,
   workerData,
 } = runtime
-const FallbackUI = createControls({
-  StackPanel,
-  TextBlock,
-})
+const FallbackUI = createWinUIControls(WinUIBindings)
 const diagnostics = createDiagnosticChannel({
   source: 'app-worker',
   onRecord(record) {

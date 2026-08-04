@@ -2,18 +2,25 @@ import {
   ErrorBoundary,
   For,
   computed,
-  createComboBoxControl,
-  createControls,
-  createItemsRepeaterControl,
-  createListViewControl,
-  native,
   signal,
   type Child,
   type ReadonlySignal,
+} from 'dynwinrt-jsx/core'
+import {
+  createComboBoxControl,
+  createItemsRepeaterControl,
+  createListViewControl,
+  createWinUIControls,
   type RefObject,
+} from 'dynwinrt-jsx/controls'
+import {
+  native,
   type Renderer,
-  type RendererDiagnostics,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/native'
+import type {
+  RendererDiagnostics,
+} from 'dynwinrt-jsx/diagnostics'
+import * as WinUIBindings from '#winapp/bindings'
 import {
   AccessibilitySettings,
   AutomationProperties,
@@ -77,13 +84,7 @@ interface NativeSelfTestContext {
   readonly failureMode?: string | null
 }
 
-const UI = createControls({
-  Button,
-  ScrollViewer,
-  StackPanel,
-  TextBlock,
-  TextBox,
-})
+const UI = createWinUIControls(WinUIBindings)
 
 const SelfTestListView = createListViewControl({
   ListView,

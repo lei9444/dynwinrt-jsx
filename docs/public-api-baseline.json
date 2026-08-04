@@ -506,6 +506,11 @@
           "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings): import(\"<repo>/src/winui/winui\").AttachedPropertyRegistrations"
         },
         {
+          "name": "createWinUIControls",
+          "kind": "function",
+          "signature": "<const Bindings extends object>(bindings: Bindings): import(\"<repo>/src/renderer/native\").WinUIControls<Bindings>"
+        },
+        {
           "name": "createWinUIPropertyConverters",
           "kind": "function",
           "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings): Record<string, import(\"<repo>/src/renderer/renderer\").NativePropertyConverter>"
@@ -523,7 +528,7 @@
         {
           "name": "createWinUIThemeController",
           "kind": "function",
-          "signature": "<ApplicationTheme, ElementTheme, TitleBarTheme = never>(options: import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerOptions<ApplicationTheme, ElementTheme, TitleBarTheme>): import(\"<repo>/src/winui/theme-controller\").WinUIThemeController<ElementTheme>"
+          "signature": "<ApplicationTheme, ElementTheme, TitleBarTheme = never>(options: import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerOptions<ApplicationTheme, ElementTheme, TitleBarTheme> | import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerBindingOptions<ApplicationTheme, ElementTheme, TitleBarTheme>): import(\"<repo>/src/winui/theme-controller\").WinUIThemeController<ElementTheme>"
         },
         {
           "name": "defineRouteRegistry",
@@ -1668,7 +1673,12 @@
         {
           "name": "showContentDialog",
           "kind": "function",
-          "signature": "<Root, Result>(renderer: import(\"<repo>/src/renderer/renderer\").Renderer, dialog: import(\"<repo>/src/winui/dialog\").ContentDialogLike<Root, Result> & object, xamlRoot: Root, content: import(\"<repo>/src/core/vnode\").Child, options?: import(\"<repo>/src/winui/dialog\").ContentDialogOptions<Result>): Promise<Result>"
+          "signature": "<Root, Result>(options: import(\"<repo>/src/winui/dialog\").ShowContentDialogOptions<Root, Result>): Promise<Result> | <Root, Result>(renderer: import(\"<repo>/src/renderer/renderer\").Renderer, dialog: import(\"<repo>/src/winui/dialog\").ContentDialogLike<Root, Result> & object, xamlRoot: Root, content: import(\"<repo>/src/core/vnode\").Child, options?: import(\"<repo>/src/winui/dialog\").ContentDialogOptions<Result>): Promise<Result>"
+        },
+        {
+          "name": "ShowContentDialogOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/dialog\").ShowContentDialogOptions<Root, Result>"
         },
         {
           "name": "showFlyout",
@@ -1961,6 +1971,11 @@
           "signature": "import(\"<repo>/src/winui/winui\").WinUIColor"
         },
         {
+          "name": "WinUIControls",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").WinUIControls<Bindings>"
+        },
+        {
           "name": "WinUICornerRadius",
           "kind": "interface",
           "signature": "import(\"<repo>/src/winui/winui\").WinUICornerRadius"
@@ -2016,9 +2031,19 @@
           "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeController<ElementTheme>"
         },
         {
+          "name": "WinUIThemeControllerBindingOptions",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerBindingOptions<ApplicationTheme, ElementTheme, TitleBarTheme>"
+        },
+        {
           "name": "WinUIThemeControllerOptions",
           "kind": "type",
           "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerOptions<ApplicationTheme, ElementTheme, TitleBarTheme>"
+        },
+        {
+          "name": "WinUIThemePair",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemePair<Value>"
         },
         {
           "name": "WinUIThickness",
@@ -2038,17 +2063,2067 @@
       ]
     },
     {
+      "name": "dynwinrt-jsx/core",
+      "symbols": [
+        {
+          "name": "AsyncAction",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncAction<Input, Value>"
+        },
+        {
+          "name": "AsyncActionConcurrency",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/async\").AsyncActionConcurrency"
+        },
+        {
+          "name": "AsyncActionContext",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncActionContext"
+        },
+        {
+          "name": "AsyncActionOperation",
+          "kind": "type",
+          "signature": "(input: Input, context: import(\"<repo>/src/core/async\").AsyncActionContext): Value | PromiseLike<Value>"
+        },
+        {
+          "name": "AsyncActionOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncActionOptions<Value>"
+        },
+        {
+          "name": "AsyncActionStatus",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/async\").AsyncActionStatus"
+        },
+        {
+          "name": "AsyncOperationScope",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncOperationScope"
+        },
+        {
+          "name": "AsyncState",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncState<Value>"
+        },
+        {
+          "name": "AsyncView",
+          "kind": "function",
+          "signature": "<Value>(props: import(\"<repo>/src/core/async\").AsyncViewProps<Value>): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "AsyncViewProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/async\").AsyncViewProps<Value>"
+        },
+        {
+          "name": "batch",
+          "kind": "function",
+          "signature": "<T>(callback: () => T): T"
+        },
+        {
+          "name": "bind",
+          "kind": "value",
+          "signature": "{ oneWay: <Value, Property extends PropertyKey>(state: import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>, property: Property) => Record<Property, import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>>; twoWay: <Value, Property extends PropertyKey, Event extends `on${string}`, Sender extends Record<Property, Value> = Record<Property, Value>>(state: import(\"<repo>/src/core/reactive\").Signal<Value>, property: Property, event: Event, read?: (sender: Sender) => Value, equals?: import(\"<repo>/src/core/binding\").BindingEquals<Value>) => Record<Property, import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>> & Record<Event, (sender: Sender, ...args: unknown[]) => void>; }"
+        },
+        {
+          "name": "BindingEquals",
+          "kind": "type",
+          "signature": "(expected: Value, actual: Value): boolean"
+        },
+        {
+          "name": "BoundaryErrorContext",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").BoundaryErrorContext"
+        },
+        {
+          "name": "Child",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "Cleanup",
+          "kind": "type",
+          "signature": "(): void"
+        },
+        {
+          "name": "CoalescingScheduler",
+          "kind": "type",
+          "signature": "(flush: () => void): void | import(\"<repo>/src/core/reactive\").Cleanup"
+        },
+        {
+          "name": "Component",
+          "kind": "type",
+          "signature": "(props: Props): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "computed",
+          "kind": "function",
+          "signature": "<T>(compute: () => T): import(\"<repo>/src/core/reactive\").ReadonlySignal<T>"
+        },
+        {
+          "name": "Context",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/context\").Context<Value>"
+        },
+        {
+          "name": "ContextProviderProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/context\").ContextProviderProps<Value>"
+        },
+        {
+          "name": "createAsyncAction",
+          "kind": "function",
+          "signature": "<Input = void, Value = void>(operation: import(\"<repo>/src/core/async\").AsyncActionOperation<Input, Value>, options?: import(\"<repo>/src/core/async\").AsyncActionOptions<Value>): import(\"<repo>/src/core/async\").AsyncAction<Input, Value>"
+        },
+        {
+          "name": "createContext",
+          "kind": "function",
+          "signature": "<Value>(defaultValue: Value): import(\"<repo>/src/core/context\").Context<Value>"
+        },
+        {
+          "name": "createLastValueCoalescer",
+          "kind": "function",
+          "signature": "<T>(schedule: import(\"<repo>/src/core/coalescing\").CoalescingScheduler, callback: (value: T) => void): import(\"<repo>/src/core/coalescing\").LastValueCoalescer<T>"
+        },
+        {
+          "name": "createLazyComponent",
+          "kind": "function",
+          "signature": "<Props extends object>(load: import(\"<repo>/src/core/lazy\").LazyComponentLoader<Props>): import(\"<repo>/src/core/vnode\").Component<Props>"
+        },
+        {
+          "name": "createRoot",
+          "kind": "function",
+          "signature": "<T>(callback: (dispose: import(\"<repo>/src/core/reactive\").Cleanup) => T): T"
+        },
+        {
+          "name": "createRouter",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown>(options: import(\"<repo>/src/core/router\").RouterOptions<State, Handle>): import(\"<repo>/src/core/router\").Router<State, Handle>"
+        },
+        {
+          "name": "createScope",
+          "kind": "function",
+          "signature": "(parent?: import(\"<repo>/src/core/reactive\").ReactiveScope | null): import(\"<repo>/src/core/reactive\").ReactiveScope"
+        },
+        {
+          "name": "createScopedLastValueCoalescer",
+          "kind": "function",
+          "signature": "<T>(schedule: import(\"<repo>/src/core/coalescing\").CoalescingScheduler, callback: (value: T) => void): import(\"<repo>/src/core/coalescing\").LastValueCoalescer<T>"
+        },
+        {
+          "name": "defineRouteRegistry",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown, const Definitions extends import(\"<repo>/src/core/router-registry\").RouteRegistryDefinitionMap<State, Handle> = Readonly<Record<string, import(\"<repo>/src/core/router-registry\").RouteRegistryEntry<State, Handle, string>>>>(definitions: Definitions): import(\"<repo>/src/core/router-registry\").RouteRegistry<State, Handle, Definitions>"
+        },
+        {
+          "name": "DynamicNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").DynamicNode"
+        },
+        {
+          "name": "effect",
+          "kind": "function",
+          "signature": "(callback: () => void | import(\"<repo>/src/core/reactive\").Cleanup, options?: import(\"<repo>/src/core/reactive\").EffectOptions): import(\"<repo>/src/core/reactive\").Cleanup"
+        },
+        {
+          "name": "EffectOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").EffectOptions"
+        },
+        {
+          "name": "ErrorBoundary",
+          "kind": "function",
+          "signature": "(props: import(\"<repo>/src/core/control-flow\").ErrorBoundaryProps): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "ErrorBoundaryNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").ErrorBoundaryNode"
+        },
+        {
+          "name": "ErrorBoundaryProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/control-flow\").ErrorBoundaryProps"
+        },
+        {
+          "name": "For",
+          "kind": "function",
+          "signature": "<Item>(props: import(\"<repo>/src/core/control-flow\").ForProps<Item>): import(\"<repo>/src/core/vnode\").ListNode<Item>"
+        },
+        {
+          "name": "ForProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/control-flow\").ForProps<Item>"
+        },
+        {
+          "name": "Fragment",
+          "kind": "value",
+          "signature": "typeof import(\"<repo>/src/core/vnode\").Fragment"
+        },
+        {
+          "name": "isSignal",
+          "kind": "function",
+          "signature": "<T = unknown>(value: unknown): value is import(\"<repo>/src/core/reactive\").ReadonlySignal<T>"
+        },
+        {
+          "name": "Key",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/vnode\").Key"
+        },
+        {
+          "name": "LastValueCoalescer",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/coalescing\").LastValueCoalescer<T>"
+        },
+        {
+          "name": "LazyComponentLoader",
+          "kind": "type",
+          "signature": "(): import(\"<repo>/src/core/vnode\").Component<Props>"
+        },
+        {
+          "name": "ListNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").ListNode<Item>"
+        },
+        {
+          "name": "MaybeSignal",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/reactive\").MaybeSignal<T>"
+        },
+        {
+          "name": "onCleanup",
+          "kind": "function",
+          "signature": "(cleanup: import(\"<repo>/src/core/reactive\").Cleanup): import(\"<repo>/src/core/reactive\").Cleanup"
+        },
+        {
+          "name": "oneWay",
+          "kind": "function",
+          "signature": "<Value, Property extends PropertyKey>(state: import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>, property: Property): Record<Property, import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>>"
+        },
+        {
+          "name": "onMount",
+          "kind": "function",
+          "signature": "(callback: () => void | import(\"<repo>/src/core/reactive\").Cleanup): void"
+        },
+        {
+          "name": "Outlet",
+          "kind": "function",
+          "signature": "(props?: import(\"<repo>/src/core/router\").OutletProps): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "OutletProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").OutletProps"
+        },
+        {
+          "name": "parseRouterQuery",
+          "kind": "function",
+          "signature": "(search: string): import(\"<repo>/src/core/router\").RouterQuery"
+        },
+        {
+          "name": "Portal",
+          "kind": "function",
+          "signature": "(props: import(\"<repo>/src/core/control-flow\").PortalProps): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "PortalNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").PortalNode"
+        },
+        {
+          "name": "PortalProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/control-flow\").PortalProps"
+        },
+        {
+          "name": "PrimitiveChild",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/vnode\").PrimitiveChild"
+        },
+        {
+          "name": "ReactiveScope",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReactiveScope"
+        },
+        {
+          "name": "ReadonlySignal",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReadonlySignal<T>"
+        },
+        {
+          "name": "readSignal",
+          "kind": "function",
+          "signature": "<T>(value: import(\"<repo>/src/core/reactive\").MaybeSignal<T>): T"
+        },
+        {
+          "name": "RouteDefinition",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouteDefinition<State, Handle>"
+        },
+        {
+          "name": "RouteMatch",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouteMatch<State, Handle>"
+        },
+        {
+          "name": "RouteParamsForPath",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router-registry\").RouteParamsForPath<Path>"
+        },
+        {
+          "name": "RoutePathParameterNames",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router-registry\").RoutePathParameterNames<Path>"
+        },
+        {
+          "name": "Router",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").Router<State, Handle>"
+        },
+        {
+          "name": "RouteRegistry",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router-registry\").RouteRegistry<State, Handle, Definitions>"
+        },
+        {
+          "name": "RouteRegistryDefinitionMap",
+          "kind": "type",
+          "signature": "Readonly<Record<string, import(\"<repo>/src/core/router-registry\").RouteRegistryEntry<State, Handle, string>>>"
+        },
+        {
+          "name": "RouteRegistryEntry",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router-registry\").RouteRegistryEntry<State, Handle, Path>"
+        },
+        {
+          "name": "RouteRenderContext",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouteRenderContext<State, Handle>"
+        },
+        {
+          "name": "RouterHistorySnapshot",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterHistorySnapshot<State>"
+        },
+        {
+          "name": "RouterInitialEntry",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterInitialEntry<State>"
+        },
+        {
+          "name": "RouterLocation",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterLocation<State>"
+        },
+        {
+          "name": "RouterNavigationOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterNavigationOptions<State>"
+        },
+        {
+          "name": "RouterOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterOptions<State, Handle>"
+        },
+        {
+          "name": "RouterParams",
+          "kind": "type",
+          "signature": "Readonly<Record<string, string>>"
+        },
+        {
+          "name": "RouterPathTarget",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterPathTarget"
+        },
+        {
+          "name": "RouterProvider",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown>(props: import(\"<repo>/src/core/router\").RouterProviderProps<State, Handle>): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "RouterProviderProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterProviderProps<State, Handle>"
+        },
+        {
+          "name": "RouterQuery",
+          "kind": "type",
+          "signature": "Readonly<Record<string, import(\"<repo>/src/core/router\").RouterQueryValue>>"
+        },
+        {
+          "name": "RouterQueryInput",
+          "kind": "type",
+          "signature": "Readonly<Record<string, import(\"<repo>/src/core/router\").RouterQueryInputValue>>"
+        },
+        {
+          "name": "RouterQueryInputValue",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router\").RouterQueryInputValue"
+        },
+        {
+          "name": "RouterQueryValue",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router\").RouterQueryValue"
+        },
+        {
+          "name": "RouterTarget",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/core/router\").RouterTarget"
+        },
+        {
+          "name": "RouterUpOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/router\").RouterUpOptions"
+        },
+        {
+          "name": "runInScope",
+          "kind": "function",
+          "signature": "<T>(scope: import(\"<repo>/src/core/reactive\").ReactiveScope, callback: () => T): T"
+        },
+        {
+          "name": "Show",
+          "kind": "function",
+          "signature": "<Value>(props: import(\"<repo>/src/core/control-flow\").ShowProps<Value>): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "ShowProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/control-flow\").ShowProps<Value>"
+        },
+        {
+          "name": "signal",
+          "kind": "function",
+          "signature": "<T>(initialValue: T): import(\"<repo>/src/core/reactive\").Signal<T>"
+        },
+        {
+          "name": "Signal",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").Signal<T>"
+        },
+        {
+          "name": "stringifyRouterQuery",
+          "kind": "function",
+          "signature": "(query?: import(\"<repo>/src/core/router\").RouterQueryInput): string"
+        },
+        {
+          "name": "SubscribeOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").SubscribeOptions"
+        },
+        {
+          "name": "twoWay",
+          "kind": "function",
+          "signature": "<Value, Property extends PropertyKey, Event extends `on${string}`, Sender extends Record<Property, Value> = Record<Property, Value>>(state: import(\"<repo>/src/core/reactive\").Signal<Value>, property: Property, event: Event, read?: (sender: Sender) => Value, equals?: import(\"<repo>/src/core/binding\").BindingEquals<Value>): Record<Property, import(\"<repo>/src/core/reactive\").ReadonlySignal<Value>> & Record<Event, (sender: Sender, ...args: unknown[]) => void>"
+        },
+        {
+          "name": "untrack",
+          "kind": "function",
+          "signature": "<T>(callback: () => T): T"
+        },
+        {
+          "name": "useContext",
+          "kind": "function",
+          "signature": "<Value>(context: import(\"<repo>/src/core/context\").Context<Value>): Value"
+        },
+        {
+          "name": "useRoute",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown>(): import(\"<repo>/src/core/router\").RouteRenderContext<State, Handle>"
+        },
+        {
+          "name": "useRouteParams",
+          "kind": "function",
+          "signature": "(): import(\"<repo>/src/core/reactive\").ReadonlySignal<import(\"<repo>/src/core/router\").RouterParams>"
+        },
+        {
+          "name": "useRouteQuery",
+          "kind": "function",
+          "signature": "(): import(\"<repo>/src/core/reactive\").ReadonlySignal<import(\"<repo>/src/core/router\").RouterQuery>"
+        },
+        {
+          "name": "useRouter",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown>(): import(\"<repo>/src/core/router\").Router<State, Handle>"
+        },
+        {
+          "name": "useRouteState",
+          "kind": "function",
+          "signature": "<State = unknown>(): import(\"<repo>/src/core/reactive\").ReadonlySignal<State | undefined>"
+        },
+        {
+          "name": "VirtualFor",
+          "kind": "function",
+          "signature": "<Item>(props: import(\"<repo>/src/core/control-flow\").VirtualForProps<Item>): import(\"<repo>/src/core/vnode\").Child"
+        },
+        {
+          "name": "VirtualForProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/control-flow\").VirtualForProps<Item>"
+        },
+        {
+          "name": "VNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/vnode\").VNode<Props>"
+        }
+      ]
+    },
+    {
+      "name": "dynwinrt-jsx/controls",
+      "symbols": [
+        {
+          "name": "ComboBoxControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/combo-box\").ComboBoxControlBindings<Instance>"
+        },
+        {
+          "name": "ComboBoxInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/combo-box\").ComboBoxInstance"
+        },
+        {
+          "name": "ComboBoxProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/combo-box\").ComboBoxProps<Instance>"
+        },
+        {
+          "name": "ContentDialogLike",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/dialog\").ContentDialogLike<Root, Result>"
+        },
+        {
+          "name": "ContentDialogOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/dialog\").ContentDialogOptions<Result>"
+        },
+        {
+          "name": "createComboBoxControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/combo-box\").ComboBoxInstance>(bindings: import(\"<repo>/src/winui/combo-box\").ComboBoxControlBindings<Instance>): import(\"<repo>/src/core\").Component<import(\"<repo>/src/winui/combo-box\").ComboBoxProps<Instance>>"
+        },
+        {
+          "name": "createControls",
+          "kind": "function",
+          "signature": "<const Constructors extends Record<string, import(\"<repo>/src/renderer/native\").NativeConstructor>>(constructors: Constructors): import(\"<repo>/src/renderer/native\").NativeComponents<Constructors>"
+        },
+        {
+          "name": "createFocusTarget",
+          "kind": "function",
+          "signature": "<Value extends import(\"<repo>/src/winui/focus\").Focusable>(defaultState: number): import(\"<repo>/src/winui/focus\").FocusTarget<Value>"
+        },
+        {
+          "name": "createFontIcon",
+          "kind": "function",
+          "signature": "<Icon extends FontIconInstance<FontFamily>, FontFamily>(constructorType: import(\"<repo>/src/renderer/native\").NativeConstructor<Icon>, glyph: string, options?: import(\"<repo>/src/winui/icons\").FontIconOptions<FontFamily>): Icon"
+        },
+        {
+          "name": "createGridControl",
+          "kind": "function",
+          "signature": "<Grid extends GridInstance, RowDefinition extends RowDefinitionInstance, ColumnDefinition extends ColumnDefinitionInstance>(bindings: import(\"<repo>/src/winui/grid\").GridControlBindings<Grid, RowDefinition, ColumnDefinition>): import(\"<repo>/src/renderer/native\").NativeComponent<Grid, import(\"<repo>/src/winui/grid\").GridLayoutProps<RowDefinition, ColumnDefinition>>"
+        },
+        {
+          "name": "createItemsRepeaterControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterInstance, Host extends import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterItemHost>(bindings: import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterControlBindings<Instance, Host>): <Item>(props: import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterProps<Instance, Item>) => import(\"<repo>/src/core\").Child"
+        },
+        {
+          "name": "createListViewControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/list-view\").ListViewInstance>(bindings: import(\"<repo>/src/winui/list-view\").ListViewControlBindings<Instance>): import(\"<repo>/src/core\").Component<import(\"<repo>/src/winui/list-view\").ListViewProps<Instance>>"
+        },
+        {
+          "name": "createListViewScrollTarget",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/list-view\").ListViewInstance>(): import(\"<repo>/src/winui/list-view\").ListViewScrollTarget<Instance>"
+        },
+        {
+          "name": "createNavigationHost",
+          "kind": "function",
+          "signature": "<Route>(options: import(\"<repo>/src/winui/navigation\").NavigationHostOptions<Route>): import(\"<repo>/src/winui/navigation\").NavigationHost<Route>"
+        },
+        {
+          "name": "createNavigationItem",
+          "kind": "function",
+          "signature": "<Item extends NavigationItemInstance, Text extends TextInstance>(bindings: import(\"<repo>/src/winui/navigation\").NavigationItemBindings<Item, Text>, options: import(\"<repo>/src/winui/navigation\").NavigationItemOptions<Item[\"icon\"]>): Item"
+        },
+        {
+          "name": "createNavigationViewControl",
+          "kind": "function",
+          "signature": "<NavigationView extends NavigationViewInstance, Item = unknown>(bindings: import(\"<repo>/src/winui/navigation\").NavigationViewControlBindings<NavigationView>): import(\"<repo>/src/renderer/native\").NativeComponent<NavigationView, import(\"<repo>/src/winui/navigation\").NavigationViewCollectionProps<Item>>"
+        },
+        {
+          "name": "createPivotControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/pivot\").PivotInstance>(bindings: import(\"<repo>/src/winui/pivot\").PivotControlBindings<Instance>): import(\"<repo>/src/core\").Component<import(\"<repo>/src/winui/pivot\").PivotProps<Instance>>"
+        },
+        {
+          "name": "createRouterNavigationHost",
+          "kind": "function",
+          "signature": "<State = unknown, Handle = unknown>(router: import(\"<repo>/src/core\").Router<State, Handle>, options: import(\"<repo>/src/winui/router\").RouterNavigationHostOptions): import(\"<repo>/src/winui/navigation\").NavigationHost<string>"
+        },
+        {
+          "name": "createRouterNavigationViewShell",
+          "kind": "function",
+          "signature": "<RouteId extends string, State = unknown, Handle = unknown, Item extends RouterNavigationItemInstance = RouterNavigationItemInstance, Text extends RouterNavigationTextInstance = RouterNavigationTextInstance, ReleaseResult = void>(options: import(\"<repo>/src/winui/router\").RouterNavigationViewShellOptions<RouteId, State, Handle, Item, Text, ReleaseResult>): import(\"<repo>/src/winui/router\").RouterNavigationViewShell<RouteId, Item>"
+        },
+        {
+          "name": "createScrollViewerController",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerInstance>(options?: import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerControllerOptions): import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerController<Instance>"
+        },
+        {
+          "name": "createSecondaryWindowManager",
+          "kind": "function",
+          "signature": "<Window extends import(\"<repo>/src/winui/windowing\").SecondaryXamlWindowInstance<AppWindow>, AppWindow extends import(\"<repo>/src/winui/windowing\").SecondaryAppWindowInstance>(options: import(\"<repo>/src/winui/windowing\").SecondaryWindowManagerOptions<Window, AppWindow>): import(\"<repo>/src/winui/windowing\").SecondaryWindowManager<Window, AppWindow>"
+        },
+        {
+          "name": "createSelectorBarControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/selector-bar\").SelectorBarInstance<Item>, Item extends object>(bindings: import(\"<repo>/src/winui/selector-bar\").SelectorBarControlBindings<Instance, Item>): import(\"<repo>/src/core\").Component<import(\"<repo>/src/winui/selector-bar\").SelectorBarProps<Instance, Item>>"
+        },
+        {
+          "name": "createSymbolIcon",
+          "kind": "function",
+          "signature": "<Icon>(constructorType: new (symbol: number) => Icon, symbol: number): Icon"
+        },
+        {
+          "name": "createTeachingTip",
+          "kind": "function",
+          "signature": "<Native extends import(\"<repo>/src/winui/overlays\").TeachingTipLike<ClosedArgs>, ClosedArgs = unknown>(renderer: import(\"<repo>/src/index\").Renderer, teachingTip: Native, options?: import(\"<repo>/src/winui/overlays\").TeachingTipOptions<NonNullable<Native[\"target\"]>, ClosedArgs>): import(\"<repo>/src/winui/overlays\").TeachingTipController<Native>"
+        },
+        {
+          "name": "createVirtualizedItemsControl",
+          "kind": "function",
+          "signature": "<Instance extends import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsInstance, Host extends object, MountHost extends import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsMountHost = Extract<Host, import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsMountHost>>(bindings: import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsControlBindings<Instance, Host, MountHost>, options?: { readonly displayName?: string; readonly ownsItemMountHost?: boolean; }): <Item>(props: import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsProps<Instance, Item>) => import(\"<repo>/src/core\").Child"
+        },
+        {
+          "name": "createWinUIControls",
+          "kind": "function",
+          "signature": "<const Bindings extends object>(bindings: Bindings): import(\"<repo>/src/renderer/native\").WinUIControls<Bindings>"
+        },
+        {
+          "name": "FlyoutController",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").FlyoutController<Native>"
+        },
+        {
+          "name": "FlyoutLike",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").FlyoutLike<Target, ShowOptions, ClosedArgs>"
+        },
+        {
+          "name": "FlyoutOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").FlyoutOptions<ShowOptions, ClosedArgs>"
+        },
+        {
+          "name": "FlyoutPoint",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").FlyoutPoint"
+        },
+        {
+          "name": "Focusable",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/focus\").Focusable"
+        },
+        {
+          "name": "FocusTarget",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/focus\").FocusTarget<Value>"
+        },
+        {
+          "name": "FontIconOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/icons\").FontIconOptions<FontFamily>"
+        },
+        {
+          "name": "GridControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/grid\").GridControlBindings<Grid, RowDefinition, ColumnDefinition>"
+        },
+        {
+          "name": "GridDefinitionInput",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/grid\").GridDefinitionInput<Definition>"
+        },
+        {
+          "name": "GridLayoutProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/grid\").GridLayoutProps<RowDefinition, ColumnDefinition>"
+        },
+        {
+          "name": "gridLength",
+          "kind": "value",
+          "signature": "{ auto(): import(\"<repo>/src/winui/grid\").WinUIGridLength; pixel(value: number): import(\"<repo>/src/winui/grid\").WinUIGridLength; star(weight?: number): import(\"<repo>/src/winui/grid\").WinUIGridLength; }"
+        },
+        {
+          "name": "ItemsRepeaterControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterControlBindings<Instance, Host>"
+        },
+        {
+          "name": "ItemsRepeaterInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterInstance"
+        },
+        {
+          "name": "ItemsRepeaterItemHost",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterItemHost"
+        },
+        {
+          "name": "ItemsRepeaterProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").ItemsRepeaterProps<Instance, Item>"
+        },
+        {
+          "name": "ListViewControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/list-view\").ListViewControlBindings<Instance>"
+        },
+        {
+          "name": "ListViewInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/list-view\").ListViewInstance"
+        },
+        {
+          "name": "ListViewProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/list-view\").ListViewProps<Instance>"
+        },
+        {
+          "name": "ListViewScrollTarget",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/list-view\").ListViewScrollTarget<Instance>"
+        },
+        {
+          "name": "ListViewSelectionProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/list-view\").ListViewSelectionProps<Instance>"
+        },
+        {
+          "name": "MenuFlyoutLike",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").MenuFlyoutLike<Target, ClosedArgs>"
+        },
+        {
+          "name": "MenuFlyoutOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").MenuFlyoutOptions<ClosedArgs>"
+        },
+        {
+          "name": "NativeCommonProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeCommonProps<Value>"
+        },
+        {
+          "name": "NativeComponent",
+          "kind": "interface",
+          "signature": "(props: import(\"<repo>/src/renderer/native\").NativeComponentProps<Instance, ExtraProps>): import(\"<repo>/src/core\").VNode"
+        },
+        {
+          "name": "NativeComponentOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeComponentOptions<Instance>"
+        },
+        {
+          "name": "NativeComponentProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeComponentProps<Value, ExtraProps>"
+        },
+        {
+          "name": "NativeComponents",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeComponents<Constructors>"
+        },
+        {
+          "name": "NativeConstructor",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeConstructor<Instance>"
+        },
+        {
+          "name": "NativeEventProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeEventProps<Value>"
+        },
+        {
+          "name": "NativePropertyProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativePropertyProps<Value>"
+        },
+        {
+          "name": "NativeProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeProps<Value>"
+        },
+        {
+          "name": "NativeValue",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeValue<Value>"
+        },
+        {
+          "name": "NativeValueForProperty",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeValueForProperty<Key, Value>"
+        },
+        {
+          "name": "NavigationHost",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationHost<Route>"
+        },
+        {
+          "name": "NavigationHostOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationHostOptions<Route>"
+        },
+        {
+          "name": "NavigationItemBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationItemBindings<Item, Text>"
+        },
+        {
+          "name": "NavigationItemOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationItemOptions<Icon>"
+        },
+        {
+          "name": "NavigationViewCollectionProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationViewCollectionProps<Item>"
+        },
+        {
+          "name": "NavigationViewControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/navigation\").NavigationViewControlBindings<NavigationView>"
+        },
+        {
+          "name": "OpenSecondaryAppWindowOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").OpenSecondaryAppWindowOptions<AppWindow>"
+        },
+        {
+          "name": "OpenSecondaryXamlWindowOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").OpenSecondaryXamlWindowOptions<Window, AppWindow>"
+        },
+        {
+          "name": "PivotControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/pivot\").PivotControlBindings<Instance>"
+        },
+        {
+          "name": "PivotInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/pivot\").PivotInstance"
+        },
+        {
+          "name": "PivotProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/pivot\").PivotProps<Instance>"
+        },
+        {
+          "name": "PopupController",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").PopupController<Native>"
+        },
+        {
+          "name": "PopupLike",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").PopupLike<ClosedArgs>"
+        },
+        {
+          "name": "PopupOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").PopupOptions<ClosedArgs>"
+        },
+        {
+          "name": "Ref",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").Ref<Value>"
+        },
+        {
+          "name": "RefObject",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").RefObject<Value>"
+        },
+        {
+          "name": "RouterNavigationHostOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationHostOptions"
+        },
+        {
+          "name": "RouterNavigationSelectionChangedEvent",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationSelectionChangedEvent"
+        },
+        {
+          "name": "RouterNavigationViewGroupMetadata",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewGroupMetadata<Icon>"
+        },
+        {
+          "name": "RouterNavigationViewInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewInstance"
+        },
+        {
+          "name": "RouterNavigationViewItemDefinition",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewItemDefinition<RouteId, Icon>"
+        },
+        {
+          "name": "RouterNavigationViewRouteHandle",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewRouteHandle<Icon>"
+        },
+        {
+          "name": "RouterNavigationViewRouteMetadata",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewRouteMetadata<Icon>"
+        },
+        {
+          "name": "RouterNavigationViewShell",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewShell<RouteId, Item>"
+        },
+        {
+          "name": "RouterNavigationViewShellOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/router\").RouterNavigationViewShellOptions<RouteId, State, Handle, Item, Text, ReleaseResult>"
+        },
+        {
+          "name": "ScrollViewerController",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerController<Instance>"
+        },
+        {
+          "name": "ScrollViewerControllerOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerControllerOptions"
+        },
+        {
+          "name": "ScrollViewerInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerInstance"
+        },
+        {
+          "name": "ScrollViewerSamplingMode",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/scroll-viewer\").ScrollViewerSamplingMode"
+        },
+        {
+          "name": "SecondaryAppWindowHandle",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryAppWindowHandle<AppWindow>"
+        },
+        {
+          "name": "SecondaryAppWindowInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryAppWindowInstance"
+        },
+        {
+          "name": "SecondaryWindowAsyncDisposal",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowAsyncDisposal"
+        },
+        {
+          "name": "SecondaryWindowClosingArgs",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowClosingArgs"
+        },
+        {
+          "name": "SecondaryWindowManager",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowManager<Window, AppWindow>"
+        },
+        {
+          "name": "SecondaryWindowManagerOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowManagerOptions<Window, AppWindow>"
+        },
+        {
+          "name": "SecondaryWindowScope",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowScope<Window, AppWindow>"
+        },
+        {
+          "name": "SecondaryWindowSize",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryWindowSize"
+        },
+        {
+          "name": "SecondaryXamlWindowHandle",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryXamlWindowHandle<Window, AppWindow>"
+        },
+        {
+          "name": "SecondaryXamlWindowInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/windowing\").SecondaryXamlWindowInstance<AppWindow>"
+        },
+        {
+          "name": "SelectorBarControlBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/selector-bar\").SelectorBarControlBindings<Instance, Item>"
+        },
+        {
+          "name": "SelectorBarInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/selector-bar\").SelectorBarInstance<Item>"
+        },
+        {
+          "name": "SelectorBarProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/selector-bar\").SelectorBarProps<Instance, Item>"
+        },
+        {
+          "name": "showContentDialog",
+          "kind": "function",
+          "signature": "<Root, Result>(options: import(\"<repo>/src/winui/dialog\").ShowContentDialogOptions<Root, Result>): Promise<Result> | <Root, Result>(renderer: import(\"<repo>/src/index\").Renderer, dialog: import(\"<repo>/src/winui/dialog\").ContentDialogLike<Root, Result> & object, xamlRoot: Root, content: import(\"<repo>/src/core\").Child, options?: import(\"<repo>/src/winui/dialog\").ContentDialogOptions<Result>): Promise<Result>"
+        },
+        {
+          "name": "ShowContentDialogOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/dialog\").ShowContentDialogOptions<Root, Result>"
+        },
+        {
+          "name": "showFlyout",
+          "kind": "function",
+          "signature": "<Native extends import(\"<repo>/src/winui/overlays\").FlyoutLike<Target, ShowOptions, ClosedArgs>, Target, ShowOptions = unknown, ClosedArgs = unknown>(renderer: import(\"<repo>/src/index\").Renderer, flyout: Native, target: Target, content: import(\"<repo>/src/core\").Child, options?: import(\"<repo>/src/winui/overlays\").FlyoutOptions<ShowOptions, ClosedArgs>): import(\"<repo>/src/winui/overlays\").FlyoutController<Native>"
+        },
+        {
+          "name": "showMenuFlyout",
+          "kind": "function",
+          "signature": "<Native extends import(\"<repo>/src/winui/overlays\").MenuFlyoutLike<Target, ClosedArgs>, Target, ClosedArgs = unknown>(renderer: import(\"<repo>/src/index\").Renderer, menuFlyout: Native, target: Target, items: import(\"<repo>/src/core\").Child, options?: import(\"<repo>/src/winui/overlays\").MenuFlyoutOptions<ClosedArgs>): import(\"<repo>/src/winui/overlays\").FlyoutController<Native>"
+        },
+        {
+          "name": "showPopup",
+          "kind": "function",
+          "signature": "<Native extends import(\"<repo>/src/winui/overlays\").PopupLike<ClosedArgs>, ClosedArgs = unknown>(renderer: import(\"<repo>/src/index\").Renderer, popup: Native, content: import(\"<repo>/src/core\").Child, options?: import(\"<repo>/src/winui/overlays\").PopupOptions<ClosedArgs>): import(\"<repo>/src/winui/overlays\").PopupController<Native>"
+        },
+        {
+          "name": "TeachingTipController",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").TeachingTipController<Native>"
+        },
+        {
+          "name": "TeachingTipLike",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").TeachingTipLike<ClosedArgs>"
+        },
+        {
+          "name": "TeachingTipOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/overlays\").TeachingTipOptions<Target, ClosedArgs>"
+        },
+        {
+          "name": "VirtualizedItemsControlBindings",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsControlBindings<Instance, Host, MountHost>"
+        },
+        {
+          "name": "VirtualizedItemsHost",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsMountHost"
+        },
+        {
+          "name": "VirtualizedItemsInstance",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsInstance"
+        },
+        {
+          "name": "VirtualizedItemsMountHost",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsMountHost"
+        },
+        {
+          "name": "VirtualizedItemsProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/items-repeater\").VirtualizedItemsProps<Instance, Item>"
+        },
+        {
+          "name": "WinUIControls",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").WinUIControls<Bindings>"
+        },
+        {
+          "name": "WinUIGridLength",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/grid\").WinUIGridLength"
+        },
+        {
+          "name": "WinUIGridTrack",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/grid\").WinUIGridTrack"
+        },
+        {
+          "name": "WinUIGridUnitType",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/grid\").WinUIGridUnitType"
+        }
+      ]
+    },
+    {
+      "name": "dynwinrt-jsx/winui",
+      "symbols": [
+        {
+          "name": "BaseStyleRecipe",
+          "kind": "interface",
+          "signature": "(): import(\"<repo>/src/winui/style\").StyleRecipeResult<Props>"
+        },
+        {
+          "name": "BitmapIconOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").BitmapIconOptions"
+        },
+        {
+          "name": "BitmapImageOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").BitmapImageOptions"
+        },
+        {
+          "name": "boxNullable",
+          "kind": "function",
+          "signature": "<Value, Boxed>(boxing: import(\"<repo>/src/winui/values\").ReferenceBoxing<Value, Boxed>, value: Value | null | undefined): Boxed | null"
+        },
+        {
+          "name": "color",
+          "kind": "function",
+          "signature": "(r: number, g: number, b: number, a?: number): import(\"<repo>/src/winui/winui\").WinUIColor"
+        },
+        {
+          "name": "cornerRadius",
+          "kind": "function",
+          "signature": "(value: number): import(\"<repo>/src/winui/winui\").WinUICornerRadius"
+        },
+        {
+          "name": "createBitmapIcon",
+          "kind": "function",
+          "signature": "<Instance extends BitmapIconInstance<UriValue>, UriValue>(constructorType: import(\"<repo>/src/controls\").NativeConstructor<Instance>, uriSource: UriValue, options?: import(\"<repo>/src/winui/values\").BitmapIconOptions): Instance"
+        },
+        {
+          "name": "createBitmapImage",
+          "kind": "function",
+          "signature": "<Instance extends BitmapImageInstance<UriValue>, UriValue>(constructorType: import(\"<repo>/src/controls\").NativeConstructor<Instance>, uriSource: UriValue, options?: import(\"<repo>/src/winui/values\").BitmapImageOptions): Instance"
+        },
+        {
+          "name": "createFontFamily",
+          "kind": "function",
+          "signature": "<Instance>(constructorType: import(\"<repo>/src/winui/values\").FontFamilyConstructor<Instance>, familyName: string): Instance"
+        },
+        {
+          "name": "createReferenceBoxing",
+          "kind": "function",
+          "signature": "<Value, Boxed>(box: (value: Value) => unknown, referenceType: import(\"<repo>/src/winui/values\").ReferenceType<Boxed>): import(\"<repo>/src/winui/values\").ReferenceBoxing<Value, Boxed>"
+        },
+        {
+          "name": "createRelativeUri",
+          "kind": "function",
+          "signature": "<Instance>(constructorType: import(\"<repo>/src/winui/values\").RelativeUriConstructor<Instance>, baseUri: string, relativeUri: string): Instance"
+        },
+        {
+          "name": "createSolidColorBrush",
+          "kind": "function",
+          "signature": "<Instance>(constructorType: import(\"<repo>/src/winui/values\").SolidColorBrushConstructor<Instance>, color: import(\"<repo>/src/winui/winui\").WinUIColor): Instance"
+        },
+        {
+          "name": "createStyleRecipe",
+          "kind": "function",
+          "signature": "<Props extends object>(definition: { readonly base: import(\"<repo>/src/winui/style\").StyleValues<Props>; readonly variants?: undefined; readonly defaultVariants?: undefined; }): import(\"<repo>/src/winui/style\").BaseStyleRecipe<Props> | <Props extends object, Variants extends import(\"<repo>/src/winui/style\").StyleVariantDefinitions<Props>>(definition: import(\"<repo>/src/winui/style\").StyleRecipeDefinition<Props, Variants> & { readonly variants: Variants; }): import(\"<repo>/src/winui/style\").StyleRecipe<Props, Variants>"
+        },
+        {
+          "name": "createUri",
+          "kind": "function",
+          "signature": "<Instance>(constructorType: import(\"<repo>/src/winui/values\").UriConstructor<Instance>, uri: string): Instance"
+        },
+        {
+          "name": "createWinUIRendererPreset",
+          "kind": "function",
+          "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings): import(\"<repo>/src/winui/winui\").WinUIRendererPreset"
+        },
+        {
+          "name": "createWinUIThemeController",
+          "kind": "function",
+          "signature": "<ApplicationTheme, ElementTheme, TitleBarTheme = never>(options: import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerOptions<ApplicationTheme, ElementTheme, TitleBarTheme> | import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerBindingOptions<ApplicationTheme, ElementTheme, TitleBarTheme>): import(\"<repo>/src/winui/theme-controller\").WinUIThemeController<ElementTheme>"
+        },
+        {
+          "name": "FontFamilyConstructor",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").FontFamilyConstructor<Instance>"
+        },
+        {
+          "name": "isThemeResourceReference",
+          "kind": "function",
+          "signature": "(value: unknown): value is import(\"<repo>/src/winui/resource\").ThemeResourceReference"
+        },
+        {
+          "name": "ReferenceBoxing",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").ReferenceBoxing<Value, Boxed>"
+        },
+        {
+          "name": "ReferenceType",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").ReferenceType<Boxed>"
+        },
+        {
+          "name": "RelativeUriConstructor",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").RelativeUriConstructor<Instance>"
+        },
+        {
+          "name": "resource",
+          "kind": "function",
+          "signature": "<Value = unknown>(key: string, fallback?: Value): import(\"<repo>/src/winui/resource\").ResourceReference<Value> | <Value = unknown>(key: string, fallback: Value | undefined, refresh: import(\"<repo>/src/core\").ReadonlySignal<unknown>): import(\"<repo>/src/core\").ReadonlySignal<import(\"<repo>/src/winui/resource\").ResourceReference<Value>>"
+        },
+        {
+          "name": "ResourceReference",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/resource\").ResourceReference<Value>"
+        },
+        {
+          "name": "SolidColorBrushConstructor",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").SolidColorBrushConstructor<Instance>"
+        },
+        {
+          "name": "StyleRecipe",
+          "kind": "interface",
+          "signature": "(selection?: import(\"<repo>/src/winui/style\").StyleVariantSelection<Variants>): import(\"<repo>/src/winui/style\").StyleRecipeResult<Props>"
+        },
+        {
+          "name": "StyleRecipeDefinition",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/style\").StyleRecipeDefinition<Props, Variants>"
+        },
+        {
+          "name": "StyleRecipeResult",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/style\").StyleRecipeResult<Props>"
+        },
+        {
+          "name": "styles",
+          "kind": "value",
+          "signature": "Readonly<{ button: import(\"<repo>/src/winui/style\").StyleRecipe<ButtonStyleProps, { density: { compact: import(\"<repo>/src/winui/style\").StyleValues<ButtonStyleProps>; comfortable: import(\"<repo>/src/winui/style\").StyleValues<ButtonStyleProps>; }; variant: { standard: import(\"<repo>/src/winui/style\").StyleValues<ButtonStyleProps>; accent: import(\"<repo>/src/winui/style\").StyleValues<ButtonStyleProps>; subtle: import(\"<repo>/src/winui/style\").StyleValues<ButtonStyleProps>; }; }>; card: import(\"<repo>/src/winui/style\").StyleRecipe<CardStyleProps, { density: { compact: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; comfortable: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; spacious: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; }; surface: { card: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; layer: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; subtle: import(\"<repo>/src/winui/style\").StyleValues<CardStyleProps>; }; }>; heading: import(\"<repo>/src/winui/style\").StyleRecipe<HeadingStyleProps, { level: { caption: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; body: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; bodyStrong: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; subtitle: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; title: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; display: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; }; tone: { primary: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; secondary: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; accent: import(\"<repo>/src/winui/style\").StyleValues<HeadingStyleProps>; }; }>; status: import(\"<repo>/src/winui/style\").StyleRecipe<StatusStyleProps, { tone: { neutral: import(\"<repo>/src/winui/style\").StyleValues<StatusStyleProps>; attention: import(\"<repo>/src/winui/style\").StyleValues<StatusStyleProps>; success: import(\"<repo>/src/winui/style\").StyleValues<StatusStyleProps>; caution: import(\"<repo>/src/winui/style\").StyleValues<StatusStyleProps>; critical: import(\"<repo>/src/winui/style\").StyleValues<StatusStyleProps>; }; }>; }>"
+        },
+        {
+          "name": "StyleValues",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/style\").StyleValues<Props>"
+        },
+        {
+          "name": "StyleVariantDefinitions",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/style\").StyleVariantDefinitions<Props>"
+        },
+        {
+          "name": "StyleVariantSelection",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/style\").StyleVariantSelection<Variants>"
+        },
+        {
+          "name": "theme",
+          "kind": "value",
+          "signature": "Readonly<{ accent: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; accentSecondary: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; accentTertiary: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; accentDisabled: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; primaryText: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; secondaryText: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; tertiaryText: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; disabledText: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; accentText: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; textOnAccent: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; solidBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; cardBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; smokeFill: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; subtleFill: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; layerFill: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlFill: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlFillSecondary: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlFillTertiary: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlFillDisabled: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlFillInputActive: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; cardStroke: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; surfaceStroke: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; dividerStroke: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlStroke: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; controlStrokeSecondary: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemAttention: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemSuccess: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemCaution: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemCritical: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemNeutral: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemSolidNeutral: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemAttentionBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemSuccessBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemCautionBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemCriticalBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemNeutralBackground: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; systemSolidAttention: import(\"<repo>/src/winui/resource\").ThemeResourceReference<unknown>; ref: <Value = unknown>(key: string, fallback?: Value) => import(\"<repo>/src/winui/resource\").ThemeResourceReference<Value>; }>"
+        },
+        {
+          "name": "themeResource",
+          "kind": "function",
+          "signature": "<Value = unknown>(key: string, fallback?: Value): import(\"<repo>/src/winui/resource\").ThemeResourceReference<Value>"
+        },
+        {
+          "name": "ThemeResourceReference",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/resource\").ThemeResourceReference<Value>"
+        },
+        {
+          "name": "thickness",
+          "kind": "function",
+          "signature": "(value: number): import(\"<repo>/src/winui/winui\").WinUIThickness | (horizontal: number, vertical: number): import(\"<repo>/src/winui/winui\").WinUIThickness | (left: number, top: number, right: number, bottom: number): import(\"<repo>/src/winui/winui\").WinUIThickness"
+        },
+        {
+          "name": "tokens",
+          "kind": "value",
+          "signature": "Readonly<{ spacing: Readonly<{ none: 0; xs: 4; sm: 8; md: 12; lg: 16; xl: 24; xxl: 32; }>; radius: Readonly<{ none: import(\"<repo>/src/winui/winui\").WinUICornerRadius; control: import(\"<repo>/src/winui/winui\").WinUICornerRadius; card: import(\"<repo>/src/winui/winui\").WinUICornerRadius; overlay: import(\"<repo>/src/winui/winui\").WinUICornerRadius; round: import(\"<repo>/src/winui/winui\").WinUICornerRadius; }>; typography: Readonly<{ caption: Readonly<{ fontSize: 12; fontWeight: Readonly<{ weight: 400; }>; }>; body: Readonly<{ fontSize: 14; fontWeight: Readonly<{ weight: 400; }>; }>; bodyStrong: Readonly<{ fontSize: 14; fontWeight: Readonly<{ weight: 600; }>; }>; subtitle: Readonly<{ fontSize: 20; fontWeight: Readonly<{ weight: 600; }>; }>; title: Readonly<{ fontSize: 28; fontWeight: Readonly<{ weight: 700; }>; }>; display: Readonly<{ fontSize: 40; fontWeight: Readonly<{ weight: 700; }>; }>; }>; elevation: Readonly<{ none: Readonly<{ x: 0; y: 0; z: 0; }>; low: Readonly<{ x: 0; y: 0; z: 8; }>; medium: Readonly<{ x: 0; y: 0; z: 16; }>; high: Readonly<{ x: 0; y: 0; z: 32; }>; }>; }>"
+        },
+        {
+          "name": "unboxReference",
+          "kind": "function",
+          "signature": "<Value>(reference: { readonly value: Value; } | null | undefined): Value | null"
+        },
+        {
+          "name": "UriConstructor",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/values\").UriConstructor<Instance>"
+        },
+        {
+          "name": "WinUIBindings",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIBindings"
+        },
+        {
+          "name": "WinUIColor",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIColor"
+        },
+        {
+          "name": "WinUICornerRadius",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUICornerRadius"
+        },
+        {
+          "name": "WinUIElevation",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/style\").WinUIElevation"
+        },
+        {
+          "name": "WinUIRendererCapabilities",
+          "kind": "type",
+          "signature": "Readonly<Record<import(\"<repo>/src/winui/winui\").WinUIRendererCapability, boolean>>"
+        },
+        {
+          "name": "WinUIRendererCapability",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIRendererCapability"
+        },
+        {
+          "name": "WinUIRendererOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIRendererOptions"
+        },
+        {
+          "name": "WinUIRendererPreset",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIRendererPreset"
+        },
+        {
+          "name": "WinUIResourceOverrides",
+          "kind": "type",
+          "signature": "Readonly<Record<string, unknown>>"
+        },
+        {
+          "name": "WinUIThemeController",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeController<ElementTheme>"
+        },
+        {
+          "name": "WinUIThemeControllerBindingOptions",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerBindingOptions<ApplicationTheme, ElementTheme, TitleBarTheme>"
+        },
+        {
+          "name": "WinUIThemeControllerOptions",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemeControllerOptions<ApplicationTheme, ElementTheme, TitleBarTheme>"
+        },
+        {
+          "name": "WinUIThemePair",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/theme-controller\").WinUIThemePair<Value>"
+        },
+        {
+          "name": "WinUIThickness",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").WinUIThickness"
+        },
+        {
+          "name": "WinUITypographyToken",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/style\").WinUITypographyToken"
+        }
+      ]
+    },
+    {
+      "name": "dynwinrt-jsx/native",
+      "symbols": [
+        {
+          "name": "adapter",
+          "kind": "value",
+          "signature": "{ oneWay<Instance>(set?: import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>[\"set\"]): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; initialOnly<Instance>(): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; controlled<Instance>(controlled?: import(\"<repo>/src/renderer/adapters\").NativeControlledPropertyOptions<Instance>, coerce?: import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>[\"coerce\"]): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; coercing<Instance>(coerce: import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>[\"coerce\"], controlled?: import(\"<repo>/src/renderer/adapters\").NativeControlledPropertyOptions<Instance>): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; reference<Instance>(set?: import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>[\"set\"]): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; withPhase<Instance>(property: import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>, phase: import(\"<repo>/src/renderer/adapters\").NativePropertyPhase): import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>; collection<Instance>(options: Omit<import(\"<repo>/src/renderer/adapters\").NativeCollectionAdapter<Instance>, \"kind\">): import(\"<repo>/src/renderer/adapters\").NativeCollectionAdapter<Instance>; slot<Instance>(property: Extract<keyof Instance, string>, options?: { readonly beforeSync?: (instance: Instance) => void; readonly afterSync?: (instance: Instance) => void; readonly finallySync?: (instance: Instance) => void; }): import(\"<repo>/src/renderer/adapters\").NativeSlotAdapter<Instance>; collectionSlot<Instance>(property: Extract<keyof Instance, string>, options?: { readonly beforeSync?: (instance: Instance) => void; readonly afterSync?: (instance: Instance) => void; readonly finallySync?: (instance: Instance) => void; }): import(\"<repo>/src/renderer/adapters\").NativeSlotAdapter<Instance>; collectionSlotFrom<Instance>(get: (instance: Instance) => unknown, options?: { readonly beforeSync?: (instance: Instance) => void; readonly afterSync?: (instance: Instance) => void; readonly finallySync?: (instance: Instance) => void; }): import(\"<repo>/src/renderer/adapters\").NativeSlotAdapter<Instance>; selfCollection<Instance>(options?: { readonly beforeSync?: (instance: Instance) => void; readonly afterSync?: (instance: Instance) => void; readonly finallySync?: (instance: Instance) => void; }): import(\"<repo>/src/renderer/adapters\").NativeSlotAdapter<Instance>; itemsRepeater<Instance>(options: Omit<import(\"<repo>/src/renderer/adapters\").NativeItemsRepeaterAdapter<Instance>, \"kind\">): import(\"<repo>/src/renderer/adapters\").NativeItemsRepeaterAdapter<Instance>; }"
+        },
+        {
+          "name": "AttachedPropertyRegistration",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/winui\").AttachedPropertyRegistration"
+        },
+        {
+          "name": "AttachedPropertyRegistrations",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/winui/winui\").AttachedPropertyRegistrations"
+        },
+        {
+          "name": "AvailableCapability",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/capability\").AvailableCapability<Value, Details>"
+        },
+        {
+          "name": "Capability",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/capability\").Capability<Value, Details>"
+        },
+        {
+          "name": "capabilityAvailable",
+          "kind": "function",
+          "signature": "<Value>(value: Value): import(\"<repo>/src/runtime/capability\").AvailableCapability<Value> | <Value, Details>(value: Value, details: Details): import(\"<repo>/src/runtime/capability\").AvailableCapability<Value, Details>"
+        },
+        {
+          "name": "CapabilityOwner",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/capability\").CapabilityOwner<Value, Details>"
+        },
+        {
+          "name": "capabilityUnavailable",
+          "kind": "function",
+          "signature": "(reason: string): import(\"<repo>/src/runtime/capability\").UnavailableCapability | <Details>(reason: string, details: Details): import(\"<repo>/src/runtime/capability\").UnavailableCapability<Details>"
+        },
+        {
+          "name": "CompositionOwner",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/composition\").CompositionOwner"
+        },
+        {
+          "name": "CompositionPropertyTarget",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/composition\").CompositionPropertyTarget<Animation>"
+        },
+        {
+          "name": "CompositionTargetBinding",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/event-coalescing\").CompositionTargetBinding<Token>"
+        },
+        {
+          "name": "createAttachedPropertySetters",
+          "kind": "function",
+          "signature": "(registrations: import(\"<repo>/src/winui/winui\").AttachedPropertyRegistrations): Record<string, import(\"<repo>/src/renderer/renderer\").NativePropertySetter>"
+        },
+        {
+          "name": "createCapabilityOwner",
+          "kind": "function",
+          "signature": "<Details = undefined>(capability: import(\"<repo>/src/runtime/capability\").UnavailableCapability<Details>): import(\"<repo>/src/runtime/capability\").CapabilityOwner<never, Details> | <Value, Details = undefined, Result = void>(capability: import(\"<repo>/src/runtime/capability\").Capability<Value, Details>, cleanup: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): import(\"<repo>/src/runtime/capability\").CapabilityOwner<Value, Details>"
+        },
+        {
+          "name": "createCompositionFrameScheduler",
+          "kind": "function",
+          "signature": "<Token>(compositionTarget: import(\"<repo>/src/winui/event-coalescing\").CompositionTargetBinding<Token>): import(\"<repo>/src/core\").CoalescingScheduler"
+        },
+        {
+          "name": "createCompositionOwner",
+          "kind": "function",
+          "signature": "(options?: import(\"<repo>/src/runtime/native-resource\").NativeResourceOwnerOptions): import(\"<repo>/src/winui/composition\").CompositionOwner"
+        },
+        {
+          "name": "createHotReloadSession",
+          "kind": "function",
+          "signature": "(handle: import(\"<repo>/src/renderer/renderer\").RenderHandle, options?: import(\"<repo>/src/renderer/hot\").HotReloadOptions): import(\"<repo>/src/renderer/hot\").HotReloadSession"
+        },
+        {
+          "name": "createHotRoot",
+          "kind": "function",
+          "signature": "(renderer: import(\"<repo>/src/renderer/renderer\").Renderer, container: object, render: () => import(\"<repo>/src/core\").Child): import(\"<repo>/src/renderer/hot\").HotRoot"
+        },
+        {
+          "name": "createNativeResourceOwner",
+          "kind": "function",
+          "signature": "(options?: import(\"<repo>/src/runtime/native-resource\").NativeResourceOwnerOptions): import(\"<repo>/src/runtime/native-resource\").NativeResourceOwner"
+        },
+        {
+          "name": "createProjectedOwnership",
+          "kind": "function",
+          "signature": "<Result = void>(release: Extract<Result, PromiseLike<unknown>> extends never ? (value: object) => Result : never): import(\"<repo>/src/runtime/projected-owner\").ProjectedOwnership"
+        },
+        {
+          "name": "createProjectedValueOwner",
+          "kind": "function",
+          "signature": "<Value extends object, Result = void>(value: Value, release: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): import(\"<repo>/src/runtime/projected-owner\").ProjectedValueOwner<Value>"
+        },
+        {
+          "name": "createRenderer",
+          "kind": "function",
+          "signature": "(options?: import(\"<repo>/src/renderer/renderer\").RendererOptions): import(\"<repo>/src/renderer/renderer\").Renderer"
+        },
+        {
+          "name": "createWinUIAttachedPropertyRegistrations",
+          "kind": "function",
+          "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings): import(\"<repo>/src/winui/winui\").AttachedPropertyRegistrations"
+        },
+        {
+          "name": "createWinUIPropertyConverters",
+          "kind": "function",
+          "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings): Record<string, import(\"<repo>/src/renderer/renderer\").NativePropertyConverter>"
+        },
+        {
+          "name": "createWinUIRenderer",
+          "kind": "function",
+          "signature": "(bindings: import(\"<repo>/src/winui/winui\").WinUIBindings, options?: import(\"<repo>/src/winui/winui\").WinUIRendererOptions): import(\"<repo>/src/renderer/renderer\").Renderer"
+        },
+        {
+          "name": "HotReloadOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/hot\").HotReloadOptions"
+        },
+        {
+          "name": "HotReloadSession",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/hot\").HotReloadSession"
+        },
+        {
+          "name": "HotRoot",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/hot\").HotRoot"
+        },
+        {
+          "name": "mapCapability",
+          "kind": "function",
+          "signature": "<Value, Result, Details>(capability: import(\"<repo>/src/runtime/capability\").Capability<Value, Details>, map: (value: Value) => Result): import(\"<repo>/src/runtime/capability\").Capability<Result, Details>"
+        },
+        {
+          "name": "native",
+          "kind": "function",
+          "signature": "<Instance extends object, ExtraProps extends object = {}>(constructorType: import(\"<repo>/src/renderer/native\").NativeConstructor<Instance>, options?: import(\"<repo>/src/renderer/native\").NativeComponentOptions<Instance>): import(\"<repo>/src/renderer/native\").NativeComponent<Instance, ExtraProps>"
+        },
+        {
+          "name": "NativeAdapter",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativeAdapter<Instance>"
+        },
+        {
+          "name": "NativeAdapterMap",
+          "kind": "type",
+          "signature": "Partial<Record<Extract<keyof Props, string>, import(\"<repo>/src/renderer/adapters\").NativeAdapter<Instance>>>"
+        },
+        {
+          "name": "NativeCollection",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer-children\").NativeCollection"
+        },
+        {
+          "name": "NativeCollectionAdapter",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativeCollectionAdapter<Instance>"
+        },
+        {
+          "name": "NativeCommonProps",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeCommonProps<Value>"
+        },
+        {
+          "name": "NativeComponent",
+          "kind": "interface",
+          "signature": "(props: import(\"<repo>/src/renderer/native\").NativeComponentProps<Instance, ExtraProps>): import(\"<repo>/src/core\").VNode"
+        },
+        {
+          "name": "NativeComponentOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeComponentOptions<Instance>"
+        },
+        {
+          "name": "NativeComponentProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeComponentProps<Value, ExtraProps>"
+        },
+        {
+          "name": "NativeConstructor",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeConstructor<Instance>"
+        },
+        {
+          "name": "NativeControlledEchoMode",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativeControlledEchoMode"
+        },
+        {
+          "name": "NativeControlledPropertyOptions",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativeControlledPropertyOptions<Instance>"
+        },
+        {
+          "name": "NativeEventProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeEventProps<Value>"
+        },
+        {
+          "name": "NativePropertyAdapter",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativePropertyAdapter<Instance>"
+        },
+        {
+          "name": "NativePropertyConverter",
+          "kind": "type",
+          "signature": "(target: object, value: unknown, property: string): unknown"
+        },
+        {
+          "name": "NativePropertyMode",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativePropertyMode"
+        },
+        {
+          "name": "NativePropertyPhase",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativePropertyPhase"
+        },
+        {
+          "name": "NativePropertyProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativePropertyProps<Value>"
+        },
+        {
+          "name": "NativePropertySetter",
+          "kind": "type",
+          "signature": "(target: object, value: unknown, scope: import(\"<repo>/src/core\").ReactiveScope): void"
+        },
+        {
+          "name": "NativeProps",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeProps<Value>"
+        },
+        {
+          "name": "NativeResourceOwner",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/native-resource\").NativeResourceOwner"
+        },
+        {
+          "name": "NativeResourceOwnerOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/native-resource\").NativeResourceOwnerOptions"
+        },
+        {
+          "name": "NativeSlotAdapter",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/adapters\").NativeSlotAdapter<Instance>"
+        },
+        {
+          "name": "NativeValue",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeValue<Value>"
+        },
+        {
+          "name": "NativeValueForProperty",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").NativeValueForProperty<Key, Value>"
+        },
+        {
+          "name": "ownProjectedValue",
+          "kind": "function",
+          "signature": "<Value extends object, Result = void>(value: Value, release: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): Value"
+        },
+        {
+          "name": "ProjectedOwnership",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/projected-owner\").ProjectedOwnership"
+        },
+        {
+          "name": "ProjectedValueOwner",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/projected-owner\").ProjectedValueOwner<Value>"
+        },
+        {
+          "name": "Ref",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/native\").Ref<Value>"
+        },
+        {
+          "name": "RefObject",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/native\").RefObject<Value>"
+        },
+        {
+          "name": "Renderer",
+          "kind": "class",
+          "signature": "typeof import(\"<repo>/src/renderer/renderer\").Renderer"
+        },
+        {
+          "name": "RendererDiagnostics",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer\").RendererDiagnostics"
+        },
+        {
+          "name": "RendererErrorContext",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer\").RendererErrorContext"
+        },
+        {
+          "name": "RendererOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer\").RendererOptions"
+        },
+        {
+          "name": "RenderHandle",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer\").RenderHandle"
+        },
+        {
+          "name": "UnavailableCapability",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/capability\").UnavailableCapability<Details>"
+        },
+        {
+          "name": "XamlAnimationTarget",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/winui/composition\").XamlAnimationTarget<Animation>"
+        }
+      ]
+    },
+    {
+      "name": "dynwinrt-jsx/diagnostics",
+      "symbols": [
+        {
+          "name": "assertRendererIdle",
+          "kind": "function",
+          "signature": "(diagnostics: import(\"<repo>/src/renderer/renderer\").RendererDiagnostics, label?: string): void"
+        },
+        {
+          "name": "assertRendererInspectionIdle",
+          "kind": "function",
+          "signature": "(snapshot: import(\"<repo>/src/renderer/inspector\").RendererInspectionSnapshot, label?: string): void"
+        },
+        {
+          "name": "createDiagnosticBuffer",
+          "kind": "function",
+          "signature": "(options?: import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticBufferOptions): import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticBuffer"
+        },
+        {
+          "name": "createDiagnosticChannel",
+          "kind": "function",
+          "signature": "(options: import(\"<repo>/src/runtime/diagnostics\").DiagnosticChannelOptions): import(\"<repo>/src/runtime/diagnostics\").DiagnosticChannel"
+        },
+        {
+          "name": "createDiagnosticEvidenceBundle",
+          "kind": "function",
+          "signature": "(options: import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticEvidenceBundleOptions): import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticEvidenceBundle"
+        },
+        {
+          "name": "createDiagnosticRecord",
+          "kind": "function",
+          "signature": "(source: string, event: string, details?: Readonly<Record<string, unknown>>, level?: import(\"<repo>/src/runtime/diagnostics\").DiagnosticLevel): import(\"<repo>/src/runtime/diagnostics\").DiagnosticRecord"
+        },
+        {
+          "name": "createRendererOwnershipCounts",
+          "kind": "function",
+          "signature": "(snapshot: import(\"<repo>/src/renderer/inspector\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostics\").RendererOwnershipCounts"
+        },
+        {
+          "name": "describeDiagnosticError",
+          "kind": "function",
+          "signature": "(error: unknown, detail?: import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorDetail): import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorDescription"
+        },
+        {
+          "name": "DiagnosticBuffer",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticBuffer"
+        },
+        {
+          "name": "DiagnosticBufferOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticBufferOptions"
+        },
+        {
+          "name": "DiagnosticBufferSnapshot",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticBufferSnapshot"
+        },
+        {
+          "name": "DiagnosticChannel",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticChannel"
+        },
+        {
+          "name": "DiagnosticChannelOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticChannelOptions"
+        },
+        {
+          "name": "DiagnosticErrorDescription",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorDescription"
+        },
+        {
+          "name": "DiagnosticErrorDetail",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorDetail"
+        },
+        {
+          "name": "DiagnosticErrorEvent",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorEvent"
+        },
+        {
+          "name": "DiagnosticErrorInput",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticErrorInput"
+        },
+        {
+          "name": "DiagnosticEvidenceBundle",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticEvidenceBundle"
+        },
+        {
+          "name": "DiagnosticEvidenceBundleOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticEvidenceBundleOptions"
+        },
+        {
+          "name": "diagnosticEvidenceProtocolName",
+          "kind": "value",
+          "signature": "\"dynwinrt-jsx.evidence\""
+        },
+        {
+          "name": "diagnosticEvidenceProtocolVersion",
+          "kind": "value",
+          "signature": "1"
+        },
+        {
+          "name": "DiagnosticHeartbeatEvidence",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticHeartbeatEvidence"
+        },
+        {
+          "name": "DiagnosticLevel",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticLevel"
+        },
+        {
+          "name": "DiagnosticLifecycleEvent",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticLifecycleEvent"
+        },
+        {
+          "name": "DiagnosticLifecycleStateMap",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticLifecycleStateMap"
+        },
+        {
+          "name": "DiagnosticLifecycleTarget",
+          "kind": "type",
+          "signature": "keyof import(\"<repo>/src/runtime/diagnostics\").DiagnosticLifecycleStateMap"
+        },
+        {
+          "name": "DiagnosticNativeOwnership",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticNativeOwnership"
+        },
+        {
+          "name": "DiagnosticOwnershipAction",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticOwnershipAction"
+        },
+        {
+          "name": "DiagnosticOwnershipEvent",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticOwnershipEvent"
+        },
+        {
+          "name": "DiagnosticProtocolEnvelope",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolEnvelope<Kind, Payload>"
+        },
+        {
+          "name": "DiagnosticProtocolKind",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolKind"
+        },
+        {
+          "name": "diagnosticProtocolName",
+          "kind": "value",
+          "signature": "\"dynwinrt-jsx.diagnostics\""
+        },
+        {
+          "name": "DiagnosticProtocolRecord",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecord"
+        },
+        {
+          "name": "DiagnosticProtocolRecordFor",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecordFor<Kind>"
+        },
+        {
+          "name": "DiagnosticProtocolRecordSummary",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticProtocolRecordSummary"
+        },
+        {
+          "name": "diagnosticProtocolVersion",
+          "kind": "value",
+          "signature": "1"
+        },
+        {
+          "name": "DiagnosticRecord",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticRecord"
+        },
+        {
+          "name": "DiagnosticRouteAction",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticRouteAction"
+        },
+        {
+          "name": "DiagnosticRouteEvent",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticRouteEvent"
+        },
+        {
+          "name": "DiagnosticRoutePhase",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticRoutePhase"
+        },
+        {
+          "name": "DiagnosticRouteSmokeResult",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticRouteSmokeResult"
+        },
+        {
+          "name": "DiagnosticRouteTrigger",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticRouteTrigger"
+        },
+        {
+          "name": "DiagnosticSnapshotEvent",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostics\").DiagnosticSnapshotEvent"
+        },
+        {
+          "name": "formatDiagnosticEvidenceBundle",
+          "kind": "function",
+          "signature": "(evidence: import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticEvidenceBundle): string"
+        },
+        {
+          "name": "formatDiagnosticProtocolRecord",
+          "kind": "function",
+          "signature": "(record: import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecord): string"
+        },
+        {
+          "name": "formatDiagnosticProtocolRecordSummary",
+          "kind": "function",
+          "signature": "(record: import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecord): string"
+        },
+        {
+          "name": "formatDiagnosticRecord",
+          "kind": "function",
+          "signature": "(record: import(\"<repo>/src/runtime/diagnostics\").DiagnosticRecord): string"
+        },
+        {
+          "name": "formatRendererDiagnostics",
+          "kind": "function",
+          "signature": "(diagnostics: import(\"<repo>/src/renderer/renderer\").RendererDiagnostics): string"
+        },
+        {
+          "name": "hasActiveRendererInspection",
+          "kind": "function",
+          "signature": "(snapshot: import(\"<repo>/src/renderer/inspector\").RendererInspectionSnapshot): boolean"
+        },
+        {
+          "name": "hasActiveRendererRecords",
+          "kind": "function",
+          "signature": "(diagnostics: import(\"<repo>/src/renderer/renderer\").RendererDiagnostics): boolean"
+        },
+        {
+          "name": "isDiagnosticProtocolRecord",
+          "kind": "function",
+          "signature": "(value: unknown): value is import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecord"
+        },
+        {
+          "name": "ReactiveDependencyInspection",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReactiveDependencyInspection"
+        },
+        {
+          "name": "ReactiveGraphInspection",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReactiveGraphInspection"
+        },
+        {
+          "name": "ReactiveObserverInspection",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReactiveObserverInspection"
+        },
+        {
+          "name": "ReactiveScopeInspection",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/core/reactive\").ReactiveScopeInspection"
+        },
+        {
+          "name": "RendererDiagnostics",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/renderer\").RendererDiagnostics"
+        },
+        {
+          "name": "RendererInspectionIdleSummary",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/runtime/diagnostic-evidence\").RendererInspectionIdleSummary"
+        },
+        {
+          "name": "RendererInspectionNode",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectionNode"
+        },
+        {
+          "name": "RendererInspectionNodeKind",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectionNodeKind"
+        },
+        {
+          "name": "RendererInspectionSnapshot",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectionSnapshot"
+        },
+        {
+          "name": "RendererInspectionSubscription",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectionSubscription"
+        },
+        {
+          "name": "RendererInspectionSubscriptionKind",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectionSubscriptionKind"
+        },
+        {
+          "name": "RendererInspector",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspector"
+        },
+        {
+          "name": "RendererInspectorOptions",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererInspectorOptions"
+        },
+        {
+          "name": "RendererOperationKind",
+          "kind": "type",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererOperationKind"
+        },
+        {
+          "name": "RendererOperationRecord",
+          "kind": "interface",
+          "signature": "import(\"<repo>/src/renderer/inspector\").RendererOperationRecord"
+        },
+        {
+          "name": "RendererOwnershipCounts",
+          "kind": "type",
+          "signature": "Readonly<Record<string, number> & { readonly nativeCreated: number; readonly nativeDisposed: number; readonly activeNative: number; readonly componentsMounted: number; readonly componentsDisposed: number; readonly activeComponents: number; readonly listEntriesCreated: number; readonly listEntriesReused: number; readonly inspectionNodes: number; readonly reactiveScopes: number; readonly reactiveObservers: number; readonly reactiveDependencies: number; readonly subscriptions: number; readonly cleanupFailedSubscriptions: number; }>"
+        },
+        {
+          "name": "summarizeDiagnosticProtocolRecord",
+          "kind": "function",
+          "signature": "(record: import(\"<repo>/src/runtime/diagnostics\").DiagnosticProtocolRecord): import(\"<repo>/src/runtime/diagnostic-evidence\").DiagnosticProtocolRecordSummary"
+        },
+        {
+          "name": "summarizeRendererInspectionIdle",
+          "kind": "function",
+          "signature": "(snapshot: import(\"<repo>/src/renderer/inspector\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostic-evidence\").RendererInspectionIdleSummary"
+        }
+      ]
+    },
+    {
       "name": "dynwinrt-jsx/host",
       "symbols": [
         {
           "name": "assertRendererIdle",
           "kind": "function",
-          "signature": "(diagnostics: import(\"<repo>/src/index\").RendererDiagnostics, label?: string): void"
+          "signature": "(diagnostics: import(\"<repo>/src/diagnostics\").RendererDiagnostics, label?: string): void"
         },
         {
           "name": "assertRendererInspectionIdle",
           "kind": "function",
-          "signature": "(snapshot: import(\"<repo>/src/index\").RendererInspectionSnapshot, label?: string): void"
+          "signature": "(snapshot: import(\"<repo>/src/diagnostics\").RendererInspectionSnapshot, label?: string): void"
         },
         {
           "name": "AvailableCapability",
@@ -2113,7 +4188,7 @@
         {
           "name": "createRendererOwnershipCounts",
           "kind": "function",
-          "signature": "(snapshot: import(\"<repo>/src/index\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostics\").RendererOwnershipCounts"
+          "signature": "(snapshot: import(\"<repo>/src/diagnostics\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostics\").RendererOwnershipCounts"
         },
         {
           "name": "createStateBridge",
@@ -2338,7 +4413,7 @@
         {
           "name": "formatRendererDiagnostics",
           "kind": "function",
-          "signature": "(diagnostics: import(\"<repo>/src/index\").RendererDiagnostics): string"
+          "signature": "(diagnostics: import(\"<repo>/src/diagnostics\").RendererDiagnostics): string"
         },
         {
           "name": "getRendererHeartbeatSharedState",
@@ -2348,12 +4423,12 @@
         {
           "name": "hasActiveRendererInspection",
           "kind": "function",
-          "signature": "(snapshot: import(\"<repo>/src/index\").RendererInspectionSnapshot): boolean"
+          "signature": "(snapshot: import(\"<repo>/src/diagnostics\").RendererInspectionSnapshot): boolean"
         },
         {
           "name": "hasActiveRendererRecords",
           "kind": "function",
-          "signature": "(diagnostics: import(\"<repo>/src/index\").RendererDiagnostics): boolean"
+          "signature": "(diagnostics: import(\"<repo>/src/diagnostics\").RendererDiagnostics): boolean"
         },
         {
           "name": "isDiagnosticProtocolRecord",
@@ -2508,7 +4583,7 @@
         {
           "name": "summarizeRendererInspectionIdle",
           "kind": "function",
-          "signature": "(snapshot: import(\"<repo>/src/index\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostic-evidence\").RendererInspectionIdleSummary"
+          "signature": "(snapshot: import(\"<repo>/src/diagnostics\").RendererInspectionSnapshot): import(\"<repo>/src/runtime/diagnostic-evidence\").RendererInspectionIdleSummary"
         },
         {
           "name": "UnavailableCapability",
@@ -3158,7 +5233,7 @@
         {
           "name": "jsx",
           "kind": "function",
-          "signature": "(type: import(\"<repo>/src/index\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/index\").Key): import(\"<repo>/src/index\").VNode"
+          "signature": "(type: import(\"<repo>/src/core\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/core\").Key): import(\"<repo>/src/core\").VNode"
         },
         {
           "name": "JSX",
@@ -3168,20 +5243,28 @@
         {
           "name": "jsxDEV",
           "kind": "function",
-          "signature": "(type: import(\"<repo>/src/index\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/index\").Key): import(\"<repo>/src/index\").VNode"
+          "signature": "(type: import(\"<repo>/src/core\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/core\").Key): import(\"<repo>/src/core\").VNode"
         },
         {
           "name": "jsxs",
           "kind": "value",
-          "signature": "(type: import(\"<repo>/src/index\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/index\").Key): import(\"<repo>/src/index\").VNode"
+          "signature": "(type: import(\"<repo>/src/core\").VNode[\"type\"], props: Record<string, unknown> | null, key?: import(\"<repo>/src/core\").Key): import(\"<repo>/src/core\").VNode"
         }
       ]
     }
   ],
   "declarations": [
     {
+      "file": "controls.d.ts",
+      "sha256": "a9afaebf3c5e6502300a2e626bf5ff17a2f542be5705b3c3bbcda9990186f6c5"
+    },
+    {
+      "file": "core.d.ts",
+      "sha256": "116f994b0d3db435309dbd65ec3c77d237a2bad8ccd8bd0d1c3d1cd3970f8690"
+    },
+    {
       "file": "core/async.d.ts",
-      "sha256": "1cdb112609e9e7e5c1ca788dc4a7d5f598909a3f1b6cb0cb28140eb7352eb49a"
+      "sha256": "194004698a2927849b52a89659dca4e96b9724d9541de3b82f05b0c0833c328b"
     },
     {
       "file": "core/binding.d.ts",
@@ -3224,12 +5307,16 @@
       "sha256": "323ba96d66753e128dc25021772f722809a67b4f395392ba9eaa5506a8e13954"
     },
     {
+      "file": "diagnostics.d.ts",
+      "sha256": "3a0e899b0a3212755d31fc8155b8dad49cca4f74da93751714b2c2a6dad3a8cb"
+    },
+    {
       "file": "host.d.ts",
       "sha256": "153aa88d121633fad890a06cfc3728f4265b6b714b0450228d56318dfed89b44"
     },
     {
       "file": "index.d.ts",
-      "sha256": "7f1f62a085dd4f0caa8cc9eb91dd705f811d12cf31b1b0cc338ea2ab1a18abd4"
+      "sha256": "25174b32770fd41a64ac76832b32ac10125e0d77a6630d00550fcdf61f70208b"
     },
     {
       "file": "jsx-dev-runtime.d.ts",
@@ -3238,6 +5325,10 @@
     {
       "file": "jsx-runtime.d.ts",
       "sha256": "226c7b8bfd7c7d9ed5ab02c4f6a7b30a88e854fe8a48ce74a37577a6ab4b177a"
+    },
+    {
+      "file": "native.d.ts",
+      "sha256": "09d59894bf16be932eddd3fd2e630ac6840bec29ddeef71ad257fced04bd6513"
     },
     {
       "file": "renderer/adapters.d.ts",
@@ -3253,7 +5344,7 @@
     },
     {
       "file": "renderer/native.d.ts",
-      "sha256": "55dd7ed0afc06979a58f9cf1efefef1404e5fdfd63df5a3043f55dc5fbc1e008"
+      "sha256": "ac648823b98c6730791253a2f684052cbcc20f0b9275613d05a5628433bfd4f9"
     },
     {
       "file": "renderer/renderer-children.d.ts",
@@ -3316,6 +5407,10 @@
       "sha256": "1110878d36506d25806b1d47d948cd1c00038ad4efeed96a754cff9a34414b22"
     },
     {
+      "file": "winui.d.ts",
+      "sha256": "ea93089c310d757513d2ce5019f6a2ca5b5da5054d20e3494870543add22af06"
+    },
+    {
       "file": "winui/combo-box.d.ts",
       "sha256": "b497452bdceb2bcf26fb4b417fedfbfd360bc17223743c9e78e7b5e4a3c46358"
     },
@@ -3325,7 +5420,7 @@
     },
     {
       "file": "winui/dialog.d.ts",
-      "sha256": "60482efc68f478ae0062cde4a584d5542cb7f6141e8d1bac81f942f81bc47bb6"
+      "sha256": "e06e76943bc55bc0138f9f8d40a5a9e327246dc5445ad51fd7300fdf75a72a81"
     },
     {
       "file": "winui/event-coalescing.d.ts",
@@ -3389,7 +5484,7 @@
     },
     {
       "file": "winui/theme-controller.d.ts",
-      "sha256": "0e33e0605e142b8ab8cb633310861a324c93879023a7addb47526b11b07f7513"
+      "sha256": "e8889bf82edc39af929c9574782a7e533c6face78fb9b2b55103917f96eee49c"
     },
     {
       "file": "winui/theme.d.ts",

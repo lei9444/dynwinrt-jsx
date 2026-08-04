@@ -5,9 +5,11 @@ import {
   effect,
   signal,
   type Cleanup,
-  type RendererDiagnostics,
   type Signal,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/core'
+import type {
+  RendererDiagnostics,
+} from 'dynwinrt-jsx/diagnostics'
 import type { AppState } from './app-state'
 
 export type AppRoute = 'home' | 'diagnostics' | 'settings'

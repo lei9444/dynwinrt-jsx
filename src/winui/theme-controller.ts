@@ -6,7 +6,7 @@ import {
   type ReadonlySignal,
 } from '../core/reactive'
 
-interface ThemePair<Value> {
+export interface WinUIThemePair<Value> {
   readonly Light: Value
   readonly Dark: Value
 }
@@ -20,8 +20,8 @@ interface WinUIThemeControllerBaseOptions<
   readonly application: {
     requestedTheme: ApplicationTheme
   }
-  readonly applicationTheme: ThemePair<ApplicationTheme>
-  readonly elementTheme: ThemePair<ElementTheme>
+  readonly applicationTheme: WinUIThemePair<ApplicationTheme>
+  readonly elementTheme: WinUIThemePair<ElementTheme>
 }
 
 type WinUIThemeControllerTitleBarOptions<TitleBarTheme> =
@@ -33,7 +33,7 @@ type WinUIThemeControllerTitleBarOptions<TitleBarTheme> =
       readonly titleBar: {
         preferredTheme: TitleBarTheme
       }
-      readonly titleBarTheme: ThemePair<TitleBarTheme>
+      readonly titleBarTheme: WinUIThemePair<TitleBarTheme>
     }
 
 export type WinUIThemeControllerOptions<
@@ -44,6 +44,58 @@ export type WinUIThemeControllerOptions<
   ApplicationTheme,
   ElementTheme
 > & WinUIThemeControllerTitleBarOptions<TitleBarTheme>
+
+interface WinUIThemeControllerBindingBaseOptions<
+  ApplicationTheme,
+  ElementTheme,
+> {
+  readonly isDark: ReadonlySignal<boolean>
+  readonly setDark: (value: boolean) => void
+  readonly application: {
+    requestedTheme: ApplicationTheme
+  }
+  readonly bindings: {
+    readonly ApplicationTheme:
+      WinUIThemePair<ApplicationTheme>
+    readonly ElementTheme:
+      WinUIThemePair<ElementTheme>
+  }
+}
+
+export type WinUIThemeControllerBindingOptions<
+  ApplicationTheme,
+  ElementTheme,
+  TitleBarTheme,
+> =
+  | (
+      WinUIThemeControllerBindingBaseOptions<
+        ApplicationTheme,
+        ElementTheme
+      > & {
+        readonly titleBar?: undefined
+      }
+    )
+  | (
+      Omit<
+        WinUIThemeControllerBindingBaseOptions<
+          ApplicationTheme,
+          ElementTheme
+        >,
+        'bindings'
+      > & {
+        readonly bindings:
+          WinUIThemeControllerBindingBaseOptions<
+            ApplicationTheme,
+            ElementTheme
+          >['bindings'] & {
+            readonly TitleBarTheme:
+              WinUIThemePair<TitleBarTheme>
+          }
+        readonly titleBar: {
+          preferredTheme: TitleBarTheme
+        }
+      }
+    )
 
 export interface WinUIThemeController<ElementTheme> {
   readonly isDark: ReadonlySignal<boolean>
@@ -59,15 +111,56 @@ export function createWinUIThemeController<
   TitleBarTheme = never,
 >(
   options: WinUIThemeControllerOptions<
-    ApplicationTheme,
-    ElementTheme,
-    TitleBarTheme
-  >,
+      ApplicationTheme,
+      ElementTheme,
+      TitleBarTheme
+    > |
+    WinUIThemeControllerBindingOptions<
+      ApplicationTheme,
+      ElementTheme,
+      TitleBarTheme
+    >,
 ): WinUIThemeController<ElementTheme> {
   return createRoot((dispose: Cleanup) => {
+    let applicationTheme:
+      WinUIThemePair<ApplicationTheme>
+    let elementTheme:
+      WinUIThemePair<ElementTheme>
+    let titleBarTheme:
+      WinUIThemePair<TitleBarTheme> | undefined
+    const usesBindings =
+      !('applicationTheme' in options) &&
+      'bindings' in options
+    if (usesBindings) {
+      if (
+        !options.bindings.ApplicationTheme ||
+        !options.bindings.ElementTheme
+      ) {
+        throw new TypeError(
+          'Theme controller bindings require ApplicationTheme and ElementTheme.',
+        )
+      }
+      applicationTheme =
+        options.bindings.ApplicationTheme
+      elementTheme = options.bindings.ElementTheme
+      titleBarTheme =
+        options.titleBar &&
+        'TitleBarTheme' in options.bindings
+          ? options.bindings.TitleBarTheme
+          : undefined
+    }
+    else {
+      applicationTheme = options.applicationTheme
+      elementTheme = options.elementTheme
+      titleBarTheme = options.titleBarTheme
+    }
     if (
-      (options.titleBar && !options.titleBarTheme) ||
-      (!options.titleBar && options.titleBarTheme)
+      (options.titleBar && !titleBarTheme) ||
+      (
+        !usesBindings &&
+        !options.titleBar &&
+        titleBarTheme
+      )
     ) {
       throw new TypeError(
         'titleBar and titleBarTheme must be provided together.',
@@ -76,19 +169,19 @@ export function createWinUIThemeController<
 
     const requestedTheme = computed(() =>
       options.isDark.value
-        ? options.elementTheme.Dark
-        : options.elementTheme.Light,
+        ? elementTheme.Dark
+        : elementTheme.Light,
     )
 
     effect(() => {
       const dark = options.isDark.value
       options.application.requestedTheme = dark
-        ? options.applicationTheme.Dark
-        : options.applicationTheme.Light
-      if (options.titleBar && options.titleBarTheme) {
+        ? applicationTheme.Dark
+        : applicationTheme.Light
+      if (options.titleBar && titleBarTheme) {
         options.titleBar.preferredTheme = dark
-          ? options.titleBarTheme.Dark
-          : options.titleBarTheme.Light
+          ? titleBarTheme.Dark
+          : titleBarTheme.Light
       }
     })
 

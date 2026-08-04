@@ -6,41 +6,44 @@ import {
   Show,
   computed,
   createContext,
-  createControls,
+  createRouter,
+  effect,
+  onCleanup,
+  signal,
+  useContext,
+  type Child,
+  type ReadonlySignal,
+  type RouteDefinition,
+} from 'dynwinrt-jsx/core'
+import {
   createComboBoxControl,
   createFocusTarget,
-  createFontFamily,
   createGridControl,
   createItemsRepeaterControl,
   createListViewControl,
   createNavigationViewControl,
-  createRouter,
   createRouterNavigationViewShell,
   createSymbolIcon,
-  createWinUIThemeController,
-  effect,
-  formatRendererDiagnostics,
+  createWinUIControls,
   gridLength,
-  onCleanup,
   showContentDialog,
   showFlyout,
-  signal,
+  type RefObject,
+  type RouterNavigationViewRouteHandle,
+} from 'dynwinrt-jsx/controls'
+import {
+  createFontFamily,
+  createWinUIThemeController,
   styles,
   thickness,
   tokens,
-  useContext,
-  type Child,
-  type DiagnosticChannel,
-  type ReadonlySignal,
-  type ProjectedOwnership,
-  type RouteDefinition,
-  type RouterNavigationViewRouteHandle,
-  type RefObject,
-  type Renderer,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/winui'
+import {
+  formatRendererDiagnostics,
+} from 'dynwinrt-jsx/diagnostics'
+import * as WinUIBindings from '#winapp/bindings'
 import {
   Application,
-  ApplicationTheme,
   AutomationProperties,
   Border,
   Button,
@@ -52,7 +55,6 @@ import {
   ContentDialogButton,
   ContentDialogResult,
   DispatcherQueuePriority,
-  ElementTheme,
   Flyout,
   FocusState,
   FontFamily,
@@ -80,32 +82,24 @@ import {
   TeachingTip,
   TextBlock,
   TextBox,
-  TitleBarTheme,
   ToggleSwitch,
   VerticalAlignment,
   Window,
-  XamlRoot,
 } from '#winapp/bindings'
 import type {
   DashboardModel,
   DashboardRoute,
   DashboardTask,
 } from './dashboard-model'
+import type {
+  DashboardAppContext,
+} from './dashboard-shell'
 
-const UI = createControls({
-  Border,
-  Button,
-  CheckBox,
-  Grid,
-  ListViewItem,
-  ProgressBar,
-  ScrollViewer,
-  StackPanel,
-  TeachingTip,
-  TextBlock,
-  TextBox,
-  ToggleSwitch,
-})
+export type {
+  DashboardAppContext,
+} from './dashboard-shell'
+
+const UI = createWinUIControls(WinUIBindings)
 const LayoutGrid = createGridControl({
   Grid,
   RowDefinition,
@@ -136,17 +130,6 @@ type TextBlockInstance = InstanceType<typeof TextBlock>
 type TextBoxInstance = InstanceType<typeof TextBox>
 type ToggleSwitchInstance = InstanceType<typeof ToggleSwitch>
 type NavigationViewInstance = InstanceType<typeof NavigationView>
-
-export interface DashboardAppContext
-extends ProjectedOwnership {
-  readonly model: DashboardModel
-  readonly renderer: Renderer
-  readonly window: Window
-  readonly diagnostics: DiagnosticChannel
-  getXamlRoot(): XamlRoot
-  refreshDiagnostics(): void
-  exportDiagnostics(): void
-}
 
 interface PageProps {
   readonly title: string
@@ -528,28 +511,30 @@ async function confirmRemove(
   dialog.defaultButton = ContentDialogButton.Close
   AutomationProperties.setAutomationId(dialog, 'RemoveTaskDialog')
   AutomationProperties.setIsDialog(dialog, true)
-  await showContentDialog(
-    context.renderer,
+  await showContentDialog({
+    renderer: context.renderer,
     dialog,
-    context.getXamlRoot(),
-    <UI.TextBlock text={`Remove "${task.title}" from the sprint?`} />,
-    {
-      onClosed(result) {
-        if (result === ContentDialogResult.Primary) {
-          beforeRemove()
-          context.model.removeTask(task.id)
-        }
-      },
-      restoreFocus(result) {
-        if (result === ContentDialogResult.Primary) {
-          afterRemoveFocus()
-        }
-        else {
-          cancelFocus()
-        }
-      },
+    xamlRoot: context.getXamlRoot(),
+    content: (
+      <UI.TextBlock
+        text={`Remove "${task.title}" from the sprint?`}
+      />
+    ),
+    onClosed(result) {
+      if (result === ContentDialogResult.Primary) {
+        beforeRemove()
+        context.model.removeTask(task.id)
+      }
     },
-  )
+    restoreFocus(result) {
+      if (result === ContentDialogResult.Primary) {
+        afterRemoveFocus()
+      }
+      else {
+        cancelFocus()
+      }
+    },
+  })
 }
 
 function TaskRow(props: TaskRowProps) {
@@ -867,10 +852,8 @@ function ApplicationShell(context: DashboardAppContext) {
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
     application: Application.current,
-    applicationTheme: ApplicationTheme,
-    elementTheme: ElementTheme,
+    bindings: WinUIBindings,
     titleBar: context.window.appWindow.titleBar,
-    titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
   const teachingTip: RefObject<TeachingTip> = { current: null }

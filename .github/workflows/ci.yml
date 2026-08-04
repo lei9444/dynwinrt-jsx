@@ -89,6 +89,16 @@ jobs:
           $required = @(
             'package/dist/index.js',
             'package/dist/index.d.ts',
+            'package/dist/core.js',
+            'package/dist/core.d.ts',
+            'package/dist/controls.js',
+            'package/dist/controls.d.ts',
+            'package/dist/winui.js',
+            'package/dist/winui.d.ts',
+            'package/dist/native.js',
+            'package/dist/native.d.ts',
+            'package/dist/diagnostics.js',
+            'package/dist/diagnostics.d.ts',
             'package/dist/winui/navigation.js',
             'package/dist/winui/dialog.js',
             'package/dist/renderer/hot.js',
@@ -98,6 +108,11 @@ jobs:
             'package/templates/winui/src/app.tsx',
             'package/templates/winui/src/app-state.ts',
             'package/templates/winui/src/winui-worker.tsx',
+            'package/templates/winui-minimal/package.json',
+            'package/templates/winui-minimal/src/app.tsx',
+            'package/templates/winui-minimal/src/winui-worker.tsx',
+            'package/docs/api-layers.md',
+            'package/docs/tutorial-dashboard/README.md',
             'package/README.md',
             'package/LICENSE'
           )

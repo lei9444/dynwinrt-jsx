@@ -70,6 +70,7 @@ import {
   resource,
   signal,
   showFlyout,
+  showContentDialog,
   showMenuFlyout,
   showPopup,
   styles,
@@ -102,6 +103,24 @@ import {
   type WinUIGridLength,
 } from 'dynwinrt-jsx'
 import {
+  For as LayeredFor,
+  signal as layeredSignal,
+  type Child as LayeredChild,
+} from 'dynwinrt-jsx/core'
+import {
+  createControls as layeredCreateControls,
+  createWinUIControls as layeredCreateWinUIControls,
+} from 'dynwinrt-jsx/controls'
+import {
+  thickness as layeredThickness,
+} from 'dynwinrt-jsx/winui'
+import {
+  createRenderer as layeredCreateRenderer,
+} from 'dynwinrt-jsx/native'
+import {
+  createDiagnosticChannel as layeredDiagnosticChannel,
+} from 'dynwinrt-jsx/diagnostics'
+import {
   defineWinUIHost,
 } from 'dynwinrt-jsx/host'
 import {
@@ -113,6 +132,18 @@ import {
   type WinUIAppBindingNamespace,
   type WinUIWorkerStage,
 } from 'dynwinrt-jsx/worker'
+
+const layeredChild: LayeredChild = LayeredFor({
+  each: [1],
+  children: (value) => value,
+})
+void layeredChild
+void layeredSignal
+void layeredCreateControls
+void layeredCreateWinUIControls
+void layeredThickness
+void layeredCreateRenderer
+void layeredDiagnosticChannel
 
 class TypeVector {
   readonly values: unknown[] = []
@@ -485,6 +516,15 @@ const UI = createControls({
   TextBox: TypeTextBox,
   ToggleSplitButton: TypeToggleSplitButton,
 })
+const AutoUI = layeredCreateWinUIControls({
+  Button: TypeButton,
+  TextBlock: TypeTextBlock,
+  NotAControl: 1,
+})
+;<AutoUI.Button content="Auto" />
+;<AutoUI.TextBlock text="Auto" />
+// @ts-expect-error Non-constructors are excluded.
+AutoUI.NotAControl
 const DockedPanel = native<
   TypePanel,
   { dock?: MaybeSignal<number> }
@@ -1019,9 +1059,10 @@ const LazyTypedPage = createLazyComponent(
 const typedAction = createAsyncAction(
   async (
     id: number,
-    { signal, scope },
+    { signal, scope, throwIfAborted },
   ) => {
     signal.throwIfAborted()
+    throwIfAborted()
     return scope.disposable({
       id,
       dispose() {},
@@ -1358,6 +1399,22 @@ boxNullable(
 )
 declare const typeRenderer: Renderer
 declare const overlayTarget: TypePanel
+declare const typeDialog: {
+  xamlRoot: TypePanel
+  showAsync(): Promise<number>
+}
+showContentDialog({
+  renderer: typeRenderer,
+  dialog: typeDialog,
+  xamlRoot: overlayTarget,
+  content: <UI.TextBlock text="Dialog" />,
+})
+showContentDialog(
+  typeRenderer,
+  typeDialog,
+  overlayTarget,
+  <UI.TextBlock text="Legacy dialog" />,
+)
 const secondaryWindows = createSecondaryWindowManager<
   TypeSecondaryWindow,
   TypeSecondaryAppWindow
@@ -1607,6 +1664,26 @@ const typeThemeController = createWinUIThemeController({
   elementTheme: { Light: 0, Dark: 1 },
 })
 typeThemeController.requestedTheme.value
+createWinUIThemeController({
+  isDark: signal(false),
+  setDark() {},
+  application: { requestedTheme: 0 },
+  bindings: {
+    ApplicationTheme: { Light: 0, Dark: 1 },
+    ElementTheme: { Light: 0, Dark: 1 },
+  },
+})
+const legacyThemeOptionsWithAppBindings = {
+  isDark: signal(false),
+  setDark() {},
+  application: { requestedTheme: 0 },
+  applicationTheme: { Light: 0, Dark: 1 },
+  elementTheme: { Light: 0, Dark: 1 },
+  bindings: {},
+}
+createWinUIThemeController(
+  legacyThemeOptionsWithAppBindings,
+)
 tokens.spacing.md
 
 const baseOnlyRecipe = createStyleRecipe({

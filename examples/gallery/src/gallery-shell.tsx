@@ -60,10 +60,12 @@ export function Shell(context: AppContext) {
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
     application: Application.current,
-    applicationTheme: ApplicationTheme,
-    elementTheme: ElementTheme,
+    bindings: {
+      ApplicationTheme,
+      ElementTheme,
+      TitleBarTheme,
+    },
     titleBar: context.window.appWindow.titleBar,
-    titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
   const routes = createGalleryRoutes(context)

@@ -1,5 +1,33 @@
 # Migrating to dynwinrt-jsx 1.0
 
+## Progressive package entry points
+
+The complete `dynwinrt-jsx` root remains supported. New applications can use
+focused additive entry points:
+
+```ts
+import { signal, For } from 'dynwinrt-jsx/core'
+import { createControls } from 'dynwinrt-jsx/controls'
+import { thickness, styles } from 'dynwinrt-jsx/winui'
+```
+
+Advanced APIs are grouped under `dynwinrt-jsx/native` and structured
+diagnostics under `dynwinrt-jsx/diagnostics`. Host and Worker entry points are
+unchanged. No existing root import must be rewritten.
+
+Additional compatible ergonomics:
+
+- `createWinUIControls(bindings)` lazily creates typed control components from
+  a generated binding namespace;
+- `showContentDialog({ renderer, dialog, xamlRoot, content })` complements the
+  positional signature;
+- `createWinUIThemeController({ bindings, ... })` derives generated theme enum
+  pairs;
+- `AsyncActionContext.throwIfAborted()` forwards to its AbortSignal.
+
+The creator keeps `dashboard` as the default and adds
+`--template minimal` for the Counter starter.
+
 ## Worker state schemas and protocol
 
 `createStateBridge()`, `createWinUIWorkerRuntime()`, and `defineWinUIHost()`

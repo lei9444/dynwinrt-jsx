@@ -6,9 +6,11 @@ import {
   signal,
   type Cleanup,
   type ReadonlySignal,
-  type RendererDiagnostics,
   type Signal,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/core'
+import type {
+  RendererDiagnostics,
+} from 'dynwinrt-jsx/diagnostics'
 import {
   createDashboardStatePatch,
   type DashboardState,

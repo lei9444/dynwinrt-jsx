@@ -1,9 +1,15 @@
 import {
-  createControls,
-  thickness,
   type Child,
-  type RenderHandle,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/core'
+import {
+  createWinUIControls,
+} from 'dynwinrt-jsx/controls'
+import {
+  thickness,
+} from 'dynwinrt-jsx/winui'
+import type {
+  RenderHandle,
+} from 'dynwinrt-jsx/native'
 import {
   createFileHotReloadController,
   type FileHotReloadController,
@@ -11,13 +17,10 @@ import {
   type FileHotReloadFileSystem,
   type FileHotReloadMessage,
 } from 'dynwinrt-jsx/worker'
-import {
-  StackPanel,
-  TextBlock,
-} from '#winapp/bindings'
+import * as WinUIBindings from '#winapp/bindings'
 import type {
   DashboardAppContext,
-} from '../dashboard-app'
+} from '../dashboard-shell'
 import type { DashboardModel } from '../dashboard-model'
 import type { DashboardWorkerParentPort } from './contracts'
 
@@ -48,10 +51,7 @@ export interface DashboardHotReloadOptions {
 
 declare const require: NodeRequire
 
-const FallbackUI = createControls({
-  StackPanel,
-  TextBlock,
-})
+const FallbackUI = createWinUIControls(WinUIBindings)
 
 export function createDashboardAppLoader(): DashboardAppLoader {
   const moduleId = '../dashboard-app.js'

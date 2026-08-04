@@ -187,6 +187,86 @@ test('theme controller synchronizes application, element, and title bar themes',
   assert.equal(titleBar.preferredTheme, 'title-light')
 })
 
+test('theme controller derives enum pairs from generated bindings', () => {
+  const isDark = signal(true)
+  const application = { requestedTheme: 'unset' }
+  const titleBar = { preferredTheme: 'unset' }
+  const controller = createWinUIThemeController({
+    isDark,
+    setDark(value) {
+      isDark.value = value
+    },
+    application,
+    bindings: {
+      ApplicationTheme: {
+        Light: 'app-light',
+        Dark: 'app-dark',
+      },
+      ElementTheme: {
+        Light: 'element-light',
+        Dark: 'element-dark',
+      },
+      TitleBarTheme: {
+        Light: 'title-light',
+        Dark: 'title-dark',
+      },
+    },
+    titleBar,
+  })
+
+  assert.equal(application.requestedTheme, 'app-dark')
+  assert.equal(titleBar.preferredTheme, 'title-dark')
+  assert.equal(controller.requestedTheme.value, 'element-dark')
+  controller.dispose()
+
+  const withoutTitleBar =
+    createWinUIThemeController({
+      isDark: signal(false),
+      setDark() {},
+      application: { requestedTheme: 'unset' },
+      bindings: {
+        ApplicationTheme: {
+          Light: 'app-light',
+          Dark: 'app-dark',
+        },
+        ElementTheme: {
+          Light: 'element-light',
+          Dark: 'element-dark',
+        },
+        TitleBarTheme: {
+          Light: 'title-light',
+          Dark: 'title-dark',
+        },
+      },
+    })
+  assert.equal(
+    withoutTitleBar.requestedTheme.value,
+    'element-light',
+  )
+  withoutTitleBar.dispose()
+
+  const legacyWithApplicationBindings =
+    createWinUIThemeController({
+      isDark: signal(false),
+      setDark() {},
+      application: { requestedTheme: 'unset' },
+      applicationTheme: {
+        Light: 'app-light',
+        Dark: 'app-dark',
+      },
+      elementTheme: {
+        Light: 'element-light',
+        Dark: 'element-dark',
+      },
+      bindings: {},
+    })
+  assert.equal(
+    legacyWithApplicationBindings.requestedTheme.value,
+    'element-light',
+  )
+  legacyWithApplicationBindings.dispose()
+})
+
 test('theme controller requires matching title bar theme values', () => {
   assert.throws(
     () => createWinUIThemeController({
@@ -195,6 +275,19 @@ test('theme controller requires matching title bar theme values', () => {
       application: { requestedTheme: 0 },
       applicationTheme: { Light: 0, Dark: 1 },
       elementTheme: { Light: 0, Dark: 1 },
+      titleBar: { preferredTheme: 0 },
+    }),
+    /must be provided together/,
+  )
+  assert.throws(
+    () => createWinUIThemeController({
+      isDark: signal(false),
+      setDark() {},
+      application: { requestedTheme: 0 },
+      bindings: {
+        ApplicationTheme: { Light: 0, Dark: 1 },
+        ElementTheme: { Light: 0, Dark: 1 },
+      },
       titleBar: { preferredTheme: 0 },
     }),
     /must be provided together/,

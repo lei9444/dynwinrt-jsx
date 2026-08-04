@@ -5,14 +5,18 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const packageRoot = path.resolve(__dirname, '..')
-const templateRoot = path.join(packageRoot, 'templates', 'winui')
+const templateRoots = {
+  dashboard: path.join(packageRoot, 'templates', 'winui'),
+  minimal: path.join(packageRoot, 'templates', 'winui-minimal'),
+}
 
 function usage() {
   return [
     'Usage:',
-    '  dynwinrt-jsx create <directory> [--local-root <work-directory>]',
+    '  dynwinrt-jsx create <directory> [--template <dashboard|minimal>] [--local-root <work-directory>]',
     '',
     'Options:',
+    '  --template    Choose the full dashboard starter or minimal Counter starter.',
     '  --local-root  Use local dynwinrt, dynwinrt-jsx, and winappCli repositories.',
     '  -h, --help     Show this help.',
   ].join('\n')
@@ -245,9 +249,9 @@ function configureLocalDependencies(target, manifest, localRoot) {
   manifest.scripts.generate =
     'npm run build:dynwinrt && winapp node generate-bindings'
   manifest.scripts.dev =
-    'npm run build:dynwinrt && node dev.js'
+    `npm run build:dynwinrt && ${manifest.scripts.dev}`
   manifest.scripts.start =
-    'npm run build:dynwinrt && npm run build && node main.js'
+    `npm run build:dynwinrt && ${manifest.scripts.start}`
 
   const scriptDirectory = path.join(target, 'scripts')
   fs.mkdirSync(scriptDirectory, { recursive: true })
@@ -277,6 +281,13 @@ function configureLocalDependencies(target, manifest, localRoot) {
 
 function createProject(directory, options = {}) {
   const target = path.resolve(directory)
+  const template = options.template ?? 'dashboard'
+  const templateRoot = templateRoots[template]
+  if (!templateRoot) {
+    throw new Error(
+      `Unknown template "${template}". Expected dashboard or minimal.`,
+    )
+  }
   const existing = fs.statSync(target, { throwIfNoEntry: false })
   if (existing && !existing.isDirectory()) {
     throw new Error(`Target exists and is not a directory: ${target}`)
@@ -324,9 +335,21 @@ function parseArguments(args) {
   }
 
   let localRoot
+  let template = 'dashboard'
   for (let index = 2; index < args.length; index += 1) {
     const argument = args[index]
-    if (argument === '--local-root') {
+    if (argument === '--template') {
+      template = args[index + 1]
+      if (!template) {
+        throw new Error('--template requires dashboard or minimal.')
+      }
+      if (!(template in templateRoots)) {
+        throw new Error(
+          `Unknown template "${template}". Expected dashboard or minimal.`,
+        )
+      }
+      index += 1
+    } else if (argument === '--local-root') {
       localRoot = args[index + 1]
       if (!localRoot) {
         throw new Error('--local-root requires a directory.')
@@ -340,6 +363,7 @@ function parseArguments(args) {
     help: false,
     directory: args[1],
     localRoot,
+    template,
   }
 }
 
@@ -352,6 +376,7 @@ function main(args = process.argv.slice(2)) {
 
   const target = createProject(parsed.directory, {
     localRoot: parsed.localRoot,
+    template: parsed.template,
   })
   console.log(`Created ${target}`)
   console.log('Next: npm install && npm run setup && npm start')

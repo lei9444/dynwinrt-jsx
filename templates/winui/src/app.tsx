@@ -5,56 +5,55 @@ import {
   Show,
   computed,
   createContext,
-  createControls,
+  createRouter,
+  onCleanup,
+  useContext,
+  type Child,
+  type RouteDefinition,
+} from 'dynwinrt-jsx/core'
+import {
   createFocusTarget,
   createNavigationViewControl,
-  createRouter,
   createRouterNavigationViewShell,
   createSymbolIcon,
-  createWinUIThemeController,
-  formatRendererDiagnostics,
-  onCleanup,
+  createWinUIControls,
   showContentDialog,
+  type RefObject,
+  type RouterNavigationViewRouteHandle,
+} from 'dynwinrt-jsx/controls'
+import {
+  createWinUIThemeController,
   styles,
   thickness,
   tokens,
-  useContext,
-  type Child,
-  type ProjectedOwnership,
-  type RouteDefinition,
-  type RouterNavigationViewRouteHandle,
-  type RefObject,
-  type Renderer,
-} from 'dynwinrt-jsx'
+} from 'dynwinrt-jsx/winui'
+import {
+  formatRendererDiagnostics,
+} from 'dynwinrt-jsx/diagnostics'
+import * as WinUIBindings from '#winapp/bindings'
 import {
   Application,
-  ApplicationTheme,
   AutomationProperties,
   Button,
   ContentDialog,
   ContentDialogButton,
   DispatcherQueuePriority,
-  ElementTheme,
   FocusState,
   NavigationView,
   NavigationViewItem,
   NavigationViewPaneDisplayMode,
-  StackPanel,
   Symbol,
   SymbolIcon,
   TextBlock,
-  TitleBarTheme,
   ToggleSwitch,
   Window,
 } from '#winapp/bindings'
 import type { AppModel, AppRoute } from './app-model'
+import type { AppContext } from './app-shell'
 
-const UI = createControls({
-  Button,
-  StackPanel,
-  TextBlock,
-  ToggleSwitch,
-})
+export type { AppContext } from './app-shell'
+
+const UI = createWinUIControls(WinUIBindings)
 const Navigation = createNavigationViewControl<
   NavigationView,
   NavigationViewItem
@@ -66,13 +65,6 @@ const ThemeControllerContext = createContext<{
 
 type ButtonInstance = InstanceType<typeof Button>
 type ToggleInstance = InstanceType<typeof ToggleSwitch>
-
-export interface AppContext extends ProjectedOwnership {
-  readonly model: AppModel
-  readonly renderer: Renderer
-  readonly window: Window
-  refreshDiagnostics(): void
-}
 
 function Page(props: {
   readonly title: string
@@ -117,13 +109,15 @@ async function showAbout(
   dialog.defaultButton = ContentDialogButton.Close
   AutomationProperties.setAutomationId(dialog, 'AboutDialog')
   AutomationProperties.setIsDialog(dialog, true)
-  await showContentDialog(
-    context.renderer,
+  await showContentDialog({
+    renderer: context.renderer,
     dialog,
-    context.window.content.xamlRoot,
-    <UI.TextBlock text="Native WinUI TSX with versioned hot reload." />,
-    { restoreFocus },
-  )
+    xamlRoot: context.window.content.xamlRoot,
+    content: (
+      <UI.TextBlock text="Native WinUI TSX with versioned hot reload." />
+    ),
+    restoreFocus,
+  })
 }
 
 function HomePage(context: AppContext) {
@@ -232,10 +226,8 @@ function Shell(context: AppContext) {
     isDark: context.model.darkTheme,
     setDark: context.model.setDarkTheme,
     application: Application.current,
-    applicationTheme: ApplicationTheme,
-    elementTheme: ElementTheme,
+    bindings: WinUIBindings,
     titleBar: context.window.appWindow.titleBar,
-    titleBarTheme: TitleBarTheme,
   })
   onCleanup(themeController.dispose)
   const routePaths: Readonly<Record<AppRoute, string>> = {
