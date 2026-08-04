@@ -1,18 +1,20 @@
 import {
-  computed,
+  color,
+  createNativeResourceOwner,
+  createSolidColorBrush,
   gridLength,
-  signal,
   styles,
-  theme,
   thickness,
-  type RefObject,
 } from 'dynwinrt-jsx'
 import {
-  FlipView,
   HorizontalAlignment,
-  Orientation,
+  ItemsPanelTemplate,
+  projectAs,
+  releaseProjected,
+  SolidColorBrush,
   Stretch,
   VerticalAlignment,
+  XamlReader,
 } from '#winapp/bindings'
 import {
   type AppContext,
@@ -25,18 +27,38 @@ import {
 } from '../../components/gallery-components'
 import { createCollectionPhotos } from './shared'
 
+function createVerticalItemsPanel(): ItemsPanelTemplate {
+  return projectAs(
+    XamlReader.load(`
+      <ItemsPanelTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+        <VirtualizingStackPanel Orientation="Vertical" />
+      </ItemsPanelTemplate>
+    `),
+    ItemsPanelTemplate,
+  )
+}
+
 export function FlipViewPage(context: AppContext) {
   const photos = createCollectionPhotos()
-  const declaredFlipView:
-    RefObject<InstanceType<typeof FlipView>> = {
-      current: null,
-    }
-  const dataFlipView:
-    RefObject<InstanceType<typeof FlipView>> = {
-      current: null,
-    }
-  const declaredIndex = signal(0)
-  const dataIndex = signal(0)
+  const nativeResources = createNativeResourceOwner({
+    releaseProjected,
+  })
+  const borderBrush = nativeResources.ownProjected(
+    createSolidColorBrush(
+      SolidColorBrush,
+      color(0, 0, 0),
+    ),
+  )
+  const captionBrush = nativeResources.ownProjected(
+    createSolidColorBrush(
+      SolidColorBrush,
+      color(255, 255, 255, 165),
+    ),
+  )
+  const verticalItemsPanel = nativeResources.ownProjected(
+    createVerticalItemsPanel(),
+  )
 
   return (
     <Page
@@ -48,96 +70,50 @@ export function FlipViewPage(context: AppContext) {
     >
       <SampleCard
         automationId="GalleryCollectionsFlipViewSample"
-        title="Images declared as items"
-        description="FlipView supplies native previous and next affordances while selectedIndex reports the current page."
+        title="A simple FlipView"
+        description="Move the pointer over the image to use FlipView's native previous and next buttons."
         code={`
-const selectedIndex = signal(0)
-<UI.FlipView
-  ref={declaredFlipView}
-  selectedIndex={selectedIndex}
-  onSelectionChanged={(
-    sender: InstanceType<typeof FlipView>,
-  ) => {
-    selectedIndex.value = sender.selectedIndex
-  }}
->
-  {photos.map((photo) => (
-    <UI.Image key={photo.id} source={photo.source} />
-  ))}
+<UI.FlipView height={270} maxWidth={400}>
+  <UI.Image source={cliff} />
+  <UI.Image source={grapes} />
+  <UI.Image source={rainier} />
+  <UI.Image source={sunset} />
+  <UI.Image source={valley} />
 </UI.FlipView>
         `}
-        output={
-          <UI.TextBlock
-            automationId="GalleryCollectionsFlipViewStatus"
-            text={computed(() =>
-              `Current item: ${photos[declaredIndex.value]?.title ?? 'None'}`,
-            )}
-          />
-        }
       >
-        <UI.StackPanel spacing={10}>
-          <UI.FlipView
-            ref={declaredFlipView}
-            automationId="GalleryCollectionsFlipViewControl"
-            height={270}
-            maxWidth={400}
-            horizontalAlignment={HorizontalAlignment.Left}
-            selectedIndex={declaredIndex}
-            onSelectionChanged={() => {
-              const index =
-                declaredFlipView.current?.selectedIndex
-              if (index !== undefined && index >= 0) {
-                declaredIndex.value = index
-                context.model.recordInteraction()
-              }
-            }}
-          >
-            {photos.map((photo) => (
-              <UI.Image
-                key={photo.id}
-                automationName={photo.title}
-                source={photo.source}
-                stretch={Stretch.UniformToFill}
-              />
-            ))}
-          </UI.FlipView>
-          <UI.StackPanel
-            orientation={Orientation.Horizontal}
-            spacing={8}
-          >
-            <UI.Button
-              onClick={() => {
-                declaredIndex.value =
-                  (declaredIndex.value + photos.length - 1) %
-                  photos.length
-                context.model.recordInteraction()
-              }}
-            >
-              Previous item
-            </UI.Button>
-            <UI.Button
-              automationId="GalleryCollectionsFlipViewNext"
-              onClick={() => {
-                declaredIndex.value =
-                  (declaredIndex.value + 1) % photos.length
-                context.model.recordInteraction()
-              }}
-            >
-              Next item
-            </UI.Button>
-          </UI.StackPanel>
-        </UI.StackPanel>
+        <UI.FlipView
+          automationId="GalleryCollectionsFlipViewControl"
+          height={270}
+          maxWidth={400}
+          horizontalAlignment={HorizontalAlignment.Left}
+          onSelectionChanged={() => {
+            context.model.recordInteraction()
+          }}
+        >
+          {photos.map((photo) => (
+            <UI.Image
+              key={photo.id}
+              automationName={photo.title}
+              source={photo.source}
+              stretch={Stretch.UniformToFill}
+            />
+          ))}
+        </UI.FlipView>
       </SampleCard>
 
       <SampleCard
-        title="Data-driven item content"
-        description="JSX maps application data into composed image and caption pages without a XAML DataTemplate."
+        title="Showing bound data"
+        description="Each data item is rendered as an image with a bordered caption area, matching the original bound-data template."
         code={`
-<UI.FlipView selectedIndex={dataIndex}>
+<UI.FlipView
+  borderBrush={blackBrush}
+  borderThickness={thickness(1)}
+>
   {photos.map((photo) => (
-    <LayoutGrid key={photo.id}>
+    <LayoutGrid>
       <UI.Image source={photo.source} />
-      <UI.Border verticalAlignment={VerticalAlignment.Bottom}>
+      <UI.Border gridRow={1}>
         <UI.TextBlock text={photo.title} />
       </UI.Border>
     </LayoutGrid>
@@ -145,61 +121,83 @@ const selectedIndex = signal(0)
 </UI.FlipView>
         `}
       >
-        <UI.StackPanel spacing={10}>
-          <UI.FlipView
-            ref={dataFlipView}
-            height={220}
-            maxWidth={400}
-            horizontalAlignment={HorizontalAlignment.Left}
-            selectedIndex={dataIndex}
-            onSelectionChanged={() => {
-              const index = dataFlipView.current?.selectedIndex
-              if (index !== undefined && index >= 0) {
-                dataIndex.value = index
-                context.model.recordInteraction()
-              }
-            }}
-          >
-            {photos.map((photo) => (
-              <LayoutGrid
-                key={photo.id}
-                rowDefinitions={[
-                  gridLength.star(),
-                  gridLength.auto(),
-                ]}
+        <UI.FlipView
+          height={180}
+          maxWidth={400}
+          horizontalAlignment={HorizontalAlignment.Left}
+          borderBrush={borderBrush}
+          borderThickness={thickness(1)}
+          onSelectionChanged={() => {
+            context.model.recordInteraction()
+          }}
+        >
+          {photos.map((photo) => (
+            <LayoutGrid
+              key={photo.id}
+              automationName={photo.title}
+              rowDefinitions={[
+                gridLength.star(),
+                gridLength.pixel(60),
+              ]}
+            >
+              <UI.Image
+                source={photo.source}
+                horizontalAlignment={HorizontalAlignment.Stretch}
+                verticalAlignment={VerticalAlignment.Stretch}
+                stretch={Stretch.UniformToFill}
+              />
+              <UI.Border
+                gridRow={1}
+                height={60}
+                background={captionBrush}
               >
-                <UI.Image
-                  source={photo.source}
-                  stretch={Stretch.UniformToFill}
-                />
-                <UI.Border
-                  gridRow={1}
+                <UI.TextBlock
+                  {...styles.heading({ level: 'bodyStrong' })}
                   padding={thickness(12)}
-                  background={theme.cardBackground}
-                  verticalAlignment={VerticalAlignment.Bottom}
-                >
-                  <UI.StackPanel spacing={2}>
-                    <UI.TextBlock
-                      {...styles.heading({
-                        level: 'bodyStrong',
-                      })}
-                      text={photo.title}
-                    />
-                    <UI.TextBlock
-                      foreground={theme.secondaryText}
-                      text={photo.detail}
-                    />
-                  </UI.StackPanel>
-                </UI.Border>
-              </LayoutGrid>
-            ))}
-          </UI.FlipView>
-          <UI.TextBlock
-            text={computed(() =>
-              `${dataIndex.value + 1} of ${photos.length}`,
-            )}
-          />
-        </UI.StackPanel>
+                  horizontalAlignment={HorizontalAlignment.Center}
+                  verticalAlignment={VerticalAlignment.Center}
+                  foreground={borderBrush}
+                  text={photo.title}
+                />
+              </UI.Border>
+            </LayoutGrid>
+          ))}
+        </UI.FlipView>
+      </SampleCard>
+
+      <SampleCard
+        title="Vertical FlipView"
+        description="A vertical VirtualizingStackPanel changes the native navigation direction to up and down."
+        code={`
+const itemsPanel = XamlReader.load(
+  '<ItemsPanelTemplate ...>' +
+  '<VirtualizingStackPanel Orientation="Vertical" />' +
+  '</ItemsPanelTemplate>',
+)
+
+<UI.FlipView itemsPanel={itemsPanel}>
+  {photos.map((photo) => <UI.Image source={photo.source} />)}
+</UI.FlipView>
+        `}
+      >
+        <UI.FlipView
+          height={270}
+          maxWidth={400}
+          horizontalAlignment={HorizontalAlignment.Left}
+          itemsPanel={verticalItemsPanel}
+          onSelectionChanged={() => {
+            context.model.recordInteraction()
+          }}
+        >
+          {photos.map((photo) => (
+            <UI.Image
+              key={photo.id}
+              automationName={photo.title}
+              source={photo.source}
+              stretch={Stretch.UniformToFill}
+            />
+          ))}
+        </UI.FlipView>
       </SampleCard>
     </Page>
   )

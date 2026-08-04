@@ -1,16 +1,20 @@
 import {
   For,
+  effect,
   onCleanup,
   signal,
+  theme,
   thickness,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
-  FontIcon,
+  HorizontalAlignment,
+  Image,
   ListViewSelectionMode,
   RefreshRequestedEventArgs,
   RefreshVisualizer,
   RefreshVisualizerState,
+  releaseProjected,
 } from '#winapp/bindings'
 import {
   type AppContext,
@@ -22,6 +26,7 @@ import {
   Page,
   SampleCard,
 } from '../../components/gallery-components'
+import { loadGalleryBitmap } from '../../gallery-assets'
 
 interface RefreshRow {
   readonly id: number
@@ -50,20 +55,134 @@ export function PullToRefreshPage(context: AppContext) {
   const customContainer: RefObject<RefreshContainerInstance> = {
     current: null,
   }
-  let nextId = 6
-  const rows = signal<readonly RefreshRow[]>(
+  let nextBasicId = 6
+  let nextCustomId = 6
+  const basicRows = signal<readonly RefreshRow[]>(
     Array.from({ length: 5 }, (_, index) => ({
       id: index + 1,
       text: `Collection item ${index + 1}`,
     })),
   )
-  const status = signal('Pull down or request a refresh.')
+  const customRows = signal<readonly RefreshRow[]>(
+    Array.from({ length: 5 }, (_, index) => ({
+      id: index + 1,
+      text: `Collection item ${index + 1}`,
+    })),
+  )
+  const status = signal('Pull down to refresh.')
   const customStatus = signal('Visualizer state: Idle')
-  const customVisualizer = new RefreshVisualizer()
-  const sunIcon = new FontIcon()
-  sunIcon.glyph = '\uE706'
-  sunIcon.fontSize = 28
-  customVisualizer.content = sunIcon
+  const customVisualizer = context.createProjected(
+    () => new RefreshVisualizer(),
+  )
+  const sunImage = context.createProjected(() => new Image())
+  sunImage.width = 35
+  sunImage.height = 35
+  const sunBlack = loadGalleryBitmap(
+    'SampleMedia/SunBlack.png',
+    35,
+    context.ownProjected,
+  )
+  const sunWhite = loadGalleryBitmap(
+    'SampleMedia/SunWhite.png',
+    35,
+    context.ownProjected,
+  )
+  effect(() => {
+    sunImage.source = context.model.darkTheme.value
+      ? sunWhite
+      : sunBlack
+  })
+  customVisualizer.content = sunImage
+  const basicTimer = context.createProjected(
+    () => context.window.dispatcherQueue.createTimer(),
+  )
+  const customTimer = context.createProjected(
+    () => context.window.dispatcherQueue.createTimer(),
+  )
+  basicTimer.interval = { duration: 8_000_000n }
+  basicTimer.isRepeating = false
+  customTimer.interval = { duration: 8_000_000n }
+  customTimer.isRepeating = false
+  type PendingRefresh = ReturnType<
+    RefreshRequestedEventArgs['getDeferral']
+  >
+  let basicPending: PendingRefresh | null = null
+  let customPending: PendingRefresh | null = null
+
+  const finishDeferral = (deferral: PendingRefresh) => {
+    const failures: unknown[] = []
+    for (const action of [
+      () => deferral.complete(),
+      () => deferral.close(),
+      () => releaseProjected(deferral),
+    ]) {
+      try {
+        action()
+      }
+      catch (error) {
+        failures.push(error)
+      }
+    }
+    if (failures.length === 1) {
+      throw failures[0]
+    }
+    if (failures.length > 1) {
+      throw new AggregateError(
+        failures,
+        'Refresh deferral cleanup failed.',
+      )
+    }
+  }
+
+  onCleanup(
+    basicTimer.onTick(() => {
+      if (!basicPending) {
+        return
+      }
+      const deferral = basicPending
+      basicPending = null
+      const id = nextBasicId
+      nextBasicId += 1
+      basicRows.value = [
+        { id, text: `Refreshed item ${id}` },
+        ...basicRows.value,
+      ]
+      status.value = 'Basic refresh completed.'
+      finishDeferral(deferral)
+    }),
+  )
+  onCleanup(
+    customTimer.onTick(() => {
+      if (!customPending) {
+        return
+      }
+      const deferral = customPending
+      customPending = null
+      const id = nextCustomId
+      nextCustomId += 1
+      customRows.value = [
+        { id, text: `Refreshed item ${id}` },
+        ...customRows.value,
+      ]
+      finishDeferral(deferral)
+    }),
+  )
+  onCleanup(() => {
+    basicTimer.stop()
+    if (basicPending) {
+      const deferral = basicPending
+      basicPending = null
+      finishDeferral(deferral)
+    }
+  })
+  onCleanup(() => {
+    customTimer.stop()
+    if (customPending) {
+      const deferral = customPending
+      customPending = null
+      finishDeferral(deferral)
+    }
+  })
   onCleanup(
     customVisualizer.onRefreshStateChanged((sender) => {
       customStatus.value =
@@ -72,22 +191,25 @@ export function PullToRefreshPage(context: AppContext) {
   )
 
   const handleRefresh = (
-    label: string,
+    kind: 'basic' | 'custom',
     args: RefreshRequestedEventArgs,
   ) => {
     const deferral = args.getDeferral()
-    status.value = `${label} refresh in progress...`
-    const id = nextId
-    nextId += 1
-    rows.value = [
-      {
-        id,
-        text: `Refreshed item ${id}`,
-      },
-      ...rows.value,
-    ]
-    status.value = `${label} refresh completed.`
-    deferral.complete()
+    if (kind === 'basic') {
+      status.value = 'Basic refresh in progress...'
+      if (basicPending) {
+        finishDeferral(basicPending)
+      }
+      basicPending = deferral
+      basicTimer.start()
+    }
+    else {
+      if (customPending) {
+        finishDeferral(customPending)
+      }
+      customPending = deferral
+      customTimer.start()
+    }
     context.model.recordInteraction()
   }
 
@@ -132,17 +254,19 @@ export function PullToRefreshPage(context: AppContext) {
       >
         <UI.RefreshContainer
           ref={basicContainer}
-          width={320}
+          horizontalAlignment={HorizontalAlignment.Center}
           onRefreshRequested={(_sender, args) => {
-            handleRefresh('Basic', args)
+            handleRefresh('basic', args)
           }}
         >
           <GalleryListView
-            height={240}
-            minWidth={300}
+            height={200}
+            minWidth={200}
+            borderBrush={theme.controlStroke}
+            borderThickness={thickness(1)}
             selectionMode={ListViewSelectionMode.None}
           >
-            <For each={rows} key={(row) => row.id}>
+            <For each={basicRows} key={(row) => row.id}>
               {(row) => (
                 <UI.ListViewItem>
                   <UI.TextBlock
@@ -181,18 +305,20 @@ visualizer.content = sunIcon
       >
         <UI.RefreshContainer
           ref={customContainer}
-          width={320}
+          horizontalAlignment={HorizontalAlignment.Center}
           visualizer={customVisualizer}
           onRefreshRequested={(_sender, args) => {
-            handleRefresh('Custom', args)
+            handleRefresh('custom', args)
           }}
         >
           <GalleryListView
-            height={220}
-            minWidth={300}
+            height={200}
+            minWidth={200}
+            borderBrush={theme.controlStroke}
+            borderThickness={thickness(1)}
             selectionMode={ListViewSelectionMode.None}
           >
-            <For each={rows} key={(row) => row.id}>
+            <For each={customRows} key={(row) => row.id}>
               {(row) => (
                 <UI.ListViewItem>
                   <UI.TextBlock

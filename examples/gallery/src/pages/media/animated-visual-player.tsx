@@ -13,7 +13,9 @@ import { Page, SampleCard } from '../../components/gallery-components'
 
 export function AnimatedVisualPlayerPage(context: AppContext) {
   const player: RefObject<AnimatedVisualPlayer> = { current: null }
-  const source = new AnimatedSettingsVisualSource()
+  const source = context.createProjected(
+    () => new AnimatedSettingsVisualSource(),
+  )
   const paused = signal(false)
   const status = signal('Animation ready.')
   let mountedPlayer: AnimatedVisualPlayer | null = null
@@ -54,7 +56,7 @@ export function AnimatedVisualPlayerPage(context: AppContext) {
   }
   onCleanup(() => {
     activePlayGeneration = 0
-    mountedPlayer?.stop()
+    mountedPlayer = null
   })
 
   return (
@@ -144,9 +146,7 @@ export function AnimatedVisualPlayerPage(context: AppContext) {
           <UI.AnimatedVisualPlayer
             ref={(value) => {
               player.current = value
-              if (value) {
-                mountedPlayer = value
-              }
+              mountedPlayer = value
             }}
             automationId="GalleryMediaAnimatedVisualPlayer"
             source={source}

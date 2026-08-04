@@ -6,7 +6,13 @@ import {
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
+  FontIcon,
+  Image,
+  Orientation,
   PropertyValue,
+  releaseProjected,
+  StackPanel,
+  TextBlock,
   TreeView,
   TreeViewNode,
   TreeViewSelectionMode,
@@ -20,22 +26,29 @@ import {
   Page,
   SampleCard,
 } from '../../components/gallery-components'
+import { loadGalleryBitmap } from '../../gallery-assets'
 
-function createTreeNodeFactory() {
+function createTreeNodeFactory(context: AppContext) {
   const labelByNativeIdentity = new Map<string, string>()
   const createNode = (
-    content: string,
+    content: string | object,
     children: readonly TreeViewNode[] = [],
     isExpanded = false,
+    label = typeof content === 'string' ? content : '',
   ): TreeViewNode => {
-    const node = new TreeViewNode()
-    node.content = PropertyValue.createString(content)
+    const node = context.createProjected(
+      () => new TreeViewNode(),
+    )
+    node.content =
+      typeof content === 'string'
+        ? PropertyValue.createString(content)
+        : content
     node.isExpanded = isExpanded
     const nativeValue = Reflect.get(node, '_obj')
     if (nativeValue !== undefined) {
       labelByNativeIdentity.set(
         String(nativeValue),
-        content,
+        label,
       )
     }
     for (const child of children) {
@@ -45,31 +58,27 @@ function createTreeNodeFactory() {
   }
   const createExplorerRoots = (): readonly TreeViewNode[] => [
     createNode(
-      'Documents',
+      'Work Documents',
       [
-        createNode(
-          'Projects',
-          [
-            createNode('gallery.tsx'),
-            createNode('renderer.ts'),
-          ],
-          true,
-        ),
-        createNode('notes.txt'),
+        createNode('XYZ Functional Spec'),
+        createNode('Feature Schedule'),
       ],
       true,
     ),
     createNode(
-      'Pictures',
+      'Personal Documents',
       [
-        createNode('cliff.jpg'),
-        createNode('sunset.jpg'),
+        createNode(
+          'Home Remodel',
+          [
+            createNode('Contractor Contact Info'),
+            createNode('Paint Color Scheme'),
+          ],
+          true,
+        ),
       ],
       true,
     ),
-    createNode('Downloads', [
-      createNode('dynwinrt-jsx.zip'),
-    ]),
   ]
   return {
     createNode,
@@ -86,18 +95,83 @@ export function TreeViewPage(context: AppContext) {
     createNode,
     createExplorerRoots,
     readInvokedNodeLabel,
-  } = createTreeNodeFactory()
+  } = createTreeNodeFactory(context)
   const invokedStatus = signal('Invoke or move a node.')
   const selectionStatus = signal('Selected nodes: 0')
-  const controlledStatus = signal('Not captured.')
   const multiTree: RefObject<TreeView> = { current: null }
   const multiRoots = createExplorerRoots()
-  let selectionEvents = 0
-  const canDrag = signal(true)
-  const dynamicRoots = signal<readonly TreeViewNode[]>(
-    createExplorerRoots(),
+  const dataRoots = createExplorerRoots()
+  const folderSource = loadGalleryBitmap(
+    'SampleMedia/folder.png',
+    20,
+    context.ownProjected,
   )
-  let nextFolder = 1
+  const visualContent = (name: string, folder: boolean) => {
+    const panel = context.createProjected(
+      () => new StackPanel(),
+    )
+    panel.orientation = Orientation.Horizontal
+    const children = panel.children
+    try {
+      if (folder) {
+        const image = context.createProjected(() => new Image())
+        image.width = 20
+        image.source = folderSource
+        children.append(image)
+      }
+      else {
+        const icon = context.createProjected(
+          () => new FontIcon(),
+        )
+        icon.glyph = '\uE8A5'
+        children.append(icon)
+      }
+      const label = context.createProjected(
+        () => new TextBlock(),
+      )
+      label.margin = thickness(10, 0, 0, 0)
+      label.text = name
+      children.append(label)
+    }
+    finally {
+      releaseProjected(children)
+    }
+    return panel
+  }
+  const templateRoots = [
+    createNode(
+      visualContent('Documents', true),
+      [
+        createNode(
+          visualContent('ProjectProposal', false),
+          [],
+          false,
+          'ProjectProposal',
+        ),
+        createNode(
+          visualContent('BudgetReport', false),
+          [],
+          false,
+          'BudgetReport',
+        ),
+      ],
+      true,
+      'Documents',
+    ),
+    createNode(
+      visualContent('Projects', true),
+      [
+        createNode(
+          visualContent('Project Plan', false),
+          [],
+          false,
+          'Project Plan',
+        ),
+      ],
+      true,
+      'Projects',
+    ),
+  ]
 
   return (
     <Page
@@ -109,8 +183,8 @@ export function TreeViewPage(context: AppContext) {
     >
       <SampleCard
         automationId="GalleryCollectionsTreeViewSample"
-        title="Hierarchical nodes and drag"
-        description="TreeViewNode owns child node collections; TreeView can expose native drag and reorder behavior for the hierarchy."
+        title="TreeView with drag and drop"
+        description="TreeView supports expandable nodes and native drag behavior."
         code={`
 const root = new TreeViewNode()
 root.content = PropertyValue.createString('Documents')
@@ -122,40 +196,21 @@ root.children.append(projectsNode)
   canReorderItems
 />
         `}
-        output={
-          <UI.TextBlock
-            automationId="GalleryCollectionsTreeViewStatus"
-            text={invokedStatus}
-          />
-        }
-        options={
-          <UI.CheckBox
-            isChecked={canDrag}
-            onChecked={() => {
-              canDrag.value = true
-            }}
-            onUnchecked={() => {
-              canDrag.value = false
-            }}
-          >
-            Enable drag and reorder
-          </UI.CheckBox>
-        }
       >
         <UI.Border
-          width={380}
-          height={300}
-          padding={thickness(8)}
+          height={280}
           borderBrush={theme.controlStroke}
           borderThickness={thickness(1)}
-          horizontalAlignment={HorizontalAlignment.Left}
         >
           <GalleryTreeView
             automationId="GalleryCollectionsTreeViewControl"
+            minWidth={345}
+            maxHeight={400}
+            margin={thickness(0, 12, 0, 0)}
+            horizontalAlignment={HorizontalAlignment.Center}
             rootNodes={createExplorerRoots()}
-            allowDrop={canDrag}
-            canDragItems={canDrag}
-            canReorderItems={canDrag}
+            allowDrop
+            canDragItems
             selectionMode={TreeViewSelectionMode.Single}
             onItemInvoked={(_sender, args) => {
               invokedStatus.value =
@@ -179,67 +234,22 @@ root.children.append(projectsNode)
   }}
 />
         `}
-        output={
-          <UI.StackPanel spacing={4}>
-            <UI.TextBlock
-              automationId="GalleryCollectionsTreeViewSelectionStatus"
-              text={selectionStatus}
-            />
-            <UI.TextBlock
-              automationId="GalleryTreeViewControlledStatus"
-              text={controlledStatus}
-            />
-          </UI.StackPanel>
-        }
-        options={
-          <UI.StackPanel spacing={8}>
-            <UI.Button
-              automationId="GalleryTreeViewSelectTwo"
-              onClick={() => {
-                multiTree.current?.selectedNodes.replaceAll([
-                  multiRoots[0]!,
-                  multiRoots[1]!,
-                ])
-              }}
-            >
-              Select two nodes programmatically
-            </UI.Button>
-            <UI.Button
-              automationId="GalleryTreeViewClearSelection"
-              onClick={() => {
-                multiTree.current?.selectedNodes.clear()
-              }}
-            >
-              Clear selection
-            </UI.Button>
-            <UI.Button
-              automationId="GalleryTreeViewCaptureControlled"
-              onClick={() => {
-                controlledStatus.value =
-                  `selected=${
-                    multiTree.current?.selectedNodes.size ?? -1
-                  };events=${selectionEvents}`
-              }}
-            >
-              Capture controlled state
-            </UI.Button>
-          </UI.StackPanel>
-        }
       >
         <UI.Border
-          width={380}
-          height={300}
-          padding={thickness(8)}
+          height={280}
           borderBrush={theme.controlStroke}
           borderThickness={thickness(1)}
-          horizontalAlignment={HorizontalAlignment.Left}
         >
           <GalleryTreeView
             ref={multiTree}
+            automationId="GalleryCollectionsTreeViewSelectionControl"
+            minWidth={345}
+            maxHeight={400}
+            margin={thickness(0, 12, 0, 0)}
+            horizontalAlignment={HorizontalAlignment.Center}
             rootNodes={multiRoots}
             selectionMode={TreeViewSelectionMode.Multiple}
             onSelectionChanged={(sender) => {
-              selectionEvents += 1
               selectionStatus.value =
                 `Selected nodes: ${sender.selectedNodes.size}`
               context.model.recordInteraction()
@@ -249,59 +259,48 @@ root.children.append(projectsNode)
       </SampleCard>
 
       <SampleCard
-        automationId="GalleryCollectionsTreeViewDynamicSample"
-        title="Update root nodes"
-        description="A collection adapter synchronizes projected TreeViewNode objects transactionally when roots are added or removed."
+        automationId="GalleryCollectionsTreeViewDataSample"
+        title="Hierarchical root nodes"
+        description="Create the same folder hierarchy with projected TreeViewNode data."
         code={`
-const roots = signal(createRoots())
 <GalleryTreeView rootNodes={roots} />
         `}
-        options={
-          <UI.StackPanel spacing={8}>
-            <UI.Button
-              automationId="GalleryCollectionsTreeViewAddRoot"
-              onClick={() => {
-                const folder = nextFolder
-                nextFolder += 1
-                dynamicRoots.value = [
-                  ...dynamicRoots.value,
-                  createNode(
-                    `New folder ${folder}`,
-                    [createNode(`File ${folder}.txt`)],
-                    true,
-                  ),
-                ]
-                context.model.recordInteraction()
-              }}
-            >
-              Add root
-            </UI.Button>
-            <UI.Button
-              onClick={() => {
-                if (dynamicRoots.value.length === 0) {
-                  return
-                }
-                dynamicRoots.value =
-                  dynamicRoots.value.slice(0, -1)
-                context.model.recordInteraction()
-              }}
-            >
-              Remove root
-            </UI.Button>
-          </UI.StackPanel>
-        }
       >
         <UI.Border
-          width={380}
-          height={300}
-          padding={thickness(8)}
+          height={200}
           borderBrush={theme.controlStroke}
           borderThickness={thickness(1)}
-          horizontalAlignment={HorizontalAlignment.Left}
         >
           <GalleryTreeView
-            rootNodes={dynamicRoots}
+            minWidth={345}
+            maxHeight={400}
+            margin={thickness(0, 12, 0, 0)}
+            horizontalAlignment={HorizontalAlignment.Center}
+            rootNodes={dataRoots}
             selectionMode={TreeViewSelectionMode.Single}
+          />
+        </UI.Border>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryCollectionsTreeViewTemplateSample"
+        title="Folder and file visuals"
+        description="Folder and file nodes use distinct projected native content."
+        code={`
+<GalleryTreeView rootNodes={explorerRoots} />
+        `}
+      >
+        <UI.Border
+          height={200}
+          borderBrush={theme.controlStroke}
+          borderThickness={thickness(1)}
+        >
+          <GalleryTreeView
+            minWidth={345}
+            maxHeight={400}
+            margin={thickness(0, 12, 0, 0)}
+            horizontalAlignment={HorizontalAlignment.Center}
+            rootNodes={templateRoots}
           />
         </UI.Border>
       </SampleCard>

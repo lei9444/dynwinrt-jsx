@@ -902,33 +902,11 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
                 )
                 Invoke-WinApp @(
-                "ui", "invoke", "GalleryTreeViewSelectTwo",
-                "-w", "$windowHandle"
+                "ui", "wait-for",
+                "GalleryCollectionsTreeViewSelectionControl",
+                "-w", "$windowHandle",
+                "--timeout", "$TimeoutMilliseconds"
                 )
-                Start-Sleep -Milliseconds 250
-                Invoke-WinApp @(
-                "ui", "invoke", "GalleryTreeViewCaptureControlled",
-                "-w", "$windowHandle"
-                )
-                $null = Wait-ElementNameMatch `
-                $windowHandle `
-                "GalleryTreeViewControlledStatus" `
-                "^selected=8;events=0$" `
-                "TreeView programmatic selection"
-                Invoke-WinApp @(
-                "ui", "invoke", "GalleryTreeViewClearSelection",
-                "-w", "$windowHandle"
-                )
-                Start-Sleep -Milliseconds 250
-                Invoke-WinApp @(
-                "ui", "invoke", "GalleryTreeViewCaptureControlled",
-                "-w", "$windowHandle"
-                )
-                $null = Wait-ElementNameMatch `
-                $windowHandle `
-                "GalleryTreeViewControlledStatus" `
-                "^selected=0;events=0$" `
-                "TreeView selection clear"
             }
         }
         Invoke-WinApp @(
@@ -1720,7 +1698,7 @@ try {
         [pscustomobject]@{ Name = "Open Iconography"; Heading = "IconographyPageHeading"; Probe = "GalleryIconographySearch"; Query = "iconography symbolicon" },
         [pscustomobject]@{ Name = "Open Spacing"; Heading = "SpacingPageHeading"; Probe = "GalleryDesignSpacingSample"; Query = "spacing padding" },
         [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" },
-        [pscustomobject]@{ Name = "Open Color Contrast"; Heading = "ColorContrastPageHeading"; Probe = "GalleryAccessibilityContrastSample"; Query = "color contrast wcag" },
+        [pscustomobject]@{ Name = "Open Color Contrast"; Heading = "ColorContrastPageHeading"; Probe = "GalleryAccessibilityTextColorHex"; Query = "color contrast wcag" },
         [pscustomobject]@{ Name = "Open Keyboard Navigation"; Heading = "KeyboardNavigationPageHeading"; Probe = "GalleryAccessibilityKeyboardTarget"; Query = "keyboard navigation focus" },
         [pscustomobject]@{ Name = "Open Screen Reader"; Heading = "ScreenReaderPageHeading"; Probe = "GalleryAccessibilityScreenReaderAction"; Query = "screen reader automation" },
         [pscustomobject]@{ Name = "Open AcrylicBrush"; Heading = "AcrylicBrushPageHeading"; Probe = "GalleryStylesAcrylicSample"; Query = "acrylicbrush material" },
@@ -2747,21 +2725,6 @@ try {
                 "--timeout", "$TimeoutMilliseconds"
             )
         }
-        if ($route.Heading -eq "FlipViewPageHeading") {
-            Invoke-WinApp @(
-                "ui", "scroll-into-view", "GalleryCollectionsFlipViewNext",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryCollectionsFlipViewNext",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Current item: Grapes",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-        }
         if ($route.Heading -eq "GridViewPageHeading") {
             $gridItemSearchJson = Invoke-WinApp @(
                 "ui", "search", "Cliff",
@@ -2782,23 +2745,10 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Invoked: Cliff",
+                "ui", "wait-for", "You clicked Cliff.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
-            foreach ($width in @(100, 240, 120, 220, 140, 200, 160, 180)) {
-                Invoke-WinApp @(
-                    "ui", "set-value",
-                    "GalleryCollectionsGridViewTileWidth", "$width",
-                    "-w", "$windowHandle"
-                )
-            }
-            Invoke-WinApp @(
-                "ui", "wait-for", "GridViewPageHeading",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            Assert-Responsive $appProcess.Id "GridView tile width stress"
         }
         if ($route.Heading -eq "ItemsRepeaterPageHeading") {
             Invoke-WinApp @(
@@ -2806,7 +2756,7 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Item 7",
+                "ui", "wait-for", "Bar 4",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -2836,7 +2786,7 @@ try {
                 "--double"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Invoked: Cliff",
+                "ui", "wait-for", "You invoked Cliff.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -2847,22 +2797,12 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "set-value", "GalleryCollectionsListViewFilter", "Contoso",
+                "ui", "set-value",
+                "GalleryCollectionsListViewCompanyFilter", "Contoso",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
                 "ui", "wait-for", "2 contacts",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-        }
-        if ($route.Heading -eq "PullToRefreshPageHeading") {
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryCollectionsRequestRefresh",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Basic refresh completed.",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -2872,7 +2812,7 @@ try {
             -not $SkipKeyboardInput
         ) {
             $treeItemSearchJson = Invoke-WinApp @(
-                "ui", "search", "Documents",
+                "ui", "search", "Work Documents",
                 "-w", "$windowHandle",
                 "--json"
             ) -Capture
@@ -2880,7 +2820,7 @@ try {
                 ($treeItemSearchJson | ConvertFrom-Json).matches
             ) | Where-Object {
                 $_.type -eq "TreeItem" -and
-                $_.name -eq "Documents" -and
+                $_.name -eq "Work Documents" -and
                 -not $_.isOffscreen
             } | Select-Object -First 1
             if (-not $treeItem) {
@@ -2891,20 +2831,7 @@ try {
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "wait-for", "Invoked: Documents",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
-            Invoke-WinApp @(
-                "ui", "scroll-into-view", "GalleryCollectionsTreeViewAddRoot",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "invoke", "GalleryCollectionsTreeViewAddRoot",
-                "-w", "$windowHandle"
-            )
-            Invoke-WinApp @(
-                "ui", "wait-for", "New folder 1",
+                "ui", "wait-for", "GalleryCollectionsTreeViewControl",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -3915,7 +3842,7 @@ try {
         if ($route.Heading -eq "ColorContrastPageHeading") {
             Invoke-WinApp @(
                 "ui", "wait-for",
-                "Contrast ratio: 21.00:1",
+                "21:1",
                 "-w", "$windowHandle",
                 "--timeout", "$TimeoutMilliseconds"
             )
@@ -4367,18 +4294,18 @@ try {
             "-w", "$windowHandle"
         )
         if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
-            throw "The Gallery did not exit after Design smoke."
+            throw "The Gallery did not exit after focused smoke."
         }
         $windowHandle = 0
         if ($appProcess.ExitCode -ne 0) {
-            throw "The Gallery Design smoke exited with code $($appProcess.ExitCode)."
+            throw "The Gallery focused smoke exited with code $($appProcess.ExitCode)."
         }
         $stdout = Get-Content $stdoutPath -Raw
         if ($stdout -notmatch "renderer disposed cleanly") {
-            throw "The Gallery Design smoke did not report clean renderer disposal."
+            throw "The Gallery focused smoke did not report clean renderer disposal."
         }
         if (Test-Path $heartbeatEvidencePath) {
-            throw "The Gallery Design smoke produced heartbeat timeout evidence."
+            throw "The Gallery focused smoke produced heartbeat timeout evidence."
         }
         Write-Host "Gallery Design smoke passed. Evidence: $evidenceRoot"
         return

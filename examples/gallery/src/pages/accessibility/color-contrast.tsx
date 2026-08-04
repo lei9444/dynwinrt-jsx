@@ -1,31 +1,37 @@
 import {
   color,
   computed,
-  cornerRadius,
   createSolidColorBrush,
+  effect,
   gridLength,
+  onCleanup,
   signal,
+  styles,
   theme,
   thickness,
+  tokens,
   type ReadonlySignal,
   type RefObject,
   type WinUIColor,
 } from 'dynwinrt-jsx'
 import {
-  ColorPicker,
+  AutomationLiveSetting,
+  DispatcherQueuePriority,
   HorizontalAlignment,
   Orientation,
+  Rectangle,
   SolidColorBrush,
+  TextBox,
   TextWrapping,
   VerticalAlignment,
 } from '#winapp/bindings'
 import {
   type AppContext,
+  GallerySplitButton,
   LayoutGrid,
   UI,
 } from '../../gallery-ui'
-import { Page, SampleCard } from '../../components/gallery-components'
-import { GuidanceText } from '../fundamentals/shared'
+import { Page } from '../../components/gallery-components'
 
 function relativeLuminance(value: WinUIColor): number {
   const channel = (component: number) => {
@@ -53,95 +59,320 @@ function contrastRatio(
   )
 }
 
-function ContrastCheck(props: {
-  readonly passed: ReadonlySignal<boolean>
-  readonly title: string
-  readonly requirement: string
+function formatHex(value: WinUIColor): string {
+  const channel = (component: number) =>
+    component.toString(16).padStart(2, '0').toUpperCase()
+  return `#${channel(value.r)}${channel(value.g)}${channel(value.b)}`
+}
+
+function parseHex(value: string): WinUIColor | null {
+  const match = /^#?([0-9A-Fa-f]{6})$/.exec(value.trim())
+  if (!match) {
+    return null
+  }
+  const hex = match[1]!
+  return color(
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16),
+  )
+}
+
+function colorsEqual(
+  left: WinUIColor,
+  right: WinUIColor,
+): boolean {
+  return (
+    left.a === right.a &&
+    left.r === right.r &&
+    left.g === right.g &&
+    left.b === right.b
+  )
+}
+
+function InlineColorPicker(props: {
+  readonly context: AppContext
+  readonly header: string
+  readonly automationId: string
+  readonly color: ReadonlySignal<WinUIColor>
+  readonly hex: ReadonlySignal<string>
+  readonly brush: ReadonlySignal<SolidColorBrush>
+  readonly onColorChange: (value: WinUIColor) => void
+  readonly onHexChange: (value: string) => void
 }) {
+  const hexInput: RefObject<TextBox> = { current: null }
+  let disposed = false
+  onCleanup(() => {
+    disposed = true
+  })
+  const swatch = props.context.createProjected(() => {
+    const rectangle = new Rectangle()
+    rectangle.width = 40
+    rectangle.minHeight = 30
+    rectangle.verticalAlignment = VerticalAlignment.Stretch
+    rectangle.fill = props.brush.value
+    return rectangle
+  })
+  effect(() => {
+    swatch.fill = props.brush.value
+    const nextHex = props.hex.value
+    if (
+      hexInput.current &&
+      hexInput.current.text !== nextHex
+    ) {
+      hexInput.current.text = nextHex
+    }
+  })
+
   return (
     <LayoutGrid
+      margin={thickness(12, 12, 0, 12)}
+      rowDefinitions={[
+        gridLength.auto(),
+        gridLength.auto(),
+      ]}
       columnDefinitions={[
-        gridLength.pixel(42),
-        gridLength.pixel(52),
+        gridLength.auto(),
         gridLength.star(),
       ]}
-      columnSpacing={8}
+      columnSpacing={2}
     >
-      <UI.Ellipse
-        width={30}
-        height={30}
-        fill={computed(() =>
-          props.passed.value
-            ? theme.systemSuccess
-            : theme.systemCritical,
-        )}
-      />
-      <UI.FontIcon
-        glyph={computed(() =>
-          props.passed.value ? '\uE73E' : '\uE711',
-        )}
-        horizontalAlignment={HorizontalAlignment.Center}
-        verticalAlignment={VerticalAlignment.Center}
-      />
       <UI.TextBlock
-        gridColumn={1}
-        fontWeight={{ weight: 600 }}
-        text={computed(() =>
-          props.passed.value ? 'Pass' : 'Fail',
-        )}
-        verticalAlignment={VerticalAlignment.Center}
+        {...styles.heading({ level: 'bodyStrong' })}
+        gridColumnSpan={2}
+        margin={thickness(0, 0, 0, 12)}
+        text={props.header}
       />
-      <UI.StackPanel gridColumn={2}>
-        <UI.TextBlock
-          fontWeight={{ weight: 600 }}
-          text={props.title}
-          textWrapping={TextWrapping.Wrap}
-        />
-        <UI.TextBlock
-          text={props.requirement}
-          textWrapping={TextWrapping.Wrap}
-        />
-      </UI.StackPanel>
+      <GallerySplitButton
+        automationId={`${props.automationId}Swatch`}
+        automationName={`${props.header} color picker`}
+        gridRow={1}
+        padding={thickness(0)}
+        verticalAlignment={VerticalAlignment.Stretch}
+        content={swatch}
+      >
+        <UI.Flyout>
+          <UI.ColorPicker
+            color={props.color}
+            isAlphaEnabled={false}
+            isMoreButtonVisible={false}
+            isHexInputVisible={false}
+            isColorChannelTextInputVisible={false}
+            onColorChanged={(sender) => {
+              props.onColorChange(sender.color)
+            }}
+          />
+        </UI.Flyout>
+      </GallerySplitButton>
+      <UI.TextBox
+        ref={hexInput}
+        automationId={props.automationId}
+        automationName={`${props.header} hex value`}
+        gridRow={1}
+        gridColumn={1}
+        minWidth={120}
+        margin={thickness(4, 0, 0, 0)}
+        text={props.hex.value}
+        onTextChanged={() => {
+          const queued =
+            props.context.window.dispatcherQueue.tryEnqueue(
+              DispatcherQueuePriority.Low,
+              () => {
+                if (!disposed && hexInput.current) {
+                  props.onHexChange(hexInput.current.text)
+                }
+              },
+            )
+          if (!queued) {
+            throw new Error(
+              'Color hex update could not be queued.',
+            )
+          }
+        }}
+      />
     </LayoutGrid>
   )
 }
 
-export function ColorContrastPage(context: AppContext) {
-  const textPicker: RefObject<ColorPicker> = { current: null }
-  const backgroundPicker: RefObject<ColorPicker> = { current: null }
-  const textColor = signal<WinUIColor>(color(0, 0, 0))
-  const backgroundColor = signal<WinUIColor>(color(255, 255, 255))
-  const textBrush = createSolidColorBrush(
-    SolidColorBrush,
-    textColor.value,
+function ContrastCheck(props: {
+  readonly passed: ReadonlySignal<boolean>
+  readonly title: string
+  readonly requirement: string
+  readonly successBrush: SolidColorBrush
+  readonly failureBrush: SolidColorBrush
+  readonly iconBrush: SolidColorBrush
+  readonly gridRow: number
+}) {
+  return (
+    <>
+      <LayoutGrid
+        gridRow={props.gridRow}
+        margin={thickness(12, 0, 0, 0)}
+      >
+        <UI.Ellipse
+          width={30}
+          height={30}
+          fill={computed(() =>
+            props.passed.value
+              ? props.successBrush
+              : props.failureBrush,
+          )}
+        />
+        <UI.FontIcon
+          foreground={props.iconBrush}
+          glyph={computed(() =>
+            props.passed.value ? '\uE73E' : '\uE711',
+          )}
+          horizontalAlignment={HorizontalAlignment.Center}
+          verticalAlignment={VerticalAlignment.Center}
+        />
+      </LayoutGrid>
+      <UI.TextBlock
+        gridRow={props.gridRow}
+        gridColumn={1}
+        width={40}
+        verticalAlignment={VerticalAlignment.Center}
+        fontWeight={{ weight: 600 }}
+        text={computed(() =>
+          props.passed.value ? 'Pass' : 'Fail',
+        )}
+      />
+      <UI.StackPanel
+        gridRow={props.gridRow}
+        gridColumn={2}
+        padding={thickness(0, 0, 12, 0)}
+        verticalAlignment={VerticalAlignment.Center}
+      >
+        <UI.TextBlock
+          fontWeight={{ weight: 600 }}
+          text={props.title}
+          textWrapping={TextWrapping.WrapWholeWords}
+        />
+        <UI.TextBlock
+          text={props.requirement}
+          textWrapping={TextWrapping.WrapWholeWords}
+        />
+      </UI.StackPanel>
+    </>
   )
-  const backgroundBrush = createSolidColorBrush(
-    SolidColorBrush,
-    backgroundColor.value,
+}
+
+export function ColorContrastPage(context: AppContext) {
+  const textColor = signal<WinUIColor>(color(0, 0, 0))
+  const backgroundColor = signal<WinUIColor>(
+    color(255, 255, 255),
+  )
+  const textHex = signal('#000000')
+  const backgroundHex = signal('#FFFFFF')
+  let textBrushOwner = context.createProjectedOwner(
+    createSolidColorBrush(
+      SolidColorBrush,
+      textColor.value,
+    ),
+  )
+  let backgroundBrushOwner = context.createProjectedOwner(
+    createSolidColorBrush(
+      SolidColorBrush,
+      backgroundColor.value,
+    ),
+  )
+  const textBrush = signal(textBrushOwner.value)
+  const backgroundBrush = signal(backgroundBrushOwner.value)
+  onCleanup(() => textBrushOwner.dispose())
+  onCleanup(() => backgroundBrushOwner.dispose())
+  const successBrush = context.createProjected(
+    () =>
+      createSolidColorBrush(
+        SolidColorBrush,
+        color(0, 100, 0),
+      ),
+  )
+  const failureBrush = context.createProjected(
+    () =>
+      createSolidColorBrush(
+        SolidColorBrush,
+        color(139, 0, 0),
+      ),
+  )
+  const whiteBrush = context.createProjected(
+    () =>
+      createSolidColorBrush(
+        SolidColorBrush,
+        color(255, 255, 255),
+      ),
   )
   const ratio = computed(() =>
     contrastRatio(textColor.value, backgroundColor.value),
   )
   const displayedRatio = computed(
-    () => Math.floor(ratio.value * 100) / 100,
+    () => Math.round(ratio.value * 100) / 100,
+  )
+  const ratioText = computed(
+    () => `${displayedRatio.value}:1`,
   )
   const normalTextPasses = computed(() => ratio.value >= 4.5)
   const largeTextPasses = computed(() => ratio.value >= 3)
   const componentPasses = computed(() => ratio.value >= 3)
-  const setColors = (
-    nextText: WinUIColor,
-    nextBackground: WinUIColor,
+
+  const setTextColor = (
+    value: WinUIColor,
+    syncHex = true,
   ) => {
-    textColor.value = nextText
-    backgroundColor.value = nextBackground
-    textBrush.color = nextText
-    backgroundBrush.color = nextBackground
-    if (textPicker.current) {
-      textPicker.current.color = nextText
+    if (colorsEqual(textColor.value, value)) {
+      if (syncHex) {
+        textHex.value = formatHex(value)
+      }
+      return
     }
-    if (backgroundPicker.current) {
-      backgroundPicker.current.color = nextBackground
+    const nextOwner = context.createProjectedOwner(
+      createSolidColorBrush(SolidColorBrush, value),
+    )
+    const previousOwner = textBrushOwner
+    textBrushOwner = nextOwner
+    textColor.value = value
+    try {
+      textBrush.value = nextOwner.value
     }
+    catch (error) {
+      textBrushOwner = previousOwner
+      nextOwner.dispose()
+      throw error
+    }
+    previousOwner.dispose()
+    if (syncHex) {
+      textHex.value = formatHex(value)
+    }
+    context.model.recordInteraction()
+  }
+  const setBackgroundColor = (
+    value: WinUIColor,
+    syncHex = true,
+  ) => {
+    if (colorsEqual(backgroundColor.value, value)) {
+      if (syncHex) {
+        backgroundHex.value = formatHex(value)
+      }
+      return
+    }
+    const nextOwner = context.createProjectedOwner(
+      createSolidColorBrush(SolidColorBrush, value),
+    )
+    const previousOwner = backgroundBrushOwner
+    backgroundBrushOwner = nextOwner
+    backgroundColor.value = value
+    try {
+      backgroundBrush.value = nextOwner.value
+    }
+    catch (error) {
+      backgroundBrushOwner = previousOwner
+      nextOwner.dispose()
+      throw error
+    }
+    previousOwner.dispose()
+    if (syncHex) {
+      backgroundHex.value = formatHex(value)
+    }
+    context.model.recordInteraction()
   }
 
   return (
@@ -152,165 +383,240 @@ export function ColorContrastPage(context: AppContext) {
       pageId="color-contrast"
       model={context.model}
     >
-      <GuidanceText text="Accessible apps use high-contrast, easy-to-read combinations for text and backgrounds. This benefits users with low vision and improves legibility across lighting conditions, displays, and device settings." />
+      <UI.StackPanel spacing={12}>
+        <UI.TextBlock
+          text="Accessibility is about building experiences that make your Windows application usable by people of all abilities."
+          textWrapping={TextWrapping.WrapWholeWords}
+        />
+        <UI.TextBlock
+          text="To ensure optimal accessibility and usability, apps should strive to use high-contrast and easy-to-read color combinations for text and its background. This benefits users with lower visual acuity and improves legibility across lighting conditions, screens, and device settings."
+          textWrapping={TextWrapping.WrapWholeWords}
+        />
+        <UI.TextBlock
+          {...styles.heading({ level: 'subtitle' })}
+          margin={thickness(0, 20, 0, 0)}
+          text="Color Contrast Checker"
+        />
+        <UI.TextBlock
+          margin={thickness(0, 0, 0, 10)}
+          text="Use this tool to calculate the contrast ratio of two colors and measure them against the Web Content Accessibility Guidelines (WCAG)."
+          textWrapping={TextWrapping.Wrap}
+        />
 
-      <SampleCard
-        automationId="GalleryAccessibilityContrastSample"
-        title="Color Contrast Checker"
-        description="Choose text and background colors and compare their native preview against WCAG thresholds."
-        code={`
-const ratio = contrastRatio(textColor, backgroundColor)
-const normalTextPasses = ratio >= 4.5
-const largeTextPasses = ratio >= 3
-        `}
-        output={
-          <UI.TextBlock
-            automationId="GalleryAccessibilityContrastStatus"
-            text={computed(
-              () =>
-                `Contrast ratio: ${displayedRatio.value.toFixed(2)}:1`,
-            )}
-          />
-        }
-      >
-        <UI.StackPanel spacing={16}>
-          <UI.Button
-            automationId="GalleryAccessibilityContrastToggle"
-            horizontalAlignment={HorizontalAlignment.Left}
-            onClick={() => {
-              setColors(
-                color(255, 255, 255),
-                color(170, 170, 170),
-              )
-              context.model.recordInteraction()
-            }}
-          >
-            Use low-contrast preset
-          </UI.Button>
+        <UI.Border
+          automationId="GalleryAccessibilityContrastSample"
+          {...styles.card({ surface: 'layer' })}
+          padding={thickness(8)}
+        >
           <LayoutGrid
+            rowDefinitions={[
+              gridLength.auto(),
+              gridLength.auto(),
+              gridLength.auto(),
+            ]}
             columnDefinitions={[
+              gridLength.auto(),
               gridLength.auto(),
               gridLength.auto(),
               gridLength.star(),
             ]}
-            columnSpacing={16}
+            rowSpacing={8}
+            columnSpacing={8}
           >
-            <UI.ColorPicker
-              ref={textPicker}
-              automationId="GalleryAccessibilityTextColorPicker"
-              width={240}
-              color={color(0, 0, 0)}
-              isAlphaEnabled={false}
-              onColorChanged={(sender) => {
-                textColor.value = sender.color
-                textBrush.color = sender.color
-                context.model.recordInteraction()
-              }}
-            />
-            <UI.ColorPicker
-              ref={backgroundPicker}
-              automationId="GalleryAccessibilityBackgroundColorPicker"
-              gridColumn={1}
-              width={240}
-              color={color(255, 255, 255)}
-              isAlphaEnabled={false}
-              onColorChanged={(sender) => {
-                backgroundColor.value = sender.color
-                backgroundBrush.color = sender.color
-                context.model.recordInteraction()
-              }}
-            />
-            <UI.StackPanel
-              gridColumn={2}
-              spacing={8}
+            <UI.Border gridRowSpan={2}>
+              <InlineColorPicker
+                context={context}
+                header="Text Color"
+                automationId="GalleryAccessibilityTextColorHex"
+                color={textColor}
+                hex={textHex}
+                brush={textBrush}
+                onColorChange={setTextColor}
+                onHexChange={(value) => {
+                  textHex.value = value
+                  const parsed = parseHex(value)
+                  if (parsed) {
+                    setTextColor(parsed, false)
+                  }
+                }}
+              />
+            </UI.Border>
+            <UI.Border gridRowSpan={2} gridColumn={1}>
+              <InlineColorPicker
+                context={context}
+                header="Background Color"
+                automationId="GalleryAccessibilityBackgroundColorHex"
+                color={backgroundColor}
+                hex={backgroundHex}
+                brush={backgroundBrush}
+                onColorChange={setBackgroundColor}
+                onHexChange={(value) => {
+                  backgroundHex.value = value
+                  const parsed = parseHex(value)
+                  if (parsed) {
+                    setBackgroundColor(parsed, false)
+                  }
+                }}
+              />
+            </UI.Border>
+            <UI.TextBlock
+              gridColumn={3}
+              margin={thickness(12, 0, 0, 0)}
               verticalAlignment={VerticalAlignment.Center}
-            >
-              <UI.TextBlock
-                fontWeight={{ weight: 600 }}
-                text="Contrast Ratio"
-              />
-              <UI.TextBlock
-                fontSize={20}
-                text={computed(
-                  () => `${displayedRatio.value.toFixed(2)}:1`,
-                )}
-              />
-            </UI.StackPanel>
-          </LayoutGrid>
+              fontWeight={{ weight: 600 }}
+              text="Contrast Ratio"
+            />
+            <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
+              automationId="GalleryAccessibilityContrastStatus"
+              automationLiveSetting={AutomationLiveSetting.Polite}
+              gridRow={1}
+              gridColumn={3}
+              margin={thickness(12, -4, 0, 0)}
+              text={ratioText}
+            />
 
-          <LayoutGrid
-            minHeight={300}
-            columnDefinitions={[
-              gridLength.star(),
-              gridLength.star(),
-            ]}
-          >
-            <UI.StackPanel
-              padding={thickness(16)}
-              spacing={16}
-              background={theme.controlFill}
+            <LayoutGrid
+              gridRow={2}
+              gridColumnSpan={4}
+              minHeight={300}
+              margin={thickness(12, 0, 12, 12)}
+              columnDefinitions={[
+                gridLength.star(),
+                gridLength.star(),
+              ]}
+              cornerRadius={tokens.radius.control}
             >
-              <ContrastCheck
-                passed={normalTextPasses}
-                title="Regular text"
-                requirement="Requires at least 4.5:1"
-              />
-              <ContrastCheck
-                passed={largeTextPasses}
-                title="Large text (14pt bold or 18pt regular)"
-                requirement="Requires at least 3:1"
-              />
-              <ContrastCheck
-                passed={componentPasses}
-                title="Graphical objects and UI components"
-                requirement="Requires at least 3:1"
-              />
-            </UI.StackPanel>
-
-            <UI.StackPanel
-              gridColumn={1}
-              automationId="GalleryAccessibilityContrastPreview"
-              padding={thickness(20)}
-              spacing={20}
-              background={backgroundBrush}
-              cornerRadius={cornerRadius(4)}
-            >
-              <UI.TextBlock
-                foreground={textBrush}
-                text="The quick brown fox jumped over the lazy dog."
-                textWrapping={TextWrapping.Wrap}
-              />
-              <UI.TextBlock
-                fontSize={24}
-                foreground={textBrush}
-                text="Large text preview"
-              />
-              <UI.StackPanel
-                orientation={Orientation.Horizontal}
-                spacing={12}
+              <LayoutGrid
+                padding={thickness(8)}
+                background={theme.controlFill}
+                rowDefinitions={[
+                  gridLength.star(),
+                  gridLength.star(),
+                  gridLength.star(),
+                ]}
+                columnDefinitions={[
+                  gridLength.auto(),
+                  gridLength.auto(),
+                  gridLength.star(),
+                ]}
+                rowSpacing={16}
+                columnSpacing={8}
               >
-                <UI.Rectangle
-                  width={30}
-                  height={30}
-                  fill={textBrush}
-                  radiusX={4}
-                  radiusY={4}
+                <ContrastCheck
+                  passed={normalTextPasses}
+                  title="Regular text"
+                  requirement="Requires at least 4.5:1"
+                  successBrush={successBrush}
+                  failureBrush={failureBrush}
+                  iconBrush={whiteBrush}
+                  gridRow={0}
                 />
-                <UI.Ellipse
-                  width={30}
-                  height={30}
-                  fill={textBrush}
+                <ContrastCheck
+                  passed={largeTextPasses}
+                  title="Large text (14 pt. bold or 18 pt. regular)"
+                  requirement="Requires at least 3:1"
+                  successBrush={successBrush}
+                  failureBrush={failureBrush}
+                  iconBrush={whiteBrush}
+                  gridRow={1}
                 />
-                <UI.FontIcon
-                  fontSize={20}
+                <ContrastCheck
+                  passed={componentPasses}
+                  title="Graphical objects and UI components"
+                  requirement="Requires at least 3:1"
+                  successBrush={successBrush}
+                  failureBrush={failureBrush}
+                  iconBrush={whiteBrush}
+                  gridRow={2}
+                />
+              </LayoutGrid>
+
+              <LayoutGrid
+                gridColumn={1}
+                automationId="GalleryAccessibilityContrastPreview"
+                padding={thickness(8)}
+                background={backgroundBrush}
+                rowDefinitions={[
+                  gridLength.star(),
+                  gridLength.star(),
+                  gridLength.star(),
+                ]}
+              >
+                <UI.TextBlock
+                  padding={thickness(12, 0)}
+                  verticalAlignment={VerticalAlignment.Center}
                   foreground={textBrush}
-                  glyph={'\uE735'}
+                  text="The quick brown fox jumped over the lazy fox."
+                  textWrapping={TextWrapping.WrapWholeWords}
                 />
-              </UI.StackPanel>
-            </UI.StackPanel>
+                <UI.StackPanel
+                  gridRow={1}
+                  padding={thickness(12, 0)}
+                  verticalAlignment={VerticalAlignment.Center}
+                >
+                  <UI.TextBlock
+                    fontSize={56 / 3}
+                    fontWeight={{ weight: 600 }}
+                    foreground={textBrush}
+                    text="The quick brown fox jumped over the lazy fox."
+                    textWrapping={TextWrapping.WrapWholeWords}
+                  />
+                  <UI.TextBlock
+                    fontSize={24}
+                    foreground={textBrush}
+                    text="The quick brown fox jumped over the lazy fox."
+                    textWrapping={TextWrapping.WrapWholeWords}
+                  />
+                </UI.StackPanel>
+                <UI.StackPanel
+                  gridRow={2}
+                  padding={thickness(12, 0)}
+                  orientation={Orientation.Horizontal}
+                  spacing={8}
+                  verticalAlignment={VerticalAlignment.Center}
+                >
+                  <LayoutGrid>
+                    <UI.Rectangle
+                      width={30}
+                      height={30}
+                      fill={textBrush}
+                      radiusX={4}
+                      radiusY={4}
+                    />
+                    <UI.FontIcon
+                      foreground={whiteBrush}
+                      glyph={'\uE73E'}
+                    />
+                  </LayoutGrid>
+                  <LayoutGrid>
+                    <UI.Rectangle
+                      width={50}
+                      height={30}
+                      fill={textBrush}
+                      radiusX={15}
+                      radiusY={50}
+                    />
+                    <UI.Ellipse
+                      width={15}
+                      height={15}
+                      margin={thickness(0, 0, 5, 0)}
+                      horizontalAlignment={HorizontalAlignment.Right}
+                      verticalAlignment={VerticalAlignment.Center}
+                      fill={whiteBrush}
+                    />
+                  </LayoutGrid>
+                  <UI.FontIcon
+                    fontSize={20}
+                    foreground={textBrush}
+                    glyph={'\uE735'}
+                  />
+                </UI.StackPanel>
+              </LayoutGrid>
+            </LayoutGrid>
           </LayoutGrid>
-        </UI.StackPanel>
-      </SampleCard>
+        </UI.Border>
+      </UI.StackPanel>
     </Page>
   )
 }

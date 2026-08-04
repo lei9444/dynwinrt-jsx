@@ -2,6 +2,7 @@ import {
   For,
   computed,
   gridLength,
+  onCleanup,
   signal,
   styles,
   theme,
@@ -9,10 +10,19 @@ import {
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
+  DispatcherQueuePriority,
   HorizontalAlignment,
+  FlyoutBase,
   ListView,
+  ListViewItem,
   ListViewSelectionMode,
+  MenuFlyout,
+  MenuFlyoutItem,
+  Orientation,
+  projectAs,
+  releaseProjected,
   TextBox,
+  TextTrimming,
   TextWrapping,
   VerticalAlignment,
 } from '#winapp/bindings'
@@ -27,11 +37,41 @@ import {
   Page,
   SampleCard,
 } from '../../components/gallery-components'
+import { loadGalleryBitmap } from '../../gallery-assets'
 
 interface Contact {
   readonly id: number
   readonly name: string
   readonly company: string
+}
+
+function ContextMenuRow(props: {
+  readonly context: AppContext
+  readonly message: { readonly id: number; readonly text: string }
+  readonly onDelete: () => void
+}) {
+  const menu = props.context.createProjected(
+    () => new MenuFlyout(),
+  )
+  const deleteItem = props.context.createProjected(
+    () => new MenuFlyoutItem(),
+  )
+  deleteItem.text = 'Delete'
+  const menuItems = props.context.ownProjected(menu.items)
+  menuItems.append(deleteItem)
+  const contextFlyout = props.context.ownProjected(
+    projectAs(menu, FlyoutBase),
+  )
+  onCleanup(deleteItem.onClick(props.onDelete))
+  onCleanup(() => menuItems.clear())
+  return (
+    <UI.ListViewItem contextFlyout={contextFlyout}>
+      <UI.TextBlock
+        padding={thickness(10)}
+        text={props.message.text}
+      />
+    </UI.ListViewItem>
+  )
 }
 
 const contacts: readonly Contact[] = [
@@ -57,27 +97,40 @@ export function ListViewPage(context: AppContext) {
     RefObject<InstanceType<typeof ListView>> = {
       current: null,
     }
-  const filterBox:
+  const messageList:
+    RefObject<InstanceType<typeof ListView>> = {
+      current: null,
+    }
+  const firstFilterBox:
     RefObject<InstanceType<typeof TextBox>> = {
       current: null,
     }
-  const messageBox:
+  const lastFilterBox:
+    RefObject<InstanceType<typeof TextBox>> = {
+      current: null,
+    }
+  const companyFilterBox:
     RefObject<InstanceType<typeof TextBox>> = {
       current: null,
     }
   const selectionModeIndex = signal(1)
   const selectionStatus = signal('Selected items: 0')
-  const filter = signal('')
+  const firstFilter = signal('')
+  const lastFilter = signal('')
+  const companyFilter = signal('')
   const filteredContacts = computed(() => {
-    const query = filter.value.trim().toLowerCase()
-    if (!query) {
-      return contacts
-    }
-    return contacts.filter((contact) =>
-      `${contact.name} ${contact.company}`
-        .toLowerCase()
-        .includes(query),
-    )
+    const first = firstFilter.value.trim().toLowerCase()
+    const last = lastFilter.value.trim().toLowerCase()
+    const company = companyFilter.value.trim().toLowerCase()
+    return contacts.filter((contact) => {
+      const [firstName = '', ...lastParts] =
+        contact.name.toLowerCase().split(' ')
+      return (
+        firstName.includes(first) &&
+        lastParts.join(' ').includes(last) &&
+        contact.company.toLowerCase().includes(company)
+      )
+    })
   })
   let nextMessageId = 4
   const messages = signal([
@@ -85,7 +138,48 @@ export function ListViewPage(context: AppContext) {
     { id: 2, text: 'Signals update only the changed collection range.' },
     { id: 3, text: 'Add or delete a message below.' },
   ])
-  const messageText = signal('')
+  const leftDragItems = signal(['Item 1', 'Item 2', 'Item 3'])
+  const rightDragItems = signal(['Item 4', 'Item 5'])
+  const cliffImage = loadGalleryBitmap(
+    'SampleMedia/cliff.jpg',
+    80,
+    context.ownProjected,
+  )
+  const valleyImage = loadGalleryBitmap(
+    'SampleMedia/valley.jpg',
+    80,
+    context.ownProjected,
+  )
+  const scrollMessagesToEnd = () => {
+    context.window.dispatcherQueue.tryEnqueue(
+      DispatcherQueuePriority.Low,
+      () => {
+        const list = messageList.current
+        if (!list) {
+          return
+        }
+        const items = list.items
+        try {
+          if (items.size === 0) {
+            return
+          }
+          const item = projectAs(
+            items.getAt(items.size - 1),
+            ListViewItem,
+          )
+          try {
+            list.scrollIntoView(item)
+          }
+          finally {
+            releaseProjected(item)
+          }
+        }
+        finally {
+          releaseProjected(items)
+        }
+      },
+    )
+  }
 
   return (
     <Page
@@ -106,6 +200,7 @@ export function ListViewPage(context: AppContext) {
         `}
       >
         <GalleryListView
+          ref={messageList}
           selectionMode={ListViewSelectionMode.None}
           width={320}
           maxHeight={260}
@@ -127,6 +222,99 @@ export function ListViewPage(context: AppContext) {
             ),
           )}
         </GalleryListView>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryCollectionsListViewDragSample"
+        title="Drag and drop reordering"
+        description="Each list exposes native drag and reorder states; cross-list transfer requires app-specific data handling."
+        code={`
+<GalleryListView
+  canDragItems
+  canReorderItems
+  allowDrop
+/>
+        `}
+      >
+        <LayoutGrid
+          columnDefinitions={[
+            gridLength.star(),
+            gridLength.star(),
+          ]}
+          columnSpacing={16}
+        >
+          {[leftDragItems, rightDragItems].map(
+            (items, column) => (
+              <GalleryListView
+                key={column}
+                gridColumn={column}
+                height={220}
+                selectionMode={ListViewSelectionMode.Single}
+                canDragItems
+                canReorderItems
+                allowDrop
+                borderBrush={theme.controlStroke}
+                borderThickness={thickness(1)}
+              >
+                <For each={items} key={(item) => item}>
+                  {(item) => (
+                    <UI.ListViewItem>
+                      <UI.TextBlock
+                        padding={thickness(10)}
+                        text={item}
+                      />
+                    </UI.ListViewItem>
+                  )}
+                </For>
+              </GalleryListView>
+            ),
+          )}
+        </LayoutGrid>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryCollectionsListViewGroupedSample"
+        title="Grouped presentation"
+        description="Present alphabetic sections with distinct visual headers."
+        code={`<GalleryListView>...grouped items...</GalleryListView>`}
+      >
+        <UI.Border
+          height={280}
+          borderBrush={theme.controlStroke}
+          borderThickness={thickness(1)}
+        >
+          <UI.ScrollViewer>
+            <UI.StackPanel>
+              {([
+                ['A', 'Adele Vance', 'Alex Wilber'],
+                ['D', 'Diego Siciliani'],
+                ['G', 'Grady Archie'],
+                ['H', 'Henrietta Mueller'],
+              ] as const).map(([header, ...names]) => (
+                <UI.StackPanel key={header}>
+                  <UI.Border
+                    padding={thickness(12, 8)}
+                    background={theme.layerFill}
+                  >
+                    <UI.TextBlock
+                      {...styles.heading({
+                        level: 'bodyStrong',
+                      })}
+                      text={header}
+                    />
+                  </UI.Border>
+                  {names.map((name) => (
+                    <UI.TextBlock
+                      key={name}
+                      padding={thickness(16, 10)}
+                      text={name}
+                    />
+                  ))}
+                </UI.StackPanel>
+              ))}
+            </UI.StackPanel>
+          </UI.ScrollViewer>
+        </UI.Border>
       </SampleCard>
 
       <SampleCard
@@ -213,8 +401,8 @@ export function ListViewPage(context: AppContext) {
 
       <SampleCard
         automationId="GalleryCollectionsListViewFilterSample"
-        title="Filter a collection"
-        description="Text input derives a filtered signal and keyed For updates the native list without recreating unchanged rows."
+        title="Filtering"
+        description="Filter by first name, last name, and company."
         code={`
 const filtered = computed(() =>
   contacts.filter((contact) => contact.name.includes(filter.value)))
@@ -233,20 +421,50 @@ const filtered = computed(() =>
         }
       >
         <UI.StackPanel spacing={10}>
-          <UI.TextBox
-            ref={filterBox}
-            automationId="GalleryCollectionsListViewFilter"
-            header="Filter contacts"
-            placeholderText="Name or company"
-            text={filter}
-            onTextChanged={() => {
-              const text = filterBox.current?.text
-              if (text !== undefined) {
-                filter.value = text
-                context.model.recordInteraction()
-              }
-            }}
+          <UI.TextBlock
+            {...styles.heading({ level: 'bodyStrong' })}
+            text="Filter by..."
           />
+          <UI.StackPanel
+            orientation={Orientation.Horizontal}
+            spacing={8}
+          >
+            {[
+              {
+                header: 'First name',
+                ref: firstFilterBox,
+                value: firstFilter,
+                id: 'GalleryCollectionsListViewFilter',
+              },
+              {
+                header: 'Last name',
+                ref: lastFilterBox,
+                value: lastFilter,
+                id: 'GalleryCollectionsListViewLastFilter',
+              },
+              {
+                header: 'Company',
+                ref: companyFilterBox,
+                value: companyFilter,
+                id: 'GalleryCollectionsListViewCompanyFilter',
+              },
+            ].map((entry) => (
+              <UI.TextBox
+                key={entry.header}
+                ref={entry.ref}
+                automationId={entry.id}
+                header={entry.header}
+                minWidth={180}
+                onTextChanged={() => {
+                  const text = entry.ref.current?.text
+                  if (text !== undefined) {
+                    entry.value.value = text
+                    context.model.recordInteraction()
+                  }
+                }}
+              />
+            ))}
+          </UI.StackPanel>
           <GalleryListView
             selectionMode={ListViewSelectionMode.Single}
             maxHeight={320}
@@ -284,8 +502,8 @@ const filtered = computed(() =>
 
       <SampleCard
         automationId="GalleryCollectionsListViewMessagesSample"
-        title="Live list updates"
-        description="Appending and deleting messages updates the keyed native collection while each row retains its own identity."
+        title="Messaging data logging"
+        description="An inverted message list keeps the newest activity visible at the bottom."
         code={`
 const messages = signal(initialMessages)
 <GalleryListView>
@@ -299,6 +517,7 @@ const messages = signal(initialMessages)
           <GalleryListView
             selectionMode={ListViewSelectionMode.None}
             maxHeight={280}
+            verticalContentAlignment={VerticalAlignment.Bottom}
           >
             <For each={messages} key={(message) => message.id}>
               {(message) => (
@@ -309,74 +528,132 @@ const messages = signal(initialMessages)
                 >
                   <LayoutGrid
                     padding={thickness(8)}
-                    columnDefinitions={[
-                      gridLength.star(),
-                      gridLength.auto(),
-                    ]}
-                    columnSpacing={8}
+                    columnDefinitions={[gridLength.star()]}
                   >
                     <UI.TextBlock
                       text={message.text}
                       textWrapping={TextWrapping.Wrap}
                       verticalAlignment={VerticalAlignment.Center}
                     />
-                    <UI.Button
-                      gridColumn={1}
-                      automationName={`Delete ${message.text}`}
-                      onClick={() => {
-                        messages.value = messages.value.filter(
-                          (item) => item.id !== message.id,
-                        )
-                        context.model.recordInteraction()
-                      }}
-                    >
-                      Delete
-                    </UI.Button>
                   </LayoutGrid>
                 </UI.ListViewItem>
               )}
             </For>
           </GalleryListView>
-          <LayoutGrid
-            columnDefinitions={[
-              gridLength.star(),
-              gridLength.auto(),
-            ]}
-            columnSpacing={8}
+          <UI.StackPanel
+            orientation={Orientation.Horizontal}
+            spacing={8}
           >
-            <UI.TextBox
-              ref={messageBox}
-              automationId="GalleryCollectionsListViewMessageText"
-              placeholderText="Type a message"
-              text={messageText}
-              onTextChanged={() => {
-                const text = messageBox.current?.text
-                if (text !== undefined) {
-                  messageText.value = text
-                }
-              }}
-            />
             <UI.Button
-              gridColumn={1}
               automationId="GalleryCollectionsListViewAddMessage"
               onClick={() => {
-                const text = messageText.value.trim()
-                if (!text) {
-                  return
-                }
                 messages.value = [
                   ...messages.value,
-                  { id: nextMessageId, text },
+                  {
+                    id: nextMessageId,
+                    text: `Sent message ${nextMessageId}`,
+                  },
                 ]
                 nextMessageId += 1
-                messageText.value = ''
+                scrollMessagesToEnd()
                 context.model.recordInteraction()
               }}
             >
-              Send
+              Send Message
             </UI.Button>
-          </LayoutGrid>
+            <UI.Button
+              onClick={() => {
+                messages.value = [
+                  ...messages.value,
+                  {
+                    id: nextMessageId,
+                    text: `Received message ${nextMessageId}`,
+                  },
+                ]
+                nextMessageId += 1
+                scrollMessagesToEnd()
+                context.model.recordInteraction()
+              }}
+            >
+              Receive Message
+            </UI.Button>
+          </UI.StackPanel>
         </UI.StackPanel>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryCollectionsListViewImagesSample"
+        title="Images"
+        description="ListView items can combine images with trimmed text."
+        code={`<UI.Image source={image} />`}
+      >
+        <GalleryListView
+          width={360}
+          height={220}
+          horizontalAlignment={HorizontalAlignment.Left}
+          selectionMode={ListViewSelectionMode.None}
+        >
+          {[
+            {
+              label: 'Mountain landscape',
+              image: cliffImage,
+            },
+            {
+              label: 'Valley landscape',
+              image: valleyImage,
+            },
+          ].map(({ label, image }) => (
+            <UI.ListViewItem key={label}>
+              <UI.StackPanel
+                orientation={Orientation.Horizontal}
+                spacing={12}
+                padding={thickness(8)}
+              >
+                <UI.Image
+                  width={80}
+                  height={60}
+                  source={image}
+                />
+                <UI.TextBlock
+                  maxWidth={220}
+                  width={220}
+                  verticalAlignment={VerticalAlignment.Center}
+                  text={`${label} with a longer description that trims in a compact row`}
+                  textTrimming={TextTrimming.CharacterEllipsis}
+                  textWrapping={TextWrapping.NoWrap}
+                  toolTip={`${label} with a longer description that trims in a compact row`}
+                />
+              </UI.StackPanel>
+            </UI.ListViewItem>
+          ))}
+        </GalleryListView>
+      </SampleCard>
+
+      <SampleCard
+        automationId="GalleryCollectionsListViewContextSample"
+        title="Context menus"
+        description="A contextual delete action removes the selected row."
+        code={`<UI.MenuFlyoutItem text="Delete" />`}
+      >
+        <GalleryListView
+          width={360}
+          horizontalAlignment={HorizontalAlignment.Left}
+          selectionMode={ListViewSelectionMode.None}
+        >
+          <For each={messages} key={(message) => message.id}>
+            {(message) => (
+              <ContextMenuRow
+                context={context}
+                message={message}
+                onDelete={() => {
+                  messages.value = messages.value.filter(
+                    (item) => item.id !== message.id,
+                  )
+                }}
+              />
+            )}
+          </For>
+        </GalleryListView>
       </SampleCard>
     </Page>
   )
