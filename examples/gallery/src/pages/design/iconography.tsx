@@ -166,86 +166,100 @@ export function IconographyPage(context: AppContext) {
       <UI.TextBlock
         automationId="GalleryIconographySearchStatus"
         automationLiveSetting={AutomationLiveSetting.Polite}
+        height={1}
+        opacity={0}
         text={resultStatus}
       />
 
-      <LayoutGrid
+      <UI.Border
         automationId="GalleryIconographySample"
-        columnDefinitions={[
-          { size: gridLength.star(), min: 320 },
-          { size: gridLength.pixel(334), max: 334 },
-        ]}
-        height={560}
-        minHeight={560}
+        {...styles.card({ surface: 'layer' })}
+        padding={thickness(0)}
+        horizontalAlignment={HorizontalAlignment.Stretch}
       >
-        <GalleryItemsView
-          ref={itemsView}
-          automationId="GalleryIconographyItems"
-          each={filteredIcons}
-          key={(item) => item.code}
-          layout={layout}
+        <LayoutGrid
+          columnDefinitions={[
+            { size: gridLength.star(), min: 320 },
+            { size: gridLength.pixel(334), max: 334 },
+          ]}
           height={560}
-          isItemInvokedEnabled
-          selectionMode={ItemsViewSelectionMode.Single}
-          onLoaded={() => {
-            itemsView.current?.select(0)
-          }}
-          onSelectionChanged={(sender) => {
-            const selectedIndex = filteredIcons.value.findIndex(
-              (_item, index) => sender.isSelected(index),
-            )
-            const item = filteredIcons.value[selectedIndex]
-            if (item) {
-              selectedCode.value = item.code
-            }
-          }}
-          onItemInvoked={(sender) => {
-            const item = filteredIcons.value[sender.currentItemIndex]
-            if (item) {
-              selectedCode.value = item.code
-              sender.select(sender.currentItemIndex)
-              context.model.recordInteraction()
-            }
-          }}
+          minHeight={560}
         >
-          {(item) => (
-            <UI.Border
-              {...styles.card({ surface: 'layer' })}
-              automationName={item.name}
-              width={96}
-              height={96}
-              padding={thickness(8)}
-            >
-              <UI.StackPanel spacing={8}>
-                <UI.Viewbox width={28} height={28}>
-                  <UI.FontIcon glyph={item.character} />
-                </UI.Viewbox>
-                <UI.TextBlock
-                  horizontalAlignment={HorizontalAlignment.Center}
-                  foreground={theme.secondaryText}
-                  text={item.name}
-                  textTrimming={TextTrimming.CharacterEllipsis}
-                  textWrapping={TextWrapping.NoWrap}
-                />
-              </UI.StackPanel>
-            </UI.Border>
-          )}
-        </GalleryItemsView>
+          <GalleryItemsView
+            ref={itemsView}
+            automationId="GalleryIconographyItems"
+            each={filteredIcons}
+            key={(item) => item.code}
+            layout={layout}
+            height={560}
+            padding={thickness(16)}
+            isItemInvokedEnabled
+            selectionMode={ItemsViewSelectionMode.Single}
+            onLoaded={() => {
+              itemsView.current?.select(0)
+            }}
+            onSelectionChanged={(sender) => {
+              const selectedIndex = filteredIcons.value.findIndex(
+                (_item, index) => sender.isSelected(index),
+              )
+              const item = filteredIcons.value[selectedIndex]
+              if (item) {
+                selectedCode.value = item.code
+              }
+            }}
+            onItemInvoked={(sender) => {
+              const item = filteredIcons.value[sender.currentItemIndex]
+              if (item) {
+                selectedCode.value = item.code
+                sender.select(sender.currentItemIndex)
+                context.model.recordInteraction()
+              }
+            }}
+          >
+            {(item) => (
+              <UI.Border
+                {...styles.card({ surface: 'card' })}
+                automationName={item.name}
+                width={96}
+                height={96}
+                padding={thickness(8)}
+              >
+                <UI.StackPanel spacing={8}>
+                  <UI.Viewbox width={28} height={28}>
+                    <UI.FontIcon glyph={item.character} />
+                  </UI.Viewbox>
+                  <UI.TextBlock
+                    horizontalAlignment={HorizontalAlignment.Center}
+                    foreground={theme.secondaryText}
+                    text={item.name}
+                    textTrimming={TextTrimming.CharacterEllipsis}
+                    textWrapping={TextWrapping.NoWrap}
+                  />
+                </UI.StackPanel>
+              </UI.Border>
+            )}
+          </GalleryItemsView>
 
-        <UI.Border
-          gridColumn={1}
-          background={theme.cardBackground}
-          borderBrush={theme.dividerStroke}
-          borderThickness={thickness(1, 0, 0, 0)}
-          padding={thickness(16)}
-          visibility={computed(() =>
-            filteredIcons.value.length > 0
-              ? Visibility.Visible
-              : Visibility.Collapsed,
-          )}
-        >
-          <UI.ScrollViewer>
-            <UI.StackPanel spacing={8}>
+          <UI.Border
+            gridColumn={1}
+            background={theme.cardBackground}
+            borderBrush={theme.dividerStroke}
+            borderThickness={thickness(1, 0, 0, 0)}
+            cornerRadius={{
+              topLeft: 0,
+              topRight: 8,
+              bottomRight: 8,
+              bottomLeft: 0,
+            }}
+            padding={thickness(16, 16, 8, 16)}
+            visibility={computed(() =>
+              filteredIcons.value.length > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed,
+            )}
+          >
+            <UI.ScrollViewer>
+              <UI.StackPanel spacing={8}>
               <UI.Border
                 width={72}
                 height={72}
@@ -318,10 +332,11 @@ export function IconographyPage(context: AppContext) {
                   )}
                 </For>
               </UI.StackPanel>
-            </UI.StackPanel>
-          </UI.ScrollViewer>
-        </UI.Border>
-      </LayoutGrid>
+              </UI.StackPanel>
+            </UI.ScrollViewer>
+          </UI.Border>
+        </LayoutGrid>
+      </UI.Border>
     </Page>
   )
 }

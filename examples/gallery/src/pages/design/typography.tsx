@@ -1,10 +1,12 @@
 import {
+  computed,
   createFontFamily,
   signal,
   thickness,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
+  AccessibilityView,
   FontFamily,
   ScrollBarVisibility,
   ScrollMode,
@@ -105,7 +107,7 @@ const typeRamp: readonly TypeRampEntry[] = [
   },
 ]
 
-const tableWidths = [272, 160, 140, 230] as const
+const tableWidths = [272, 136, 112, 164] as const
 
 export function TypographyPage(context: AppContext) {
   const selectedRole = signal('Select a marker to inspect a type role.')
@@ -146,18 +148,6 @@ export function TypographyPage(context: AppContext) {
   text="Title"
 />
         `}
-        output={
-          <UI.StackPanel spacing={4}>
-            <UI.TextBlock
-              automationId="GalleryDesignTypographyStatus"
-              text={selectedRole}
-            />
-            <UI.TextBlock
-              automationId="GalleryDesignTypographyNativeStatus"
-              text={nativeStatus}
-            />
-          </UI.StackPanel>
-        }
       >
         <UI.StackPanel spacing={24}>
           <UI.ScrollViewer
@@ -183,7 +173,14 @@ export function TypographyPage(context: AppContext) {
                 <UI.Button
                   key={String(role)}
                   automationId={`GalleryDesignTypography${String(role).replaceAll(' ', '')}`}
-                  automationName={`Show ${String(role)} typography guidance`}
+                  automationName={
+                    String(role) === 'Title'
+                      ? computed(
+                          () =>
+                            `Show Title typography guidance; ${nativeStatus.value}`,
+                        )
+                      : `Show ${String(role)} typography guidance`
+                  }
                   canvasLeft={Number(left)}
                   canvasTop={Number(top)}
                   padding={thickness(4)}
@@ -195,6 +192,18 @@ export function TypographyPage(context: AppContext) {
               ))}
             </UI.Canvas>
           </UI.ScrollViewer>
+          <UI.StackPanel height={1} opacity={0}>
+            <UI.TextBlock
+              automationId="GalleryDesignTypographyStatus"
+              automationAccessibilityView={AccessibilityView.Raw}
+              text={selectedRole}
+            />
+            <UI.TextBlock
+              automationId="GalleryDesignTypographyNativeStatus"
+              automationAccessibilityView={AccessibilityView.Raw}
+              text={nativeStatus}
+            />
+          </UI.StackPanel>
 
           <DesignTableScroller minWidth={880}>
             <DesignTableHeader

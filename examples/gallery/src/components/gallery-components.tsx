@@ -9,6 +9,7 @@ import {
   tokens,
   type Child,
   type MaybeSignal,
+  type ProjectedOwnership,
   type RefObject,
   type ReadonlySignal,
 } from 'dynwinrt-jsx'
@@ -19,10 +20,12 @@ import {
   Grid,
   HorizontalAlignment,
   Orientation,
+  releaseProjected,
   ScrollBarVisibility,
   ScrollMode,
   Stretch,
   Symbol,
+  TextTrimming,
   TextWrapping,
   VerticalAlignment,
 } from '#winapp/bindings'
@@ -185,10 +188,15 @@ export function SampleCard(props: {
 
   const copySource = () => {
     const data = new DataPackage()
-    data.setText(sourceCode)
-    Clipboard.setContent(data)
-    Clipboard.flush()
-    copied.value = true
+    try {
+      data.setText(sourceCode)
+      Clipboard.setContent(data)
+      Clipboard.flush()
+      copied.value = true
+    }
+    finally {
+      releaseProjected(data)
+    }
   }
 
   return (
@@ -305,7 +313,7 @@ export function Page(props: {
   const updateContentWidth = () => {
     const width = scrollViewer.current?.actualWidth
     if (width !== undefined && width > 0) {
-      contentWidth.value = Math.min(width, 1100)
+      contentWidth.value = width
     }
   }
   const isFavorite = computed(() =>
@@ -318,12 +326,17 @@ export function Page(props: {
       return
     }
     const data = new DataPackage()
-    data.setText(
-      `dynwinrt-jsx-gallery://item/${props.pageId}`,
-    )
-    Clipboard.setContent(data)
-    Clipboard.flush()
-    pageLinkCopied.value = true
+    try {
+      data.setText(
+        `dynwinrt-jsx-gallery://item/${props.pageId}`,
+      )
+      Clipboard.setContent(data)
+      Clipboard.flush()
+      pageLinkCopied.value = true
+    }
+    finally {
+      releaseProjected(data)
+    }
   }
   return (
     <LayoutGrid
@@ -477,19 +490,27 @@ export function PageLink(props: {
   readonly model: AppModel
   readonly gridRow?: MaybeSignal<number>
   readonly gridColumn?: MaybeSignal<number>
-  readonly width?: number
+  readonly width?: MaybeSignal<number>
   readonly height?: MaybeSignal<number>
   readonly compact?: boolean
+  readonly catalog?: boolean
+  readonly enabled?: boolean
+  readonly ownProjected?: ProjectedOwnership['ownProjected']
 }) {
   const compact = props.compact ?? false
+  const catalog = props.catalog ?? false
+  const enabled = props.enabled ?? true
+  const imageSize = catalog ? 32 : compact ? 28 : 36
   const image = loadGalleryBitmap(
     props.page.image,
-    compact ? 28 : 36,
+    imageSize,
+    props.ownProjected,
   )
   return (
     <UI.Button
       automationId={`GalleryOpenPage-${props.page.id}`}
       automationName={`Open ${props.page.title}`}
+      isEnabled={enabled}
       {...(props.gridRow === undefined
         ? {}
         : { gridRow: props.gridRow })}
@@ -506,46 +527,80 @@ export function PageLink(props: {
         ? {}
         : { width: props.width })}
       height={props.height ?? (compact ? 84 : 96)}
-      padding={thickness(compact ? 12 : 16)}
+      padding={thickness(catalog ? 8 : compact ? 12 : 16)}
+      {...(catalog
+        ? {
+            background: theme.controlFill,
+            borderBrush: theme.cardStroke,
+            borderThickness: thickness(1),
+            cornerRadius: tokens.radius.overlay,
+          }
+        : {})}
       onClick={() => {
-        props.model.navigate(props.page.id as GalleryPageId)
+        if (enabled) {
+          props.model.navigate(props.page.id as GalleryPageId)
+        }
       }}
     >
       <LayoutGrid
         columnDefinitions={[
-          gridLength.pixel(compact ? 32 : 40),
+          gridLength.pixel(catalog ? 56 : compact ? 32 : 40),
           gridLength.star(),
         ]}
         rowDefinitions={[
           gridLength.auto(),
           gridLength.auto(),
         ]}
-        columnSpacing={12}
+        columnSpacing={catalog ? 0 : 12}
       >
         <UI.Border
           gridRowSpan={2}
-          width={compact ? 28 : 36}
-          height={compact ? 28 : 36}
+          width={imageSize}
+          height={imageSize}
+          {...(catalog
+            ? { margin: thickness(8, 12, 16, 0) }
+            : {})}
           verticalAlignment={VerticalAlignment.Top}
         >
           <UI.Image
             source={image}
             stretch={Stretch.Uniform}
-            width={compact ? 28 : 36}
-            height={compact ? 28 : 36}
+            width={imageSize}
+            height={imageSize}
           />
         </UI.Border>
         <UI.TextBlock
           {...styles.heading({ level: 'bodyStrong' })}
           gridColumn={1}
+          {...(catalog
+            ? { margin: thickness(0, 12, 0, 0) }
+            : {})}
+          verticalAlignment={
+            catalog
+              ? VerticalAlignment.Bottom
+              : VerticalAlignment.Stretch
+          }
           text={props.page.title}
+          textWrapping={
+            catalog ? TextWrapping.NoWrap : TextWrapping.Wrap
+          }
         />
         <UI.TextBlock
           gridRow={1}
           gridColumn={1}
           foreground={theme.secondaryText}
           text={props.page.subtitle}
-          textWrapping={TextWrapping.Wrap}
+          textTrimming={
+            catalog
+              ? TextTrimming.WordEllipsis
+              : TextTrimming.None
+          }
+          textWrapping={
+            catalog ? TextWrapping.NoWrap : TextWrapping.Wrap
+          }
+          {...(catalog
+            ? { toolTip: props.page.subtitle }
+            : {})}
         />
       </LayoutGrid>
     </UI.Button>

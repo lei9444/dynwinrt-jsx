@@ -11,6 +11,7 @@ import {
   HorizontalAlignment,
   ScrollBarVisibility,
   ScrollMode,
+  Stretch,
   TextWrapping,
   VerticalAlignment,
 } from '#winapp/bindings'
@@ -33,6 +34,7 @@ export function DesignThemeImage(props: {
       source={computed(() =>
         props.isDark.value ? dark : light,
       )}
+      stretch={Stretch.Uniform}
       {...(props.width === undefined
         ? {}
         : { width: props.width })}
@@ -76,8 +78,13 @@ export function DesignTableScroller(props: {
       horizontalScrollBarVisibility={ScrollBarVisibility.Auto}
       horizontalScrollMode={ScrollMode.Auto}
       verticalScrollBarVisibility={ScrollBarVisibility.Hidden}
+      horizontalContentAlignment={HorizontalAlignment.Stretch}
     >
-      <UI.StackPanel minWidth={props.minWidth} spacing={8}>
+      <UI.StackPanel
+        minWidth={props.minWidth}
+        spacing={8}
+        horizontalAlignment={HorizontalAlignment.Stretch}
+      >
         {props.children}
       </UI.StackPanel>
     </UI.ScrollViewer>
@@ -99,6 +106,8 @@ export function DesignTableRow(props: {
         surface: props.alternate ? 'card' : 'layer',
       })}
       padding={thickness(16, 12)}
+      minHeight={68}
+      horizontalAlignment={HorizontalAlignment.Stretch}
     >
       <LayoutGrid
         columnDefinitions={props.widths.map((width) =>

@@ -1,4 +1,5 @@
 import {
+  computed,
   cornerRadius,
   signal,
   theme,
@@ -6,10 +7,12 @@ import {
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
+  AccessibilityView,
   Clipboard,
   DataPackage,
   HorizontalAlignment,
   Orientation,
+  releaseProjected,
   ScrollBarVisibility,
   ScrollMode,
   TextWrapping,
@@ -31,13 +34,18 @@ import {
   DesignThemeImage,
 } from './shared'
 
-const tableWidths = [148, 400, 180, 56] as const
+const tableWidths = [148, 400, 160, 56] as const
 
 function copyResourceName(value: string): void {
   const data = new DataPackage()
-  data.setText(value)
-  Clipboard.setContent(data)
-  Clipboard.flush()
+  try {
+    data.setText(value)
+    Clipboard.setContent(data)
+    Clipboard.flush()
+  }
+  finally {
+    releaseProjected(data)
+  }
 }
 
 export function GeometryPage(context: AppContext) {
@@ -78,18 +86,6 @@ export function GeometryPage(context: AppContext) {
   cornerRadius={cornerRadius(4)}
 />
         `}
-        output={
-          <UI.StackPanel spacing={4}>
-            <UI.TextBlock
-              automationId="GalleryDesignGeometryStatus"
-              text={selectedGeometry}
-            />
-            <UI.TextBlock
-              automationId="GalleryDesignGeometryNativeStatus"
-              text={nativeRadius}
-            />
-          </UI.StackPanel>
-        }
       >
         <UI.StackPanel spacing={24}>
           <UI.ScrollViewer
@@ -131,7 +127,10 @@ export function GeometryPage(context: AppContext) {
               </UI.Button>
               <UI.Button
                 automationId="GalleryDesignGeometryControl"
-                automationName="Show 4px ControlCornerRadius guidance"
+                automationName={computed(
+                  () =>
+                    `Show 4px ControlCornerRadius guidance; ${nativeRadius.value}`,
+                )}
                 canvasLeft={240}
                 canvasTop={168}
                 padding={thickness(4)}
@@ -143,6 +142,18 @@ export function GeometryPage(context: AppContext) {
               </UI.Button>
             </UI.Canvas>
           </UI.ScrollViewer>
+          <UI.StackPanel height={1} opacity={0}>
+            <UI.TextBlock
+              automationId="GalleryDesignGeometryStatus"
+              automationAccessibilityView={AccessibilityView.Raw}
+              text={selectedGeometry}
+            />
+            <UI.TextBlock
+              automationId="GalleryDesignGeometryNativeStatus"
+              automationAccessibilityView={AccessibilityView.Raw}
+              text={nativeRadius}
+            />
+          </UI.StackPanel>
 
           <DesignTableScroller minWidth={850}>
             <DesignTableHeader

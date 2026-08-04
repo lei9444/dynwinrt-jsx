@@ -1,6 +1,7 @@
 import {
   cornerRadius,
   signal,
+  styles,
   theme,
   thickness,
   type RefObject,
@@ -34,7 +35,7 @@ const spacingRows = [
   [48, 'Spacing between page sections with a title.'],
 ] as const
 
-const tableWidths = [86, 136, 520] as const
+const tableWidths = [86, 136, 400] as const
 
 export function SpacingPage(context: AppContext) {
   const sample24: RefObject<BorderInstance> = { current: null }
@@ -58,6 +59,7 @@ export function SpacingPage(context: AppContext) {
         >
           <UI.StackPanel spacing={12}>
             <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
               horizontalAlignment={HorizontalAlignment.Center}
               text="Page with cards layout"
             />
@@ -70,6 +72,7 @@ export function SpacingPage(context: AppContext) {
           </UI.StackPanel>
           <UI.StackPanel spacing={12}>
             <UI.TextBlock
+              {...styles.heading({ level: 'subtitle' })}
               horizontalAlignment={HorizontalAlignment.Center}
               text="Form layout"
             />

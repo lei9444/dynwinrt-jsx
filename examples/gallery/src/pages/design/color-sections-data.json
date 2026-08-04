@@ -1,0 +1,1051 @@
+{
+  "Text": [
+    {
+      "title": "Text",
+      "description": "For UI labels and static text.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "text",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Text / Primary",
+              "resource": "TextFillColorPrimaryBrush",
+              "usage": "Rest or Hover",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Text / Secondary",
+              "resource": "TextFillColorSecondaryBrush",
+              "usage": "Rest or Hover",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Text / Tertiary",
+              "resource": "TextFillColorTertiaryBrush",
+              "usage": "Pressed only (not accessible)",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Text / Disabled",
+              "resource": "TextFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "TextFillColorPrimaryBrush"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Accent Text",
+      "description": "Recommended for links.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "text",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Accent Text / Primary",
+              "resource": "AccentTextFillColorPrimaryBrush",
+              "usage": "Rest or Hover",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Accent Text / Secondary",
+              "resource": "AccentTextFillColorSecondaryBrush",
+              "usage": "Rest or Hover",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Accent Text / Tertiary",
+              "resource": "AccentTextFillColorTertiaryBrush",
+              "usage": "Pressed only (not accessible)",
+              "foreground": "TextOnAccentFillColorPrimaryBrush"
+            },
+            {
+              "name": "Accent Text / Disabled",
+              "resource": "AccentTextFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "TextFillColorPrimaryBrush"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Text On Accent",
+      "description": "Used for text on accent colored controls or fills.",
+      "background": "AccentFillColorDefaultBrush",
+      "foreground": "TextOnAccentFillColorPrimaryBrush",
+      "preview": "text",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Text on Accent / Primary",
+              "resource": "TextOnAccentFillColorPrimaryBrush",
+              "usage": "Rest or Hover",
+              "foreground": "TextFillColorPrimaryBrush"
+            },
+            {
+              "name": "Text on Accent / Secondary",
+              "resource": "TextOnAccentFillColorSecondaryBrush",
+              "usage": "Pressed only (not accessible)",
+              "foreground": "TextFillColorPrimaryBrush"
+            }
+          ]
+        },
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Text on Accent / Disabled",
+              "resource": "TextOnAccentFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "Black"
+            },
+            {
+              "name": "Text on Accent / Selected Text",
+              "resource": "TextOnAccentFillColorSelectedTextBrush",
+              "usage": "For highlighted text in text entry experiences",
+              "foreground": "Black"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Fill": [
+    {
+      "title": "Control Fill",
+      "description": "Fill used for standard controls.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "button",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Control / Default",
+              "resource": "ControlFillColorDefaultBrush",
+              "usage": "Rest",
+              "foreground": null
+            },
+            {
+              "name": "Control / Secondary",
+              "resource": "ControlFillColorSecondaryBrush",
+              "usage": "Hover",
+              "foreground": null
+            },
+            {
+              "name": "Control / Tertiary",
+              "resource": "ControlFillColorTertiaryBrush",
+              "usage": "Pressed",
+              "foreground": null
+            },
+            {
+              "name": "Control / Quartenary",
+              "resource": "ControlFillColorQuarternaryBrush",
+              "usage": "Rest (Pill Button control)",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Control / Disabled",
+              "resource": "ControlFillColorDisabledBrush",
+              "usage": "Disabled",
+              "foreground": null
+            },
+            {
+              "name": "Control / Transparent",
+              "resource": "ControlFillColorTransparentBrush",
+              "usage": "Rest",
+              "foreground": null
+            },
+            {
+              "name": "Control / Input Active",
+              "resource": "ControlFillColorInputActiveBrush",
+              "usage": "Active/focused text input fields",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Control Alt Fill",
+      "description": "Fill used for the 'off' states of toggle controls.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "toggle",
+      "grids": [
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Control Alt / Transparent",
+              "resource": "ControlAltFillColorTransparentBrush",
+              "usage": "",
+              "foreground": null
+            },
+            {
+              "name": "Control Alt / Secondary",
+              "resource": "ControlAltFillColorSecondaryBrush",
+              "usage": "Rest",
+              "foreground": null
+            },
+            {
+              "name": "Control Alt / Tertiary",
+              "resource": "ControlAltFillColorTertiaryBrush",
+              "usage": "Hover",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Control Alt / Quarternary",
+              "resource": "ControlAltFillColorQuarternaryBrush",
+              "usage": "Pressed",
+              "foreground": null
+            },
+            {
+              "name": "Control Alt / Disabled",
+              "resource": "ControlAltFillColorDisabledBrush",
+              "usage": "Disabled",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Neutral Solid",
+      "description": "Fills used for Sliders thumb control to cover the track beneath it.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "slider",
+      "grids": [
+        {
+          "columns": 1,
+          "tiles": [
+            {
+              "name": "Control Solid / Default",
+              "resource": "ControlSolidFillColorDefaultBrush",
+              "usage": "Rest",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Neutral Strong",
+      "description": "Used for controls that must meet contrast ratio requirements of 3:1.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "scrollbar",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Control Strong / Default",
+              "resource": "ControlStrongFillColorDefaultBrush",
+              "usage": "Rest or hover",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "Control Strong / Disabled",
+              "resource": "ControlStrongFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Subtle Fill",
+      "description": "Used for list items and fills that are transparent at rest and appear upon interaction.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Subtle / Transparent ",
+              "resource": "SubtleFillColorTransparentBrush",
+              "usage": "Rest",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Subtle / Secondary",
+              "resource": "SubtleFillColorSecondaryBrush",
+              "usage": "Hover",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Subtle / Tertiary ",
+              "resource": "SubtleFillColorTertiaryBrush",
+              "usage": "Pressed",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Subtle / Disabled",
+              "resource": "SubtleFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Control On Image Fill",
+      "description": "Used for controls living on top of imagery.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Control On Image Fill Default",
+              "resource": "ControlOnImageFillColorDefaultBrush",
+              "usage": "Rest",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Control On Image Fill Secondary",
+              "resource": "ControlOnImageFillColorSecondaryBrush",
+              "usage": "Hover",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Control On Image Fill Tertiary",
+              "resource": "ControlOnImageFillColorTertiaryBrush",
+              "usage": "Pressed",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Control On Image Fill Disabled",
+              "resource": "ControlOnImageFillColorDisabledBrush",
+              "usage": "Disabled only (not accessible)",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Accent Fill",
+      "description": "Used for accent fills on controls.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Accent / Default",
+              "resource": "AccentFillColorDefaultBrush",
+              "usage": "Rest",
+              "foreground": "TextOnAccentFillColorDefaultBrush"
+            },
+            {
+              "name": "Accent / Secondary",
+              "resource": "AccentFillColorSecondaryBrush",
+              "usage": "Hover",
+              "foreground": "TextOnAccentFillColorDefaultBrush"
+            },
+            {
+              "name": "Accent / Tertiary",
+              "resource": "AccentFillColorTertiaryBrush",
+              "usage": "Pressed",
+              "foreground": "TextOnAccentFillColorDefaultBrush"
+            }
+          ]
+        },
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Accent / Disabled",
+              "resource": "AccentFillColorDisabledBrush",
+              "usage": "Disabled",
+              "foreground": null
+            },
+            {
+              "name": "Accent / Selected Text Background",
+              "resource": "AccentFillColorSelectedTextBackgroundBrush",
+              "usage": "Highighted/selected text background",
+              "foreground": "TextOnAccentFillColorDefaultBrush"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Stroke": [
+    {
+      "title": "Card Stroke",
+      "description": "Used for card and layer colors.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Card Stroke / Default",
+              "resource": "CardStrokeColorDefaultBrush",
+              "usage": "Card layer and strokes",
+              "foreground": null
+            },
+            {
+              "name": "Card Stroke / Default Solid",
+              "resource": "CardStrokeColorDefaultSolidBrush",
+              "usage": "Solid equivalent of Card Stroke / Default. Used in command bar for expanded states",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Control Elevation (gradient strokes)",
+      "description": "Used for standard control strokes and stroke states.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "button",
+      "grids": [
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Control / Border",
+              "resource": "ControlElevationBorderBrush",
+              "usage": "Rest",
+              "foreground": null
+            },
+            {
+              "name": "Circle / Border",
+              "resource": "CircleElevationBorderBrush",
+              "usage": "Rest",
+              "foreground": null
+            },
+            {
+              "name": "Text Control / Border",
+              "resource": "TextControlElevationBorderBrush",
+              "usage": "Rest",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Text Control / Border Focused",
+              "resource": "TextControlElevationBorderFocusedBrush",
+              "usage": "Active text fields",
+              "foreground": null
+            },
+            {
+              "name": "Accent Control / Border",
+              "resource": "AccentControlElevationBorderBrush",
+              "usage": "Rest",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Control Stroke",
+      "description": "Used for gradient stops in elevation borders, and for control states.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "button",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Control Stroke / Default",
+              "resource": "ControlStrokeColorDefaultBrush",
+              "usage": "Used in Control Elevation Brushes. Pressed or Disabled",
+              "foreground": null
+            },
+            {
+              "name": "Control Stroke / Secondary",
+              "resource": "ControlStrokeColorSecondaryBrush",
+              "usage": "Used in Control Elevation Brushes",
+              "foreground": null
+            },
+            {
+              "name": "Control Stroke / On Accent Default",
+              "resource": "ControlStrokeColorOnAccentDefaultBrush",
+              "usage": "Used in Control Elevation Brushes. Pressed or Disabled",
+              "foreground": null
+            },
+            {
+              "name": "Control Stroke / On Accent Secondary",
+              "resource": "ControlStrokeColorOnAccentSecondaryBrush",
+              "usage": "Used in Control Elevation Brushes",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Control Stroke / On Accent Tertiary",
+              "resource": "ControlStrokeColorOnAccentTertiaryBrush",
+              "usage": "Linework on Accent controls, ie: dividers",
+              "foreground": null
+            },
+            {
+              "name": "Control Stroke / On Accent Disabled",
+              "resource": "ControlStrokeColorOnAccentDisabledBrush",
+              "usage": "Disabled",
+              "foreground": null
+            },
+            {
+              "name": "Control Stroke / For Strong Fill When On Image",
+              "resource": "ControlStrokeColorForStrongFillWhenOnImageBrush",
+              "usage": "When used with a 'strong' fill color, ensures a 3:1 contrast on any background",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Control Strong Stroke",
+      "description": "Used for control strokes that must meet contrast ratio requirements of 3:1.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "toggle",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Control Strong Stroke / Default",
+              "resource": "ControlStrongStrokeColorDefaultBrush",
+              "usage": "3:1 control border",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "Control Strong Stroke / Disabled",
+              "resource": "ControlStrongStrokeColorDisabledBrush",
+              "usage": "Disabled",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Surface Stroke",
+      "description": "Used for strokes on background surfaces, ie: flyouts, windows, dialogs.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Surface Stroke / Default",
+              "resource": "SurfaceStrokeColorDefaultBrush",
+              "usage": "Window and dialog borders, theme inverse",
+              "foreground": null
+            },
+            {
+              "name": "Surface Stroke / Flyout",
+              "resource": "SurfaceStrokeColorFlyoutBrush",
+              "usage": "Control flyouts, always dark",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Divider Stroke",
+      "description": "Used for divider and graphic lines.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 1,
+          "tiles": [
+            {
+              "name": "Divider Stroke / Default",
+              "resource": "DividerStrokeColorDefaultBrush",
+              "usage": "Content dividers",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Focus Stroke",
+      "description": "Used for divider and graphic lines. Theme inverse; dark in light theme and light in dark theme.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Focus / Outer",
+              "resource": "FocusStrokeColorOuterBrush",
+              "usage": "Outer stroke color",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "Focus / Inner",
+              "resource": "FocusStrokeColorInnerBrush",
+              "usage": "Inner stroke color",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Background": [
+    {
+      "title": "Card Background",
+      "description": "Used to create 'cards' - content blocks that live on page and layer backgrounds.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Card Background / Default",
+              "resource": "CardBackgroundFillColorDefaultBrush",
+              "usage": "Default card color",
+              "foreground": null
+            },
+            {
+              "name": "Card Background / Secondary",
+              "resource": "CardBackgroundFillColorSecondaryBrush",
+              "usage": "Alternate card color: slightly darker",
+              "foreground": null
+            },
+            {
+              "name": "Card Background / Tertiary",
+              "resource": "CardBackgroundFillColorTertiaryBrush",
+              "usage": "Default card hover and pressed color",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Smoke Background",
+      "description": "Used over windows and desktop to block them out as inaccessible.",
+      "background": "SmokeFillColorDefaultBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 1,
+          "tiles": [
+            {
+              "name": "Smoke / Default",
+              "resource": "SmokeFillColorDefaultBrush",
+              "usage": "Dims the background behind dialogs",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Layer",
+      "description": "Used on background colors of any material to create layering.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Layer / Default",
+              "resource": "LayerFillColorDefaultBrush",
+              "usage": "Content layer color",
+              "foreground": null
+            },
+            {
+              "name": "Layer / Alt",
+              "resource": "LayerFillColorAltBrush",
+              "usage": "Alternate content layer color",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Layer on Acrylic",
+      "description": "Used on background colors of any material to create layering.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 1,
+          "tiles": [
+            {
+              "name": "Layer On Acrylic / Default",
+              "resource": "LayerOnAcrylicFillColorDefaultBrush",
+              "backdrop": "Acrylic",
+              "usage": "Content layer color on acrylic surfaces",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Layer on Mica Base Alt",
+      "description": "Used for fills on Tab control.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Layer On Mica Base Alt / Default",
+              "resource": "LayerOnMicaBaseAltFillColorDefaultBrush",
+              "backdrop": "BaseAlt",
+              "usage": "Active Tab Rest, Content layer",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Layer On Mica Base Alt / Tertiary",
+              "resource": "LayerOnMicaBaseAltFillColorTertiaryBrush",
+              "backdrop": "BaseAlt",
+              "usage": "Active Tab Drag",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        },
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Layer On Mica Base Alt / Transparent",
+              "resource": "LayerOnMicaBaseAltFillColorTransparentBrush",
+              "backdrop": "BaseAlt",
+              "usage": "Inactive Tab Rest",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Layer On Mica Base Alt / Secondary",
+              "resource": "LayerOnMicaBaseAltFillColorSecondaryBrush",
+              "backdrop": "BaseAlt",
+              "usage": "Inactive Tab Hover",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Solid Background",
+      "description": "Solid background colors to place layers, cards or controls on.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 4,
+          "tiles": [
+            {
+              "name": "Solid Background / Base",
+              "resource": "SolidBackgroundFillColorBaseBrush",
+              "usage": "Used for the bottom most layer of an experience",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Solid Background / Base Alt",
+              "resource": "SolidBackgroundFillColorBaseAltBrush",
+              "usage": "Used for the bottom most layer of an experience",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Solid Background / Secondary",
+              "resource": "SolidBackgroundFillColorSecondaryBrush",
+              "usage": "Alternate base color for those who need a darker background color",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Solid Background / Tertiary",
+              "resource": "SolidBackgroundFillColorTertiaryBrush",
+              "usage": "Content layer color",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "Solid Background / Quarternary",
+              "resource": "SolidBackgroundFillColorQuarternaryBrush",
+              "usage": "Alt content layer color",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Solid Background / Quinary",
+              "resource": "SolidBackgroundFillColorQuinaryBrush",
+              "usage": "Used for solid default card colors",
+              "foreground": "TextFillColorPrimary"
+            },
+            {
+              "name": "Solid Background / Senary",
+              "resource": "SolidBackgroundFillColorSenaryBrush",
+              "usage": "Used for solid default card colors",
+              "foreground": "TextFillColorPrimary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Mica Background",
+      "description": "Mica background colors to place layers, cards, or controls on.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Mica Background / Base",
+              "resource": "",
+              "background": "AcrylicBackgroundFillColorBaseBrush",
+              "backdrop": "Base",
+              "label": "MicaBackdrop · Base",
+              "usage": "Used for the bottom most layer of an experience",
+              "foreground": null
+            },
+            {
+              "name": "Mica Background / Base Alt",
+              "resource": "",
+              "background": "AcrylicBackgroundFillColorBaseBrush",
+              "backdrop": "BaseAlt",
+              "label": "MicaBackdrop · BaseAlt",
+              "usage": "Default tab band background color",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Acrylic Background",
+      "description": "Acrylic background colors to place layers, cards, or controls on.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Acrylic Background / Base",
+              "resource": "AcrylicBackgroundFillColorBaseBrush",
+              "backdrop": "Acrylic",
+              "usage": "Used for the bottom most layer of an acrylic surface only when the surface will use layers",
+              "foreground": null
+            },
+            {
+              "name": "Acrylic Background / Default",
+              "resource": "AcrylicBackgroundFillColorDefaultBrush",
+              "backdrop": "Acrylic",
+              "usage": "Default acrylic recipe used for control flyouts and surfaces that live with in the context of an app",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Accent Acrylic Background",
+      "description": "Acrylic background colors to place layers, cards, or controls on.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "surface",
+      "grids": [
+        {
+          "columns": 2,
+          "tiles": [
+            {
+              "name": "Accent Acrylic Background / Base",
+              "resource": "AccentAcrylicBackgroundFillColorBaseBrush",
+              "usage": "Used for the bottom most layer of an acrylic surface only when the surface will use layers",
+              "foreground": null
+            },
+            {
+              "name": "Accent Acrylic Background / Default",
+              "resource": "AccentAcrylicBackgroundFillColorDefaultBrush",
+              "usage": "Default acrylic recipe used for control flyouts and surfaces that live with in the context of an app",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Signal": [
+    {
+      "title": "System",
+      "description": "Used for accent fills on controls.",
+      "background": "SolidBackgroundFillColorQuarternaryBrush",
+      "foreground": null,
+      "preview": "info",
+      "grids": [
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "System / Success",
+              "resource": "SystemFillColorSuccessBrush",
+              "usage": "Badge",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "System / Caution",
+              "resource": "SystemFillColorCautionBrush",
+              "usage": "Badge",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "System / Critical",
+              "resource": "SystemFillColorCriticalBrush",
+              "usage": "Badge",
+              "foreground": "TextFillColorInverseBrush"
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "System / Success Background",
+              "resource": "SystemFillColorSuccessBackgroundBrush",
+              "usage": "Infobar Background",
+              "foreground": null
+            },
+            {
+              "name": "System / Caution Background",
+              "resource": "SystemFillColorCautionBackgroundBrush",
+              "usage": "Infobar Background",
+              "foreground": null
+            },
+            {
+              "name": "System / Critical Background",
+              "resource": "SystemFillColorCriticalBackgroundBrush",
+              "usage": "Infobar Background",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "System / Attention",
+              "resource": "SystemFillColorAttentionBrush",
+              "usage": "Badge",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "System / Neutral",
+              "resource": "SystemFillColorNeutralBrush",
+              "usage": "Badge",
+              "foreground": "TextFillColorInverseBrush"
+            },
+            {
+              "name": "System / Solid Neutral",
+              "resource": "SystemFillColorSolidNeutralBrush",
+              "usage": "Neutral badges over content",
+              "foreground": "TextFillColorInverseBrush"
+            }
+          ]
+        },
+        {
+          "columns": 3,
+          "tiles": [
+            {
+              "name": "System / Attention Background",
+              "resource": "SystemFillColorAttentionBackgroundBrush",
+              "usage": "Infobar Background",
+              "foreground": null
+            },
+            {
+              "name": "System / Neutral Background",
+              "resource": "SystemFillColorNeutralBackgroundBrush",
+              "usage": "Infobar Background",
+              "foreground": null
+            },
+            {
+              "name": "System / Solid Neutral Background",
+              "resource": "SystemFillColorSolidNeutralBackgroundBrush",
+              "usage": "Neutral badges over content",
+              "foreground": null
+            }
+          ]
+        },
+        {
+          "columns": 1,
+          "tiles": [
+            {
+              "name": "System / Solid Attention Background",
+              "resource": "SystemFillColorSolidAttentionBackgroundBrush",
+              "usage": "",
+              "foreground": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

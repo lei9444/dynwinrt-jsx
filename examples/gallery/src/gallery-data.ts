@@ -1315,6 +1315,7 @@ export type GalleryPageId =
 
 export type GalleryRoute =
   | 'home'
+  | 'all-controls'
   | 'search'
   | 'category-basic-input'
   | 'category-collections'
@@ -1413,6 +1414,39 @@ export const accessibilityPages = galleryPages.filter(
 
 export const stylesPages = galleryPages.filter(
   (page) => page.category === 'Styles',
+)
+
+const allControlsExcludedCategories = new Set([
+  'Framework',
+  'Fundamentals',
+  'Design',
+  'Accessibility',
+])
+
+export const allControlsPages = [
+  ...galleryPages
+    .filter(
+      (page) =>
+        !allControlsExcludedCategories.has(page.category),
+    )
+    .map((page) => ({
+      ...page,
+      enabled: true,
+    })),
+  {
+    id: 'web-view-2',
+    category: 'Media',
+    title: 'WebView2',
+    subtitle:
+      'A Microsoft Edge (Chromium) based control that hosts HTML content in an app.',
+    description:
+      'WebView2 is not generated in this Gallery build.',
+    tags: ['webview2', 'browser', 'html', 'edge'],
+    image: 'ControlImages/CodeTagIcon.png',
+    enabled: false,
+  },
+].sort((left, right) =>
+  left.title.localeCompare(right.title),
 )
 
 export const galleryCategories = [

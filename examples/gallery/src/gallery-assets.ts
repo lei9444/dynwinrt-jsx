@@ -1,4 +1,8 @@
-import { createBitmapImage, createUri } from 'dynwinrt-jsx'
+import {
+  createBitmapImage,
+  createUri,
+  type ProjectedOwnership,
+} from 'dynwinrt-jsx'
 import {
   BitmapImage,
   SvgImageSource,
@@ -13,23 +17,27 @@ export type BitmapImageInstance = InstanceType<typeof BitmapImage>
 
 export function createGalleryAssetUri(
   relativePath: string,
+  ownProjected?: ProjectedOwnership['ownProjected'],
 ): Uri {
   const assetRoot = process.cwd().replaceAll('\\', '/')
-  return createUri(
+  const uri = createUri(
     Uri,
     encodeURI(`file:///${assetRoot}/Assets/${relativePath}`),
   )
+  return ownProjected ? ownProjected(uri) : uri
 }
 
 export function loadGalleryBitmap(
   relativePath: string,
   decodePixelWidth: number,
+  ownProjected?: ProjectedOwnership['ownProjected'],
 ): BitmapImageInstance {
-  return createBitmapImage(
+  const bitmap = createBitmapImage(
     BitmapImage,
-    createGalleryAssetUri(relativePath),
+    createGalleryAssetUri(relativePath, ownProjected),
     { decodePixelWidth },
   )
+  return ownProjected ? ownProjected(bitmap) : bitmap
 }
 
 export function loadGallerySvg(

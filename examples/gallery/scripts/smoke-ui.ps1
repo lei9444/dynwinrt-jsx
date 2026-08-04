@@ -11,6 +11,7 @@ param(
     [switch]$ShellOnly,
     [switch]$MotionOnly,
     [switch]$CategoryOnly,
+    [switch]$DesignOnly,
     [switch]$ControlledOnly,
     [ValidateSet("pivot", "tab-view", "semantic-zoom", "tree-view")]
     [string]$ControlledRoute = "pivot",
@@ -24,6 +25,67 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if (-not ([System.Management.Automation.PSTypeName]"GallerySmokeNativeMethods").Type) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class GallerySmokeNativeMethods
+{
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetDpiForWindow(IntPtr hWnd);
+}
+"@
+}
+
+function Set-GalleryWindowSize(
+    [int64]$WindowHandle,
+    [int]$Width,
+    [int]$Height
+) {
+    $changed = [GallerySmokeNativeMethods]::SetWindowPos(
+        [IntPtr]$WindowHandle,
+        [IntPtr]::Zero,
+        0,
+        0,
+        $Width,
+        $Height,
+        0x0016
+    )
+    if (-not $changed) {
+        throw "SetWindowPos failed for Gallery window $WindowHandle."
+    }
+    Start-Sleep -Milliseconds 350
+}
+
+function Set-GalleryWindowEffectiveSize(
+    [int64]$WindowHandle,
+    [int]$Width,
+    [int]$Height
+) {
+    $dpi = [GallerySmokeNativeMethods]::GetDpiForWindow(
+        [IntPtr]$WindowHandle
+    )
+    if ($dpi -eq 0) {
+        throw "GetDpiForWindow failed for Gallery window $WindowHandle."
+    }
+    $scale = $dpi / 96.0
+    Set-GalleryWindowSize `
+        $WindowHandle `
+        ([Math]::Round($Width * $scale)) `
+        ([Math]::Round($Height * $scale))
+}
 
 $galleryRoot = Split-Path $PSScriptRoot -Parent
 $repoRoot = Split-Path (Split-Path $galleryRoot -Parent) -Parent
@@ -388,6 +450,8 @@ $stdoutPath = Join-Path $evidenceRoot "gallery.stdout.log"
 $stderrPath = Join-Path $evidenceRoot "gallery.stderr.log"
 $screenshotPath = Join-Path $evidenceRoot "gallery.png"
 $homeScreenshotPath = Join-Path $evidenceRoot "home.png"
+$allWideScreenshotPath = Join-Path $evidenceRoot "all-wide.png"
+$allNarrowScreenshotPath = Join-Path $evidenceRoot "all-narrow.png"
 $categoryScreenshotPath = Join-Path $evidenceRoot "basic-input-category.png"
 $collectionsCategoryScreenshotPath = Join-Path $evidenceRoot "collections-category.png"
 $dateTimeCategoryScreenshotPath = Join-Path $evidenceRoot "date-time-category.png"
@@ -896,7 +960,165 @@ try {
         return
     }
 
-    if (-not ($ClipboardOnly -or $SystemOnly -or $ShellOnly)) {
+    if (-not (
+        $ClipboardOnly -or
+        $SystemOnly -or
+        $ShellOnly -or
+        $DesignOnly
+    )) {
+    Ensure-NavigationItem $windowHandle "GalleryAllControlsNavItem"
+    Invoke-WinApp @(
+        "ui", "invoke", "GalleryAllControlsNavItem",
+        "-w", "$windowHandle"
+    )
+    Invoke-WinApp @(
+        "ui", "wait-for", "AllControlsPageHeading",
+        "-w", "$windowHandle",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    Set-GalleryWindowEffectiveSize $windowHandle 1280 820
+    Invoke-WinApp @(
+        "ui", "wait-for", "AllControlsPageHeading",
+        "-w", "$windowHandle",
+        "--property", "HelpText",
+        "--value", "Catalog layout: wide;",
+        "--contains",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $allWideLayoutJson = Invoke-WinApp @(
+        "ui", "get-property", "AllControlsPageHeading",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allWideLayout = (
+        $allWideLayoutJson | ConvertFrom-Json
+    ).properties.HelpText
+    if (
+        [string]$allWideLayout -notmatch
+        "^Catalog layout: wide; columns=[2-9][0-9]*; cardWidth=300; cardHeight=96$"
+    ) {
+        throw "The All catalog did not report a wide multi-column layout: '$allWideLayout'."
+    }
+    $allWideJson = Invoke-WinApp @(
+        "ui", "search", "Open AcrylicBrush",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allWideCard = @(
+        ($allWideJson | ConvertFrom-Json).matches
+    ) | Where-Object {
+        $_.type -eq "Button" -and
+        $_.name -eq "Open AcrylicBrush"
+    } | Select-Object -First 1
+    $allWideAnimatedJson = Invoke-WinApp @(
+        "ui", "search", "Open AnimatedIcon",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allWideAnimated = @(
+        ($allWideAnimatedJson | ConvertFrom-Json).matches
+    ) | Where-Object {
+        $_.type -eq "Button" -and
+        $_.name -eq "Open AnimatedIcon"
+    } | Select-Object -First 1
+    if (
+        -not $allWideCard -or
+        -not $allWideAnimated -or
+        [Math]::Abs(
+            [double]$allWideCard.y -
+            [double]$allWideAnimated.y
+        ) -gt 1 -or
+        [Math]::Abs(
+            [double]$allWideCard.x -
+            [double]$allWideAnimated.x
+        ) -lt 1
+    ) {
+        throw "The wide All catalog did not place its first cards in one row."
+    }
+    $webViewJson = Invoke-WinApp @(
+        "ui", "search", "Open WebView2",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $webViewCard = @(
+        ($webViewJson | ConvertFrom-Json).matches
+    ) | Where-Object {
+        $_.type -eq "Button" -and
+        $_.name -eq "Open WebView2"
+    } | Select-Object -First 1
+    if (-not $webViewCard -or $webViewCard.isEnabled) {
+        throw "The deferred WebView2 catalog card was not disabled."
+    }
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $allWideScreenshotPath
+    )
+
+    Set-GalleryWindowEffectiveSize $windowHandle 640 820
+    Invoke-WinApp @(
+        "ui", "wait-for", "AllControlsPageHeading",
+        "-w", "$windowHandle",
+        "--property", "HelpText",
+        "--value", "Catalog layout: narrow;",
+        "--contains",
+        "--timeout", "$TimeoutMilliseconds"
+    )
+    $allNarrowLayoutJson = Invoke-WinApp @(
+        "ui", "get-property", "AllControlsPageHeading",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allNarrowLayout = (
+        $allNarrowLayoutJson | ConvertFrom-Json
+    ).properties.HelpText
+    if (
+        [string]$allNarrowLayout -notmatch
+        "^Catalog layout: narrow; columns=1; cardWidth=[0-9]+; cardHeight=120$"
+    ) {
+        throw "The All catalog did not report a narrow one-column layout: '$allNarrowLayout'."
+    }
+    $allNarrowAcrylicJson = Invoke-WinApp @(
+        "ui", "search", "Open AcrylicBrush",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allNarrowAnimatedJson = Invoke-WinApp @(
+        "ui", "search", "Open AnimatedIcon",
+        "-w", "$windowHandle",
+        "--json"
+    ) -Capture
+    $allNarrowAcrylic = @(
+        ($allNarrowAcrylicJson | ConvertFrom-Json).matches
+    ) | Where-Object {
+        $_.type -eq "Button" -and
+        $_.name -eq "Open AcrylicBrush"
+    } | Select-Object -First 1
+    $allNarrowAnimated = @(
+        ($allNarrowAnimatedJson | ConvertFrom-Json).matches
+    ) | Where-Object {
+        $_.type -eq "Button" -and
+        $_.name -eq "Open AnimatedIcon"
+    } | Select-Object -First 1
+    if (
+        -not $allNarrowAcrylic -or
+        -not $allNarrowAnimated -or
+        [Math]::Abs(
+            [double]$allNarrowAcrylic.x -
+            [double]$allNarrowAnimated.x
+        ) -gt 1 -or
+        [double]$allNarrowAnimated.y -le
+        [double]$allNarrowAcrylic.y
+    ) {
+        throw "The narrow All catalog did not switch to one-column 120px cards."
+    }
+    Invoke-WinApp @(
+        "ui", "screenshot",
+        "-w", "$windowHandle",
+        "--output", $allNarrowScreenshotPath
+    )
+    Set-GalleryWindowSize $windowHandle $window.width $window.height
+
     Ensure-NavigationItem $windowHandle "GalleryBasicInputCategoryNavItem"
     Invoke-WinApp @(
         "ui", "invoke", "GalleryBasicInputCategoryNavItem",
@@ -1493,9 +1715,9 @@ try {
         [pscustomobject]@{ Name = "Open Custom & User Controls"; Heading = "CustomUserControlsPageHeading"; Probe = "GalleryCustomControlsSample"; Query = "custom user controls" },
         [pscustomobject]@{ Name = "Open XAML Conditions"; Heading = "XamlConditionsPageHeading"; Probe = "GalleryXamlConditionsSample"; Query = "xaml conditions" },
         [pscustomobject]@{ Name = "Open Scratch Pad"; Heading = "ScratchPadPageHeading"; Probe = "GalleryScratchPadSample"; Query = "scratch pad playground" },
-        [pscustomobject]@{ Name = "Open Color"; Heading = "ColorPageHeading"; Probe = "GalleryDesignColorSample"; Query = "color palette" },
+        [pscustomobject]@{ Name = "Open Color"; Heading = "ColorPageHeading"; Probe = "Copy TextFillColorPrimaryBrush"; Query = "color palette" },
         [pscustomobject]@{ Name = "Open Geometry"; Heading = "GeometryPageHeading"; Probe = "GalleryDesignGeometrySample"; Query = "geometry corner radius" },
-        [pscustomobject]@{ Name = "Open Iconography"; Heading = "IconographyPageHeading"; Probe = "GalleryIconographySample"; Query = "iconography symbolicon" },
+        [pscustomobject]@{ Name = "Open Iconography"; Heading = "IconographyPageHeading"; Probe = "GalleryIconographySearch"; Query = "iconography symbolicon" },
         [pscustomobject]@{ Name = "Open Spacing"; Heading = "SpacingPageHeading"; Probe = "GalleryDesignSpacingSample"; Query = "spacing padding" },
         [pscustomobject]@{ Name = "Open Typography"; Heading = "TypographyPageHeading"; Probe = "GalleryDesignTypographySample"; Query = "typography hierarchy" },
         [pscustomobject]@{ Name = "Open Color Contrast"; Heading = "ColorContrastPageHeading"; Probe = "GalleryAccessibilityContrastSample"; Query = "color contrast wcag" },
@@ -1549,6 +1771,17 @@ try {
         }
         $routes = @($routes | Where-Object {
             $_.Heading -in $windowingHeadings
+        })
+    }
+    elseif ($DesignOnly) {
+        $routes = @($routes | Where-Object {
+            $_.Heading -in @(
+                "ColorPageHeading",
+                "GeometryPageHeading",
+                "IconographyPageHeading",
+                "SpacingPageHeading",
+                "TypographyPageHeading"
+            )
         })
     }
     if ($CategoryOnly) {
@@ -3539,23 +3772,33 @@ try {
         }
         if ($route.Heading -eq "ColorPageHeading") {
             Invoke-WinApp @(
-                "ui", "scroll-into-view", "GalleryDesignColorTextSecondary",
+                "ui", "scroll-into-view", "Copy TextFillColorSecondaryBrush",
                 "-w", "$windowHandle"
             )
             Invoke-WinApp @(
-                "ui", "invoke", "GalleryDesignColorTextSecondary",
+                "ui", "invoke", "Copy TextFillColorSecondaryBrush",
                 "-w", "$windowHandle"
             )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Selected color: Text / Secondary",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
+            $colorClipboard = ""
+            $colorClipboardDeadline = [DateTime]::UtcNow.AddMilliseconds(
+                $TimeoutMilliseconds
             )
-            Invoke-WinApp @(
-                "ui", "wait-for", "Native brush applied: TextFillColorSecondaryBrush",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
-            )
+            while ([DateTime]::UtcNow -lt $colorClipboardDeadline) {
+                $colorClipboard = [string](Get-Clipboard -Raw)
+                if (
+                    $colorClipboard.Trim() -ceq
+                    "TextFillColorSecondaryBrush"
+                ) {
+                    break
+                }
+                Start-Sleep -Milliseconds 100
+            }
+            if (
+                $colorClipboard.Trim() -cne
+                "TextFillColorSecondaryBrush"
+            ) {
+                throw "Color did not copy the selected WinUI brush resource."
+            }
         }
         if ($route.Heading -eq "GeometryPageHeading") {
             Invoke-WinApp @(
@@ -3566,15 +3809,23 @@ try {
                 "ui", "invoke", "GalleryDesignGeometryControl",
                 "-w", "$windowHandle"
             )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryDesignGeometryControl",
+                "-w", "$windowHandle",
+                "--property", "Name",
+                "--value", "Native corner radius: 4",
+                "--contains",
+                "--timeout", "$TimeoutMilliseconds"
+            )
             $geometryNativeJson = Invoke-WinApp @(
-                "ui", "inspect", "GalleryDesignGeometryNativeStatus",
+                "ui", "inspect", "GalleryDesignGeometryControl",
                 "-w", "$windowHandle",
                 "--json"
             ) -Capture
             $geometryNative = $geometryNativeJson | ConvertFrom-Json
             if (
-                [string]$geometryNative.windows[0].elements[0].name -ne
-                "Native corner radius: 4"
+                [string]$geometryNative.windows[0].elements[0].name -notmatch
+                "Native corner radius: 4$"
             ) {
                 throw "Geometry did not apply the native 4px control radius."
             }
@@ -3640,15 +3891,23 @@ try {
                 "ui", "invoke", "GalleryDesignTypographyTitle",
                 "-w", "$windowHandle"
             )
+            Invoke-WinApp @(
+                "ui", "wait-for", "GalleryDesignTypographyTitle",
+                "-w", "$windowHandle",
+                "--property", "Name",
+                "--value", "Native title font size: 28",
+                "--contains",
+                "--timeout", "$TimeoutMilliseconds"
+            )
             $typographyNativeJson = Invoke-WinApp @(
-                "ui", "inspect", "GalleryDesignTypographyNativeStatus",
+                "ui", "inspect", "GalleryDesignTypographyTitle",
                 "-w", "$windowHandle",
                 "--json"
             ) -Capture
             $typographyNative = $typographyNativeJson | ConvertFrom-Json
             if (
-                [string]$typographyNative.windows[0].elements[0].name -ne
-                "Native title font size: 28"
+                [string]$typographyNative.windows[0].elements[0].name -notmatch
+                "Native title font size: 28$"
             ) {
                 throw "The Title type-ramp row did not use a native size of 28."
             }
@@ -4093,6 +4352,35 @@ try {
             $windowHandle
         $windowHandle = 0
         Write-Host "Gallery Windowing UI smoke passed. Evidence: $evidenceRoot"
+        return
+    }
+
+    if ($DesignOnly) {
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryRenderError",
+            "-w", "$windowHandle",
+            "--gone",
+            "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-WinApp @(
+            "ui", "invoke", "Close",
+            "-w", "$windowHandle"
+        )
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds)) {
+            throw "The Gallery did not exit after Design smoke."
+        }
+        $windowHandle = 0
+        if ($appProcess.ExitCode -ne 0) {
+            throw "The Gallery Design smoke exited with code $($appProcess.ExitCode)."
+        }
+        $stdout = Get-Content $stdoutPath -Raw
+        if ($stdout -notmatch "renderer disposed cleanly") {
+            throw "The Gallery Design smoke did not report clean renderer disposal."
+        }
+        if (Test-Path $heartbeatEvidencePath) {
+            throw "The Gallery Design smoke produced heartbeat timeout evidence."
+        }
+        Write-Host "Gallery Design smoke passed. Evidence: $evidenceRoot"
         return
     }
 

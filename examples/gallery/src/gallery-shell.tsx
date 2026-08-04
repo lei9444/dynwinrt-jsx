@@ -106,6 +106,7 @@ export function Shell(context: AppContext) {
         },
         {
           name: 'all-controls',
+          routeId: 'all-controls',
           label: 'All',
           order: 61,
           createIcon: () =>

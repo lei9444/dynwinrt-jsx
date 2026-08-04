@@ -6,6 +6,7 @@ const path = require('node:path')
 const test = require('node:test')
 
 const {
+  allControlsPages,
   galleryPages,
 } = require('../dist/gallery-data.js')
 
@@ -90,6 +91,101 @@ test('page route modules keep page implementations lazy', () => {
   )
   assert.equal(
     [...rootRoutes.matchAll(/\bcreateLazyComponent\(/g)].length,
-    3,
+    4,
+  )
+})
+
+test('All controls matches the original regular catalog', () => {
+  assert.equal(allControlsPages.length, 105)
+  assert.deepEqual(
+    allControlsPages.map((page) => page.title),
+    [...allControlsPages]
+      .map((page) => page.title)
+      .sort((left, right) => left.localeCompare(right)),
+  )
+  for (const category of [
+    'Framework',
+    'Fundamentals',
+    'Design',
+    'Accessibility',
+  ]) {
+    assert.equal(
+      allControlsPages.some(
+        (page) => page.category === category,
+      ),
+      false,
+    )
+  }
+  const webView = allControlsPages.find(
+    (page) => page.title === 'WebView2',
+  )
+  assert.equal(webView.enabled, false)
+})
+
+test('All navigation item targets the All route', () => {
+  const shellSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'src',
+      'gallery-shell.tsx',
+    ),
+    'utf8',
+  )
+  assert.match(
+    shellSource,
+    /name:\s*'all-controls',\s*routeId:\s*'all-controls'/s,
+  )
+})
+
+test('Color sections retain the complete original guidance catalog', () => {
+  const colorSections = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        'src',
+        'pages',
+        'design',
+        'color-sections-data.json',
+      ),
+      'utf8',
+    ),
+  )
+  const expected = {
+    Text: { groups: 3, tiles: 12 },
+    Fill: { groups: 7, tiles: 28 },
+    Stroke: { groups: 7, tiles: 21 },
+    Background: { groups: 9, tiles: 24 },
+    Signal: { groups: 1, tiles: 13 },
+  }
+
+  for (const [section, counts] of Object.entries(expected)) {
+    const groups = colorSections[section]
+    const tiles = groups.flatMap((group) =>
+      group.grids.flatMap((grid) => grid.tiles),
+    )
+    assert.equal(groups.length, counts.groups)
+    assert.equal(tiles.length, counts.tiles)
+    assert.equal(
+      tiles.every(
+        (tile) =>
+          tile.resource.length > 0 ||
+          (
+            tile.backdrop &&
+            tile.label.length > 0
+          ),
+      ),
+      true,
+    )
+  }
+
+  assert.deepEqual(
+    colorSections.Text.map((group) => group.title),
+    ['Text', 'Accent Text', 'Text On Accent'],
+  )
+  assert.equal(
+    colorSections.Signal[0].grids.at(-1).tiles.at(-1).resource,
+    'SystemFillColorSolidAttentionBackgroundBrush',
   )
 })

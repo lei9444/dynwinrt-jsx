@@ -10,6 +10,7 @@ export interface GalleryLaunchIntent {
 
 const categoryRoutes = new Set<GalleryRoute>([
   'home',
+  'all-controls',
   'search',
   'category-basic-input',
   'category-collections',

@@ -40,6 +40,12 @@ import { createStylesRoutes } from './styles/routes'
 const SearchPage = createLazyComponent(
   () => (require('./search') as typeof import('./search')).SearchPage,
 )
+const AllControlsPage = createLazyComponent(
+  () => (
+    require('./all-controls') as
+      typeof import('./all-controls')
+  ).AllControlsPage,
+)
 const DiagnosticsPage = createLazyComponent(
   () => (require('./diagnostics') as typeof import('./diagnostics')).DiagnosticsPage,
 )
@@ -309,6 +315,12 @@ export function createGalleryRoutes(
       path: '/search',
       parentId: 'home',
       render: () => <SearchPage {...context} />,
+    },
+    {
+      id: 'all-controls',
+      path: '/all',
+      parentId: 'home',
+      render: () => <AllControlsPage {...context} />,
     },
     {
       id: 'diagnostics',
