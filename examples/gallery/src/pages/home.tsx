@@ -26,12 +26,14 @@ import {
   SolidColorBrush,
   Stretch,
   Symbol,
+  SymbolIcon,
   TextWrapping,
   VerticalAlignment,
   Visibility,
 } from '#winapp/bindings'
 import {
   type AppContext,
+  GallerySelectorBar,
   LayoutGrid,
   type ScrollViewerInstance,
   UI,
@@ -151,88 +153,6 @@ function HomeHorizontalScroller(props: {
   )
 }
 
-function HomeSectionButton(props: {
-  readonly selected: ReadonlySignal<boolean>
-  readonly automationId: string
-  readonly symbol: Symbol
-  readonly text: string
-  readonly onClick: () => void
-}) {
-  const pointerOver = signal(false)
-  const transparentBrush = createSolidColorBrush(
-    SolidColorBrush,
-    color(0, 0, 0, 0),
-  )
-  const background = computed(() => {
-    if (props.selected.value) {
-      return pointerOver.value
-        ? theme.accentSecondary
-        : theme.accent
-    }
-    return pointerOver.value
-      ? theme.controlFillSecondary
-      : theme.controlFill
-  })
-  const borderBrush = computed(() =>
-    props.selected.value
-      ? pointerOver.value
-        ? theme.accentSecondary
-        : theme.accent
-      : theme.controlStroke,
-  )
-  const foreground = computed(() =>
-    props.selected.value
-      ? theme.textOnAccent
-      : theme.primaryText,
-  )
-  const buttonResources = computed(() => ({
-    ButtonBackgroundPointerOver: transparentBrush,
-    ButtonBackgroundPressed: transparentBrush,
-    ButtonBorderBrushPointerOver: transparentBrush,
-    ButtonBorderBrushPressed: transparentBrush,
-    ButtonForegroundPointerOver: props.selected.value
-      ? theme.textOnAccent
-      : theme.primaryText,
-    ButtonForegroundPressed: props.selected.value
-      ? theme.textOnAccent
-      : theme.secondaryText,
-  }))
-  return (
-    <UI.Border
-      background={background}
-      borderBrush={borderBrush}
-      borderThickness={thickness(1)}
-      cornerRadius={tokens.radius.control}
-    >
-      <UI.Button
-        automationId={props.automationId}
-        padding={thickness(23, 5, 23, 6)}
-        background={transparentBrush}
-        borderBrush={transparentBrush}
-        borderThickness={thickness(0)}
-        cornerRadius={tokens.radius.control}
-        foreground={foreground}
-        resourceOverrides={buttonResources}
-        onPointerEntered={() => {
-          pointerOver.value = true
-        }}
-        onPointerExited={() => {
-          pointerOver.value = false
-        }}
-        onClick={props.onClick}
-      >
-        <UI.StackPanel
-          orientation={Orientation.Horizontal}
-          spacing={8}
-        >
-          <UI.SymbolIcon symbol={props.symbol} />
-          <UI.TextBlock text={props.text} />
-        </UI.StackPanel>
-      </UI.Button>
-    </UI.Border>
-  )
-}
-
 export function HomePage(context: AppContext) {
   const scheduleFrame =
     createCompositionFrameScheduler(
@@ -303,6 +223,18 @@ export function HomePage(context: AppContext) {
     'GalleryHeaderImage.png',
     1600,
   )
+  const ratingImage = loadGalleryBitmap(
+    'ControlImages/RatingControl.png',
+    72,
+  )
+  const recentIcon = context.createProjected(
+    () => new SymbolIcon(),
+  )
+  recentIcon.symbol = Symbol.Clock
+  const favoritesIcon = context.createProjected(
+    () => new SymbolIcon(),
+  )
+  favoritesIcon.symbol = Symbol.Favorite
   const featureTiles = [
     {
       title: 'Getting started',
@@ -462,33 +394,28 @@ export function HomePage(context: AppContext) {
         <UI.StackPanel
           padding={thickness(36, 0, 36, 0)}
           spacing={tokens.spacing.xl}
-          maxWidth={1112}
           horizontalAlignment={HorizontalAlignment.Stretch}
         >
-          <UI.StackPanel
-            orientation={Orientation.Horizontal}
-            spacing={8}
+          <GallerySelectorBar
+            automationId="GalleryHomeSelector"
+            selectedIndex={selectedSection}
+            onSelectedIndexChange={(index) => {
+              selectedSection.value = index
+            }}
+            margin={thickness(36, 24, 0, 16)}
             horizontalAlignment={HorizontalAlignment.Center}
           >
-            <HomeSectionButton
-              selected={recentSelected}
+            <UI.SelectorBarItem
               automationId="GalleryRecentSelector"
-              symbol={Symbol.Clock}
+              icon={recentIcon}
               text="Recent"
-              onClick={() => {
-                selectedSection.value = 0
-              }}
             />
-            <HomeSectionButton
-              selected={favoritesSelected}
+            <UI.SelectorBarItem
               automationId="GalleryFavoritesSelector"
-              symbol={Symbol.Favorite}
+              icon={favoritesIcon}
               text="Favorites"
-              onClick={() => {
-                selectedSection.value = 1
-              }}
             />
-          </UI.StackPanel>
+          </GallerySelectorBar>
           <Show when={computed(
             () => selectedSection.value === 0,
           )}>
@@ -569,10 +496,14 @@ export function HomePage(context: AppContext) {
                 () => favoritePages.value.length > 0,
               )}
               fallback={
-                <Card>
-                  <UI.StackPanel spacing={8}>
-                    <UI.SymbolIcon
-                      symbol={Symbol.OutlineStar}
+                <UI.StackPanel
+                  margin={thickness(24, 36)}
+                  spacing={8}
+                  horizontalAlignment={HorizontalAlignment.Center}
+                >
+                    <UI.Image
+                      height={36}
+                      source={ratingImage}
                     />
                     <UI.TextBlock
                       {...styles.heading({
@@ -582,11 +513,11 @@ export function HomePage(context: AppContext) {
                     />
                     <UI.TextBlock
                       foreground={theme.secondaryText}
-                      text="Open a sample and use the star in its page header."
+                      text="Favorite samples by clicking the star icon on the sample page."
+                      textAlignment={1}
                       textWrapping={TextWrapping.Wrap}
                     />
-                  </UI.StackPanel>
-                </Card>
+                </UI.StackPanel>
               }
             >
               <UI.StackPanel spacing={tokens.spacing.md}>

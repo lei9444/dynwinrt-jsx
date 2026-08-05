@@ -126,7 +126,7 @@ export function CalendarViewPage(context: AppContext) {
                 selectionModeIndex.value = index
                 context.model.recordInteraction()
               }}
-              width={220}
+              minWidth={180}
             >
               {selectionModes.map((mode) => (
                 <UI.TextBlock key={mode.name} text={mode.name} />
@@ -140,7 +140,7 @@ export function CalendarViewPage(context: AppContext) {
                 calendarIdentifierIndex.value = index
                 context.model.recordInteraction()
               }}
-              width={220}
+              minWidth={180}
             >
               {calendarIdentifiers.map((identifier) => (
                 <UI.TextBlock
@@ -157,7 +157,7 @@ export function CalendarViewPage(context: AppContext) {
                 languageIndex.value = index
                 context.model.recordInteraction()
               }}
-              width={220}
+              minWidth={180}
             >
               {calendarLanguages.map(([name, code]) => (
                 <UI.TextBlock

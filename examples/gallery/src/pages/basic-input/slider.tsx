@@ -119,7 +119,6 @@ const value = signal(25)
             maximum={maximum}
             stepFrequency={stepFrequency}
             smallChange={smallChange}
-            width={320}
             onValueChanged={() => update(rangeSlider, rangeValue)}
           />
           <UI.TextBlock
@@ -129,7 +128,7 @@ const value = signal(25)
             <UI.NumberBox
               header="Minimum"
               value={minimum}
-              width={180}
+              minWidth={160}
               onValueChanged={(sender) =>
                 updateNumber(
                   sender,
@@ -146,7 +145,7 @@ const value = signal(25)
             <UI.NumberBox
               header="Maximum"
               value={maximum}
-              width={180}
+              minWidth={160}
               onValueChanged={(sender) =>
                 updateNumber(
                   sender,
@@ -164,7 +163,7 @@ const value = signal(25)
               header="StepFrequency"
               value={stepFrequency}
               minimum={1}
-              width={180}
+              minWidth={160}
               onValueChanged={(sender) =>
                 updateNumber(
                   sender,
@@ -177,7 +176,7 @@ const value = signal(25)
               header="SmallChange"
               value={smallChange}
               minimum={1}
-              width={180}
+              minWidth={160}
               onValueChanged={(sender) =>
                 updateNumber(
                   sender,

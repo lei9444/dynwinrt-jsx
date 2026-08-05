@@ -84,7 +84,7 @@ const selectedIndex = signal(0)
             }}
             header={<UI.TextBlock text="Color" />}
             placeholderText="Pick a color"
-            width={240}
+            minWidth={200}
           >
             {colors.map((name) => (
               <UI.TextBlock
@@ -121,7 +121,7 @@ const fontIndex = signal(2)
               context.model.recordInteraction()
             }}
             header={<UI.TextBlock text="Font" />}
-            minWidth={240}
+            minWidth={200}
           >
             {fonts.map((font) => (
               <UI.TextBlock key={font.name} text={font.name} />
@@ -153,7 +153,7 @@ const fontIndex = signal(2)
             isEditable
             selectedIndex={2}
             header={<UI.TextBlock text="Font size" />}
-            width={240}
+            minWidth={200}
             onTextSubmitted={(sender, args) => {
               const size = Number(args.text)
               const valid =

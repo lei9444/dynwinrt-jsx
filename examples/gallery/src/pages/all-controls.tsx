@@ -3,40 +3,144 @@ import {
   gridLength,
   signal,
   styles,
+  theme,
   thickness,
   tokens,
+  type MaybeSignal,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
-  ScrollBarVisibility,
+  ItemsView,
+  ItemsViewSelectionMode,
+  Orientation,
+  Stretch,
+  TextTrimming,
+  TextWrapping,
+  UniformGridLayout,
+  VerticalAlignment,
 } from '#winapp/bindings'
 import {
+  GalleryItemsView,
   LayoutGrid,
   UI,
   type AppContext,
-  type ScrollViewerInstance,
 } from '../gallery-ui'
 import {
   allControlsPages,
   type GalleryPageInfo,
+  type GalleryRoute,
 } from '../gallery-data'
-import { PageLink } from '../components/gallery-components'
+import { loadGalleryBitmap } from '../gallery-assets'
 
 type CatalogItem = GalleryPageInfo & {
   readonly enabled: boolean
 }
 
+function CatalogCard(props: {
+  readonly context: AppContext
+  readonly page: CatalogItem
+  readonly width: MaybeSignal<number>
+  readonly height: MaybeSignal<number>
+}) {
+  const image = loadGalleryBitmap(
+    props.page.image,
+    32,
+    props.context.ownProjected,
+  )
+  return (
+    <UI.Button
+      automationId={`GalleryOpenPage-${props.page.id}`}
+      automationName={`Open ${props.page.title}`}
+      isEnabled={props.page.enabled}
+      width={props.width}
+      height={props.height}
+      padding={thickness(8)}
+      background={theme.controlFill}
+      borderBrush={theme.cardStroke}
+      borderThickness={thickness(1)}
+      cornerRadius={tokens.radius.overlay}
+      horizontalContentAlignment={HorizontalAlignment.Stretch}
+      onClick={() => {
+        if (props.page.enabled) {
+          props.context.model.navigate(
+            props.page.id as GalleryRoute,
+          )
+        }
+      }}
+    >
+      <LayoutGrid
+        columnDefinitions={[
+          gridLength.pixel(56),
+          gridLength.star(),
+        ]}
+        rowDefinitions={[
+          gridLength.auto(),
+          gridLength.auto(),
+        ]}
+      >
+        <UI.Border
+          gridRowSpan={2}
+          width={32}
+          height={32}
+          margin={thickness(8, 12, 16, 0)}
+          verticalAlignment={VerticalAlignment.Top}
+        >
+          <UI.Image
+            source={image}
+            stretch={Stretch.Uniform}
+            width={32}
+            height={32}
+          />
+        </UI.Border>
+        <UI.TextBlock
+          {...styles.heading({ level: 'bodyStrong' })}
+          gridColumn={1}
+          margin={thickness(0, 12, 0, 0)}
+          verticalAlignment={VerticalAlignment.Bottom}
+          text={props.page.title}
+          textWrapping={TextWrapping.NoWrap}
+        />
+        <UI.TextBlock
+          gridRow={1}
+          gridColumn={1}
+          margin={thickness(0, 0, 10, 10)}
+          verticalAlignment={VerticalAlignment.Top}
+          foreground={theme.secondaryText}
+          text={props.page.description}
+          textTrimming={TextTrimming.CharacterEllipsis}
+          textWrapping={TextWrapping.NoWrap}
+        />
+      </LayoutGrid>
+    </UI.Button>
+  )
+}
+
 export function AllControlsPage(context: AppContext) {
-  const scrollViewer: RefObject<ScrollViewerInstance> = {
+  const itemsView: RefObject<ItemsView> = {
     current: null,
   }
   const layoutWidth = signal(1100)
+  const layout = context.createProjected(
+    () => new UniformGridLayout(),
+  )
+  layout.orientation = Orientation.Horizontal
+  layout.minItemWidth = 300
+  layout.minItemHeight = 96
+  layout.minColumnSpacing = 12
+  layout.minRowSpacing = 12
+
   const updateLayout = () => {
-    const width = scrollViewer.current?.actualWidth
-    if (width !== undefined && width > 0) {
-      layoutWidth.value = width
+    const width = itemsView.current?.actualWidth
+    if (width === undefined || width <= 0) {
+      return
     }
+    layoutWidth.value = width
+    const isNarrow = width < 640
+    layout.minItemWidth = isNarrow
+      ? Math.max(0, width - 32)
+      : 300
+    layout.minItemHeight = isNarrow ? 120 : 96
   }
   const narrow = computed(() => layoutWidth.value < 640)
   const columnCount = computed(() => {
@@ -45,31 +149,9 @@ export function AllControlsPage(context: AppContext) {
     }
     return Math.max(
       1,
-      Math.floor(
-        (layoutWidth.value - 48 + 12) / 312,
-      ),
+      Math.floor((layoutWidth.value - 48 + 12) / 312),
     )
   })
-  const columns = computed(() =>
-    Array.from(
-      { length: columnCount.value },
-      () =>
-        narrow.value
-          ? gridLength.star()
-          : gridLength.pixel(300),
-    ),
-  )
-  const rows = computed(() =>
-    Array.from(
-      {
-        length: Math.ceil(
-          allControlsPages.length /
-          columnCount.value,
-        ),
-      },
-      () => gridLength.auto(),
-    ),
-  )
   const cardWidth = computed(() =>
     narrow.value
       ? Math.max(0, layoutWidth.value - 32)
@@ -105,54 +187,34 @@ export function AllControlsPage(context: AppContext) {
         )}
         text="Controls"
       />
-      <UI.ScrollViewer
-        ref={scrollViewer}
+      <GalleryItemsView
+        ref={itemsView}
+        automationId="ItemGridView"
+        automationName="Items In Group"
         gridRow={1}
-        horizontalScrollBarVisibility={
-          ScrollBarVisibility.Disabled
-        }
-        verticalScrollBarVisibility={
-          ScrollBarVisibility.Auto
-        }
+        each={allControlsPages}
+        key={(page) => page.id}
+        layout={layout}
+        selectionMode={ItemsViewSelectionMode.None}
+        isItemInvokedEnabled={false}
+        padding={computed(() =>
+          narrow.value
+            ? thickness(16, 16, 16, 36)
+            : thickness(24, 16, 24, 36),
+        )}
+        horizontalAlignment={HorizontalAlignment.Stretch}
         onLoaded={updateLayout}
         onSizeChanged={updateLayout}
       >
-        <LayoutGrid
-          automationId="ItemGridView"
-          automationName="Items In Group"
-          padding={computed(() =>
-            narrow.value
-              ? thickness(16, 16, 16, 36)
-              : thickness(24, 16, 24, 36),
-          )}
-          columnDefinitions={columns}
-          rowDefinitions={rows}
-          rowSpacing={12}
-          columnSpacing={12}
-          horizontalAlignment={HorizontalAlignment.Stretch}
-        >
-          {allControlsPages.map((page, index) => (
-            <PageLink
-              key={page.id}
-              page={page as GalleryPageInfo}
-              model={context.model}
-              catalog
-              enabled={(page as CatalogItem).enabled}
-              ownProjected={context.ownProjected}
-              width={cardWidth}
-              height={cardHeight}
-              gridRow={computed(() =>
-                Math.floor(
-                  index / columnCount.value,
-                ),
-              )}
-              gridColumn={computed(() =>
-                index % columnCount.value,
-              )}
-            />
-          ))}
-        </LayoutGrid>
-      </UI.ScrollViewer>
+        {(page) => (
+          <CatalogCard
+            context={context}
+            page={page as CatalogItem}
+            width={cardWidth}
+            height={cardHeight}
+          />
+        )}
+      </GalleryItemsView>
     </LayoutGrid>
   )
 }

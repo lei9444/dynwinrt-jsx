@@ -665,6 +665,7 @@ export function CategoryPage(props: {
             key={page.id}
             page={page}
             model={props.model}
+            catalog
             height={computed(() =>
               columnCount.value === 1 ? 120 : 96,
             )}

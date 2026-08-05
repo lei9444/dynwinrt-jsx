@@ -149,7 +149,6 @@ const controller = showPopup(renderer, popup, <PopupContent />, {
               popup,
               <UI.Border
                 {...styles.card({ surface: 'layer' })}
-                minWidth={240}
                 padding={thickness(16)}
               >
                 <UI.StackPanel spacing={8}>

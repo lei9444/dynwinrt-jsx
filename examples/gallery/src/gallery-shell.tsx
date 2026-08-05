@@ -16,6 +16,7 @@ import {
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
+  AccessibilityView,
   Application,
   ApplicationTheme,
   AutomationProperties,
@@ -33,6 +34,7 @@ import {
   TextWrapping,
   TitleBarTheme,
   VerticalAlignment,
+  Visibility,
 } from '#winapp/bindings'
 import {
   type AppContext,
@@ -99,12 +101,6 @@ export function Shell(context: AppContext) {
       routes,
       items: [
         {
-          name: 'controls-header',
-          label: 'Controls',
-          order: 60,
-          automationId: 'GalleryControlsHeader',
-        },
-        {
           name: 'all-controls',
           routeId: 'all-controls',
           label: 'All',
@@ -121,13 +117,48 @@ export function Shell(context: AppContext) {
       preservePaneOpenOnSelection: true,
       enqueue: (callback) =>
         context.window.dispatcherQueue.tryEnqueue(
-          DispatcherQueuePriority.Low,
+          DispatcherQueuePriority.Normal,
           callback,
         ),
       createProjectedOwner:
         context.createProjectedOwner,
     })
   onCleanup(navigationShell.dispose)
+  const controlsHeader = context.createProjected(
+    () => new NavigationViewItem(),
+  )
+  const controlsHeaderText = context.createProjected(
+    () => new TextBlock(),
+  )
+  controlsHeaderText.text = 'Controls'
+  controlsHeader.content = controlsHeaderText
+  controlsHeader.selectsOnInvoked = false
+  controlsHeader.isTabStop = false
+  AutomationProperties.setAccessibilityView(
+    controlsHeader,
+    AccessibilityView.Raw,
+  )
+  AutomationProperties.setAccessibilityView(
+    controlsHeaderText,
+    AccessibilityView.Raw,
+  )
+  controlsHeader.visibility = Visibility.Visible
+  AutomationProperties.setAutomationId(
+    controlsHeader,
+    'GalleryControlsHeader',
+  )
+  const menuItems: (
+    | NavigationViewItem
+  )[] = [...navigationShell.menuItems]
+  const allItem = navigationShell.itemForRoute('all-controls')
+  const allIndex = allItem
+    ? menuItems.indexOf(allItem)
+    : -1
+  menuItems.splice(
+    allIndex >= 0 ? allIndex : menuItems.length,
+    0,
+    controlsHeader,
+  )
 
   return (
     <ThemeControllerContext.Provider value={themeController}>
@@ -203,10 +234,16 @@ export function Shell(context: AppContext) {
           }
           isPaneToggleButtonVisible={false}
           alwaysShowHeader={false}
-          menuItems={navigationShell.menuItems}
+          menuItems={menuItems}
           footerMenuItems={navigationShell.footerMenuItems}
           isSettingsVisible
           onSelectionChanged={navigationShell.onSelectionChanged}
+          onPaneOpened={() => {
+            controlsHeader.visibility = Visibility.Visible
+          }}
+          onPaneClosed={() => {
+            controlsHeader.visibility = Visibility.Collapsed
+          }}
         >
           <RouterProvider router={router}>
             {navigationShell.render(() => (
