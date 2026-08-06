@@ -128,6 +128,20 @@ test('create scaffolds a WinUI project with pinned dependencies', (t) => {
   assert.ok(fs.existsSync(path.join(target, 'src', 'app-state.ts')))
   assert.ok(fs.existsSync(path.join(target, 'dev.js')))
   assert.equal(manifest.scripts.dev, 'node dev.js')
+  const devSource = fs.readFileSync(
+    path.join(target, 'dev.js'),
+    'utf8',
+  )
+  assert.match(devSource, /--listEmittedFiles/)
+  assert.match(devSource, /hot-build-complete/)
+  const generatedMainSource = fs.readFileSync(
+    path.join(target, 'main.js'),
+    'utf8',
+  )
+  assert.match(
+    generatedMainSource,
+    /hotReload:\s*\{\s*reloadFiles:\s*\[\]/s,
+  )
   assert.deepEqual(manifest.imports['#winapp/bindings'], {
     types: './.winapp/bindings/index.d.ts',
     require: './.winapp/bindings/index.js',

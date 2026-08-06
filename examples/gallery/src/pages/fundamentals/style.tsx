@@ -13,10 +13,12 @@ import {
 } from './shared'
 
 const customButtonStyle = {
-  ...styles.button({ variant: 'accent' }),
+  ...styles.button({ variant: 'standard' }),
   background: theme.ref(
     'AccentAcrylicBackgroundFillColorDefaultBrush',
   ),
+  foreground: theme.primaryText,
+  borderBrush: theme.controlStroke,
   minWidth: 200,
 }
 

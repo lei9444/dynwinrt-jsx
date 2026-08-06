@@ -311,6 +311,7 @@ const baselineOutput = `${JSON.stringify(baseline, null, 2)}\n`
 if (process.argv.includes('--check')) {
   const current = fs.existsSync(outputPath)
     ? fs.readFileSync(outputPath, 'utf8')
+      .replaceAll('\r\n', '\n')
     : ''
   if (current !== output) {
     console.error(
@@ -335,6 +336,7 @@ if (process.argv.includes('--update-baseline')) {
 if (process.argv.includes('--check-baseline')) {
   const current = fs.existsSync(baselinePath)
     ? fs.readFileSync(baselinePath, 'utf8')
+      .replaceAll('\r\n', '\n')
     : ''
   if (current !== baselineOutput) {
     console.error(

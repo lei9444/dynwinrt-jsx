@@ -186,6 +186,104 @@ test('defined WinUI Host owns state and Worker cleanup', async (t) => {
   )
 })
 
+test('defined WinUI Host forwards successful incremental builds', async (t) => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'dynwinrt-jsx-host-hot-'),
+  )
+  t.after(() => {
+    fs.rmSync(directory, {
+      recursive: true,
+      force: true,
+    })
+  })
+  const hotStatePath = path.join(directory, 'hot.json')
+  const logs = []
+  const workerMessages = []
+  const { defineWinUIHost } =
+    require('../dist/host.js')
+  const host = defineWinUIHost({
+    rootDirectory: directory,
+    workerPath: path.join(
+      __dirname,
+      'fixtures',
+      'host-hot-worker.js',
+    ),
+    bootstrap: false,
+    hotReload: {
+      enabled: true,
+      statePath: hotStatePath,
+      reloadFiles: [],
+      restartFiles: [],
+    },
+    logger: {
+      log: (message) => logs.push(String(message)),
+      warn: (message) => logs.push(String(message)),
+      error: (message) => logs.push(String(message)),
+    },
+    state: {
+      path: path.join(directory, 'state.json'),
+      defaultState: () => ({
+        version: 1,
+        status: 'starting',
+      }),
+      validate(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          typeof value.status === 'string'
+        )
+      },
+      initialize: (loaded) => loaded.state,
+      validateState(value) {
+        return (
+          typeof value === 'object' &&
+          value !== null &&
+          value.version === 1 &&
+          typeof value.status === 'string'
+        )
+      },
+      persist: (state) => state,
+    },
+    onWorkerMessage(message) {
+      workerMessages.push(message)
+    },
+  })
+
+  const runPromise = host.run()
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (
+      logs.some((message) =>
+        message.includes('hot reload is active'),
+      )
+    ) {
+      break
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  assert.ok(
+    logs.some((message) =>
+      message.includes('hot reload is active'),
+    ),
+  )
+  process.emit('message', {
+    type: 'hot-build-complete',
+    changedFiles: ['pages/all-controls.js'],
+  })
+
+  assert.equal(await runPromise, 0)
+  assert.deepEqual(
+    workerMessages.find(
+      (message) => message?.type === 'hot-reload-probe',
+    )?.value,
+    {
+      type: 'hot-reload',
+      version: 1,
+      changedFiles: ['pages/all-controls.js'],
+    },
+  )
+})
+
 test('defined WinUI Host terminates a failed startup Worker', async (t) => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'dynwinrt-jsx-host-failure-'),
@@ -300,16 +398,39 @@ test('Worker runtime owns bridge, module loading, and exit', async (t) => {
   })
   const messages = []
   let heartbeatSuspends = 0
+  fs.writeFileSync(
+    path.join(directory, 'package.json'),
+    JSON.stringify({ type: 'commonjs' }),
+  )
+  const distDirectory = path.join(directory, 'dist')
+  fs.mkdirSync(distDirectory)
+  const childPath = path.join(distDirectory, 'child.js')
+  fs.writeFileSync(
+    childPath,
+    "'use strict'\nmodule.exports = { value: 42 }\n",
+  )
+  fs.writeFileSync(
+    path.join(distDirectory, 'app.js'),
+    "'use strict'\nmodule.exports = require('./child.js')\n",
+  )
   const { defineWinUIHost } =
     require('../dist/host.js')
   const host = defineWinUIHost({
-    rootDirectory: path.join(__dirname, '..'),
+    rootDirectory: directory,
     workerPath: path.join(
       __dirname,
       'fixtures',
       'worker-runtime-worker.js',
     ),
     bootstrap: false,
+    workerData: {
+      runtimeModuleId: './dist/app.js',
+      runtimeReloadProbe: {
+        childPath,
+        source:
+          "'use strict'\nmodule.exports = { value: 43 }\n",
+      },
+    },
     state: {
       channel: 'runtime-state',
       path: path.join(directory, 'state.json'),
@@ -356,6 +477,7 @@ test('Worker runtime owns bridge, module loading, and exit', async (t) => {
   assert.equal(await host.run(), 0)
   assert.deepEqual(messages, [{
     module: 42,
+    reloadedModule: 43,
     cleanupAttempts: 2,
   }])
   assert.equal(heartbeatSuspends, 1)

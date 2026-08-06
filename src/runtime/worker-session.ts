@@ -45,9 +45,14 @@ export interface WinUIWorkerRuntimeData<State> {
   readonly inspectorExportPath?: string
 }
 
+interface CachedNodeModule {
+  readonly filename?: string
+  readonly children?: readonly CachedNodeModule[]
+}
+
 interface NodeRequire {
   (id: string): unknown
-  readonly cache: Record<string, unknown>
+  readonly cache: Record<string, CachedNodeModule | undefined>
   resolve(id: string): string
 }
 
@@ -56,7 +61,10 @@ interface WorkerModule {
 }
 
 interface WorkerPath {
+  readonly sep: string
+  isAbsolute(path: string): boolean
   join(...parts: string[]): string
+  relative(from: string, to: string): string
 }
 
 interface WorkerProcess {
@@ -223,6 +231,48 @@ export interface CreateWinUIWorkerRuntimeOptions<
   readonly patch?: StateBridgePatchOptions<State, Patch>
   readonly commands?: StateBridgeCommandOptions<Command>
   readonly events?: StateBridgeEventOptions<Event>
+}
+
+function invalidateApplicationModuleGraph(
+  cache: NodeRequire['cache'],
+  entryPath: string,
+  applicationDirectory: string,
+  path: WorkerPath,
+): void {
+  const visited = new Set<string>()
+  const isApplicationModule = (filename: string) => {
+    const relative = path.relative(
+      applicationDirectory,
+      filename,
+    )
+    return (
+      relative.length > 0 &&
+      relative !== '..' &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative)
+    )
+  }
+  const invalidate = (filename: string) => {
+    if (visited.has(filename)) {
+      return
+    }
+    visited.add(filename)
+    const cached = cache[filename]
+    if (!cached) {
+      return
+    }
+    for (const child of cached.children ?? []) {
+      if (
+        child.filename &&
+        isApplicationModule(child.filename)
+      ) {
+        invalidate(child.filename)
+      }
+    }
+    delete cache[filename]
+  }
+
+  invalidate(entryPath)
 }
 
 function describeError(error: unknown): string {
@@ -455,7 +505,15 @@ export function createWinUIWorkerRuntimeBase<
     },
     loadModule<Module>(invalidate = false): Module {
       if (invalidate) {
-        delete require.cache[modulePath]
+        invalidateApplicationModuleGraph(
+          requireFromApplication.cache,
+          modulePath,
+          path.join(
+            workerData.rootDirectory,
+            'dist',
+          ),
+          path,
+        )
       }
       return requireFromApplication(
         modulePath,

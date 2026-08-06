@@ -16,6 +16,7 @@ const watcher = spawn(
     path.join(root, 'tsconfig.json'),
     '--watch',
     '--preserveWatchOutput',
+    '--listEmittedFiles',
     '--pretty',
     'false',
   ],
@@ -27,6 +28,20 @@ const watcher = spawn(
 
 let app
 let compilerOutput = ''
+
+function emittedJavaScriptFiles(output) {
+  const distDirectory = path.join(root, 'dist')
+  return [...output.matchAll(/^TSFILE:\s+(.+)$/gm)]
+    .map((match) => path.relative(distDirectory, match[1]))
+    .filter((filename) =>
+      filename.endsWith('.js') &&
+      filename !== '..' &&
+      !filename.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(filename),
+    )
+    .map((filename) => filename.split(path.sep).join('/'))
+}
+
 function startApp() {
   if (app) return
   app = fork(path.join(root, 'main.js'), {
@@ -48,8 +63,18 @@ watcher.stdout.on('data', (chunk) => {
   process.stdout.write(chunk)
   compilerOutput += chunk
   if (compilerOutput.includes('Found 0 errors. Watching for file changes.')) {
+    const changedFiles =
+      emittedJavaScriptFiles(compilerOutput)
     compilerOutput = ''
-    startApp()
+    if (!app) {
+      startApp()
+    }
+    else if (app.connected && changedFiles.length > 0) {
+      app.send({
+        type: 'hot-build-complete',
+        changedFiles,
+      })
+    }
     return
   }
   if (/Found [1-9][0-9]* errors?\. Watching for file changes\./.test(

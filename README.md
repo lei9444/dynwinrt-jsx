@@ -99,6 +99,9 @@ Use development hot reload after setup:
 npm run dev
 ```
 
+Successful incremental builds reload the full application module
+graph, including lazily loaded route modules.
+
 Run the repository's real WinUI in-process verification tier:
 
 ```powershell

@@ -11,6 +11,9 @@ const {
 
 const host = defineWinUIHost({
   rootDirectory: __dirname,
+  hotReload: {
+    reloadFiles: [],
+  },
   state: {
     channel: 'app-state',
     defaultState: createDefaultPersistedAppState,

@@ -3,6 +3,7 @@ import {
   Show,
   color,
   computed,
+  cornerRadius,
   createCompositionFrameScheduler,
   createScrollViewerController,
   createSolidColorBrush,
@@ -26,14 +27,12 @@ import {
   SolidColorBrush,
   Stretch,
   Symbol,
-  SymbolIcon,
   TextWrapping,
   VerticalAlignment,
   Visibility,
 } from '#winapp/bindings'
 import {
   type AppContext,
-  GallerySelectorBar,
   LayoutGrid,
   type ScrollViewerInstance,
   UI,
@@ -153,6 +152,87 @@ function HomeHorizontalScroller(props: {
   )
 }
 
+function HomeSectionButton(props: {
+  readonly selected: ReadonlySignal<boolean>
+  readonly automationId: string
+  readonly symbol: Symbol
+  readonly text: string
+  readonly onClick: () => void
+}) {
+  const pointerOver = signal(false)
+  const transparentBrush = theme.ref(
+    'ControlFillColorTransparentBrush',
+  )
+  const background = computed(() => {
+    if (props.selected.value) {
+      return pointerOver.value
+        ? theme.accentSecondary
+        : theme.accent
+    }
+    return pointerOver.value
+      ? theme.controlFillSecondary
+      : theme.controlFill
+  })
+  const borderBrush = computed(() =>
+    props.selected.value
+      ? pointerOver.value
+        ? theme.accentSecondary
+        : theme.accent
+      : theme.controlStroke,
+  )
+  const foreground = computed(() =>
+    props.selected.value
+      ? theme.textOnAccent
+      : theme.primaryText,
+  )
+  const buttonResources = computed(() => ({
+    ButtonBackgroundPointerOver: transparentBrush,
+    ButtonBackgroundPressed: transparentBrush,
+    ButtonBorderBrushPointerOver: transparentBrush,
+    ButtonBorderBrushPressed: transparentBrush,
+    ButtonForegroundPointerOver: props.selected.value
+      ? theme.textOnAccent
+      : theme.primaryText,
+    ButtonForegroundPressed: props.selected.value
+      ? theme.textOnAccent
+      : theme.secondaryText,
+  }))
+  return (
+    <UI.Border
+      background={background}
+      borderBrush={borderBrush}
+      borderThickness={thickness(1)}
+      cornerRadius={cornerRadius(16)}
+    >
+      <UI.Button
+        automationId={props.automationId}
+        padding={thickness(23, 5, 23, 6)}
+        background={transparentBrush}
+        borderBrush={transparentBrush}
+        borderThickness={thickness(0)}
+        cornerRadius={cornerRadius(16)}
+        foreground={foreground}
+        resourceOverrides={buttonResources}
+        onPointerEntered={() => {
+          pointerOver.value = true
+        }}
+        onPointerExited={() => {
+          pointerOver.value = false
+        }}
+        onClick={props.onClick}
+      >
+        <UI.StackPanel
+          orientation={Orientation.Horizontal}
+          spacing={8}
+        >
+          <UI.SymbolIcon symbol={props.symbol} />
+          <UI.TextBlock text={props.text} />
+        </UI.StackPanel>
+      </UI.Button>
+    </UI.Border>
+  )
+}
+
 export function HomePage(context: AppContext) {
   const scheduleFrame =
     createCompositionFrameScheduler(
@@ -227,14 +307,6 @@ export function HomePage(context: AppContext) {
     'ControlImages/RatingControl.png',
     72,
   )
-  const recentIcon = context.createProjected(
-    () => new SymbolIcon(),
-  )
-  recentIcon.symbol = Symbol.Clock
-  const favoritesIcon = context.createProjected(
-    () => new SymbolIcon(),
-  )
-  favoritesIcon.symbol = Symbol.Favorite
   const featureTiles = [
     {
       title: 'Getting started',
@@ -396,26 +468,31 @@ export function HomePage(context: AppContext) {
           spacing={tokens.spacing.xl}
           horizontalAlignment={HorizontalAlignment.Stretch}
         >
-          <GallerySelectorBar
-            automationId="GalleryHomeSelector"
-            selectedIndex={selectedSection}
-            onSelectedIndexChange={(index) => {
-              selectedSection.value = index
-            }}
+          <UI.StackPanel
+            orientation={Orientation.Horizontal}
+            spacing={8}
             margin={thickness(36, 24, 0, 16)}
             horizontalAlignment={HorizontalAlignment.Center}
           >
-            <UI.SelectorBarItem
+            <HomeSectionButton
+              selected={recentSelected}
               automationId="GalleryRecentSelector"
-              icon={recentIcon}
+              symbol={Symbol.Clock}
               text="Recent"
+              onClick={() => {
+                selectedSection.value = 0
+              }}
             />
-            <UI.SelectorBarItem
+            <HomeSectionButton
+              selected={favoritesSelected}
               automationId="GalleryFavoritesSelector"
-              icon={favoritesIcon}
+              symbol={Symbol.Favorite}
               text="Favorites"
+              onClick={() => {
+                selectedSection.value = 1
+              }}
             />
-          </GallerySelectorBar>
+          </UI.StackPanel>
           <Show when={computed(
             () => selectedSection.value === 0,
           )}>

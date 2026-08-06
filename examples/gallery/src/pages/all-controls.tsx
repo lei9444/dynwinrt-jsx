@@ -3,10 +3,7 @@ import {
   gridLength,
   signal,
   styles,
-  theme,
   thickness,
-  tokens,
-  type MaybeSignal,
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
@@ -14,11 +11,7 @@ import {
   ItemsView,
   ItemsViewSelectionMode,
   Orientation,
-  Stretch,
-  TextTrimming,
-  TextWrapping,
   UniformGridLayout,
-  VerticalAlignment,
 } from '#winapp/bindings'
 import {
   GalleryItemsView,
@@ -29,91 +22,11 @@ import {
 import {
   allControlsPages,
   type GalleryPageInfo,
-  type GalleryRoute,
 } from '../gallery-data'
-import { loadGalleryBitmap } from '../gallery-assets'
+import { PageLink } from '../components/gallery-components'
 
 type CatalogItem = GalleryPageInfo & {
   readonly enabled: boolean
-}
-
-function CatalogCard(props: {
-  readonly context: AppContext
-  readonly page: CatalogItem
-  readonly width: MaybeSignal<number>
-  readonly height: MaybeSignal<number>
-}) {
-  const image = loadGalleryBitmap(
-    props.page.image,
-    32,
-    props.context.ownProjected,
-  )
-  return (
-    <UI.Button
-      automationId={`GalleryOpenPage-${props.page.id}`}
-      automationName={`Open ${props.page.title}`}
-      isEnabled={props.page.enabled}
-      width={props.width}
-      height={props.height}
-      padding={thickness(8)}
-      background={theme.controlFill}
-      borderBrush={theme.cardStroke}
-      borderThickness={thickness(1)}
-      cornerRadius={tokens.radius.overlay}
-      horizontalContentAlignment={HorizontalAlignment.Stretch}
-      onClick={() => {
-        if (props.page.enabled) {
-          props.context.model.navigate(
-            props.page.id as GalleryRoute,
-          )
-        }
-      }}
-    >
-      <LayoutGrid
-        columnDefinitions={[
-          gridLength.pixel(56),
-          gridLength.star(),
-        ]}
-        rowDefinitions={[
-          gridLength.auto(),
-          gridLength.auto(),
-        ]}
-      >
-        <UI.Border
-          gridRowSpan={2}
-          width={32}
-          height={32}
-          margin={thickness(8, 12, 16, 0)}
-          verticalAlignment={VerticalAlignment.Top}
-        >
-          <UI.Image
-            source={image}
-            stretch={Stretch.Uniform}
-            width={32}
-            height={32}
-          />
-        </UI.Border>
-        <UI.TextBlock
-          {...styles.heading({ level: 'bodyStrong' })}
-          gridColumn={1}
-          margin={thickness(0, 12, 0, 0)}
-          verticalAlignment={VerticalAlignment.Bottom}
-          text={props.page.title}
-          textWrapping={TextWrapping.NoWrap}
-        />
-        <UI.TextBlock
-          gridRow={1}
-          gridColumn={1}
-          margin={thickness(0, 0, 10, 10)}
-          verticalAlignment={VerticalAlignment.Top}
-          foreground={theme.secondaryText}
-          text={props.page.description}
-          textTrimming={TextTrimming.CharacterEllipsis}
-          textWrapping={TextWrapping.NoWrap}
-        />
-      </LayoutGrid>
-    </UI.Button>
-  )
 }
 
 export function AllControlsPage(context: AppContext) {
@@ -207,11 +120,14 @@ export function AllControlsPage(context: AppContext) {
         onSizeChanged={updateLayout}
       >
         {(page) => (
-          <CatalogCard
-            context={context}
+          <PageLink
             page={page as CatalogItem}
+            model={context.model}
             width={cardWidth}
             height={cardHeight}
+            catalog
+            enabled={(page as CatalogItem).enabled}
+            ownProjected={context.ownProjected}
           />
         )}
       </GalleryItemsView>

@@ -1046,23 +1046,74 @@ export function defineWinUIHost<
               },
             )
           }
+          const reloadFiles =
+            hotOptions.reloadFiles ?? ['app.js']
+          const restartFiles =
+            hotOptions.restartFiles ?? [
+              'winui-worker.js',
+              'app-model.js',
+            ]
           for (
-            const filename of
-              hotOptions.reloadFiles ?? ['app.js']
+            const filename of reloadFiles
           ) {
             watch(filename, true)
           }
           for (
-            const filename of
-              hotOptions.restartFiles ?? [
-                'winui-worker.js',
-                'app-model.js',
-              ]
+            const filename of restartFiles
           ) {
             watch(filename, false)
           }
           processMessageListener = (message) => {
             if (
+              isRecord(message) &&
+              message.type === 'hot-build-complete'
+            ) {
+              const changedFiles = Array.isArray(
+                message.changedFiles,
+              )
+                ? message.changedFiles.filter(
+                    (filename): filename is string =>
+                      typeof filename === 'string',
+                  )
+                : ['app.js']
+              const restartFileSet = new Set(
+                restartFiles.map((filename) =>
+                  filename.replaceAll('\\', '/'),
+                ),
+              )
+              const reloadableFiles: string[] = []
+              for (const filename of changedFiles) {
+                const normalized =
+                  filename.replaceAll('\\', '/')
+                if (restartFileSet.has(normalized)) {
+                  logger.log(
+                    `Hot reload boundary changed (${normalized}); restart the Worker.`,
+                  )
+                }
+                else {
+                  reloadableFiles.push(normalized)
+                }
+              }
+              if (reloadableFiles.length > 0) {
+                try {
+                  postHotMessage('hot-reload', {
+                    changedFiles: reloadableFiles,
+                  })
+                }
+                catch (error) {
+                  workerFailed = true
+                  writeDiagnostic(
+                    'error',
+                    diagnosticSource,
+                    'hot-reload.write-error',
+                    {
+                      message: describeError(error),
+                    },
+                  )
+                }
+              }
+            }
+            else if (
               isRecord(message) &&
               message.type === 'hot-build-error'
             ) {

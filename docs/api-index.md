@@ -993,7 +993,7 @@ Source: `src/worker.ts`
 | `createWinUIAsyncCleanup` | function | `(cleanups: readonly import("<repo>/src/runtime/cleanup").WinUIAsyncCleanup[], label?: string): () => Promise<void>` | `src/runtime/cleanup.ts:88` |
 | `createWinUICleanup` | function | `(cleanups: readonly import("<repo>/src/runtime/cleanup").WinUICleanup[], label?: string): import("<repo>/src/runtime/cleanup").WinUICleanup` | `src/runtime/cleanup.ts:42` |
 | `createWinUIWorkerRuntime` | function | `<State, Extra extends object = Record<string, never>, Patch = never, Command = never, Event = never>(options: CreateWinUIWorkerRuntimeOptions<State, Patch, Command, Event>): WinUIWorkerRuntime<State, WinUIWorkerRuntimeD…` | `src/worker.ts:1920` |
-| `CreateWinUIWorkerRuntimeOptions` | interface | `CreateWinUIWorkerRuntimeOptions<State, Patch, Command, Event>` | `src/runtime/worker-session.ts:214` |
+| `CreateWinUIWorkerRuntimeOptions` | interface | `CreateWinUIWorkerRuntimeOptions<State, Patch, Command, Event>` | `src/runtime/worker-session.ts:222` |
 | `DefinedWinUIApp` | interface | `DefinedWinUIApp<Bindings>` | `src/worker.ts:405` |
 | `DefinedWinUIAppContext` | type | `DefinedWinUIAppContext<Bindings>` | `src/worker.ts:324` |
 | `DefinedWinUIAppMountedApp` | interface | `DefinedWinUIAppMountedApp<Bindings>` | `src/worker.ts:362` |
@@ -1078,15 +1078,15 @@ Source: `src/worker.ts`
 | `WinUIWorkerApplicationHost` | interface | `WinUIWorkerApplicationHost` | `src/worker.ts:163` |
 | `WinUIWorkerAppWindow` | interface | `WinUIWorkerAppWindow` | `src/worker.ts:138` |
 | `WinUIWorkerClosingArgs` | interface | `WinUIWorkerClosingArgs` | `src/worker.ts:134` |
-| `WinUIWorkerHostStatus` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerHostStatus` | `src/runtime/worker-session.ts:69` |
+| `WinUIWorkerHostStatus` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerHostStatus` | `src/runtime/worker-session.ts:77` |
 | `WinUIWorkerMountedApp` | interface | `WinUIWorkerMountedApp<Window, AppWindow, ProjectionScope>` | `src/worker.ts:214` |
 | `WinUIWorkerRenderedContext` | interface | `WinUIWorkerRenderedContext<Window, AppWindow, ProjectionScope>` | `src/worker.ts:187` |
 | `WinUIWorkerRenderedHooks` | interface | `WinUIWorkerRenderedHooks` | `src/worker.ts:203` |
-| `WinUIWorkerRenderedRuntimeOptions` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRenderedRuntimeOptions` | `src/runtime/worker-session.ts:145` |
-| `WinUIWorkerRuntime` | interface | `WinUIWorkerRuntime<State, Data, Patch, Command, Event>` | `src/runtime/worker-session.ts:181` |
+| `WinUIWorkerRenderedRuntimeOptions` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRenderedRuntimeOptions` | `src/runtime/worker-session.ts:153` |
+| `WinUIWorkerRuntime` | interface | `WinUIWorkerRuntime<State, Data, Patch, Command, Event>` | `src/runtime/worker-session.ts:189` |
 | `WinUIWorkerRuntimeData` | interface | `WinUIWorkerRuntimeData<State>` | `src/runtime/worker-session.ts:38` |
-| `WinUIWorkerRuntimeDispatcherQueue` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRuntimeDispatcherQueue` | `src/runtime/worker-session.ts:86` |
-| `WinUIWorkerRuntimeHotReloadMessage` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRuntimeHotReloadMessage` | `src/runtime/worker-session.ts:90` |
+| `WinUIWorkerRuntimeDispatcherQueue` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRuntimeDispatcherQueue` | `src/runtime/worker-session.ts:94` |
+| `WinUIWorkerRuntimeHotReloadMessage` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerRuntimeHotReloadMessage` | `src/runtime/worker-session.ts:98` |
 | `WinUIWorkerStage` | type | `WinUIWorkerStage` | `src/worker.ts:241` |
 | `WinUIWorkerStatePort` | interface | `import("<repo>/src/runtime/worker-session").WinUIWorkerStatePort` | `src/runtime/worker-session.ts:33` |
 | `WinUIWorkerWindow` | interface | `WinUIWorkerWindow` | `src/worker.ts:147` |

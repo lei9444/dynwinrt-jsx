@@ -1,5 +1,9 @@
 'use strict'
 
+const fs = require('node:fs')
+const {
+  workerData,
+} = require('node:worker_threads')
 const {
   createWinUIWorkerRuntime,
 } = require('../../dist/worker.js')
@@ -7,6 +11,7 @@ const {
 const runtime = createWinUIWorkerRuntime({
   channel: 'runtime-state',
   moduleId:
+    workerData.runtimeModuleId ??
     './tests/fixtures/worker-runtime-module.js',
   validateState(value) {
     return (
@@ -38,6 +43,14 @@ void runtime.run({
     }))
     await acknowledged
     const loaded = runtime.loadModule()
+    let reloaded
+    if (workerData.runtimeReloadProbe) {
+      fs.writeFileSync(
+        workerData.runtimeReloadProbe.childPath,
+        workerData.runtimeReloadProbe.source,
+      )
+      reloaded = runtime.loadModule(true)
+    }
     let cleanupAttempts = 0
     const hooks = runtime.createRenderedHooks({
       dispatcherQueue: {
@@ -69,6 +82,7 @@ void runtime.run({
       type: 'runtime-test',
       value: {
         module: loaded.value,
+        reloadedModule: reloaded?.value,
         cleanupAttempts,
       },
     })

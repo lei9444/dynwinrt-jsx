@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@microsoft/dynwinrt-codegen": "file:tools/local-codegen",
-    "@microsoft/winappcli": "file:../../../winappCli/src/winapp-npm",
+    "@microsoft/winappcli": "0.5.0",
     "typescript": "5.9.2"
   },
   "winapp": {

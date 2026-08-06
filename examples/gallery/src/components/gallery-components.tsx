@@ -549,7 +549,7 @@ export function PageLink(props: {
         ]}
         rowDefinitions={[
           gridLength.auto(),
-          gridLength.auto(),
+          gridLength.star(),
         ]}
         columnSpacing={catalog ? 0 : 12}
       >
@@ -580,24 +580,19 @@ export function PageLink(props: {
               ? VerticalAlignment.Bottom
               : VerticalAlignment.Stretch
           }
+          maxLines={2}
           text={props.page.title}
-          textWrapping={
-            catalog ? TextWrapping.NoWrap : TextWrapping.Wrap
-          }
+          textWrapping={TextWrapping.Wrap}
         />
         <UI.TextBlock
           gridRow={1}
           gridColumn={1}
           foreground={theme.secondaryText}
+          {...(catalog ? { fontSize: 12 } : {})}
+          maxLines={2}
           text={props.page.subtitle}
-          textTrimming={
-            catalog
-              ? TextTrimming.WordEllipsis
-              : TextTrimming.None
-          }
-          textWrapping={
-            catalog ? TextWrapping.NoWrap : TextWrapping.Wrap
-          }
+          textTrimming={TextTrimming.WordEllipsis}
+          textWrapping={TextWrapping.Wrap}
           {...(catalog
             ? { toolTip: props.page.subtitle }
             : {})}
