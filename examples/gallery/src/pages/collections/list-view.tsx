@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
-  DispatcherQueuePriority,
+  DispatchingDispatcherQueuePriority as DispatcherQueuePriority,
   HorizontalAlignment,
   FlyoutBase,
   ListView,

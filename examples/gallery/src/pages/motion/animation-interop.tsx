@@ -10,11 +10,11 @@ import {
   type RefObject,
 } from 'dynwinrt-jsx'
 import {
-  CompositionTarget,
+  XamlMediaCompositionTarget as CompositionTarget,
   Ellipse,
   Grid,
   HorizontalAlignment,
-  ICompositionAnimationBase,
+  CompositionICompositionAnimationBase as ICompositionAnimationBase,
   Orientation,
   Popup,
   Rectangle,

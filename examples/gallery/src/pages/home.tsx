@@ -19,7 +19,7 @@ import {
   type ScrollViewerController,
 } from 'dynwinrt-jsx'
 import {
-  CompositionTarget,
+  XamlMediaCompositionTarget as CompositionTarget,
   HorizontalAlignment,
   Orientation,
   ScrollBarVisibility,

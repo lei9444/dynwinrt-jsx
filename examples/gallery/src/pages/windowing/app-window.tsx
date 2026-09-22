@@ -27,7 +27,7 @@ import {
   TitleBarTheme,
   VerticalAlignment,
   Window,
-  type DispatcherQueueTimer,
+  type DispatchingDispatcherQueueTimer as DispatcherQueueTimer,
 } from '#winapp/bindings'
 import {
   type AppContext,

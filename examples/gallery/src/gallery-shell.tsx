@@ -20,7 +20,7 @@ import {
   Application,
   ApplicationTheme,
   AutomationProperties,
-  DispatcherQueuePriority,
+  DispatchingDispatcherQueuePriority as DispatcherQueuePriority,
   ElementTheme,
   HorizontalAlignment,
   ImageIconSource,

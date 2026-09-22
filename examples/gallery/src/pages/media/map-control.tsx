@@ -6,7 +6,7 @@ import {
 } from 'dynwinrt-jsx'
 import {
   Geopoint,
-  IVector_MapElement,
+  IVector_MicrosoftUIXamlControlsMapElement_g323823bd1813091a as IVector_MapElement,
   MapControl,
   MapElementsLayer,
   MapIcon,

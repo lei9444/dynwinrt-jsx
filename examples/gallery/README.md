@@ -76,6 +76,19 @@ npm run setup
 npm start
 ```
 
+When updating the dynwinrt runtime/codegen pair, regenerate bindings with
+`npm run setup` or `npm run generate` before building. Generated bindings are
+not checked in. Match imports to the generated declarations:
+
+- Root exports disambiguate shared names by namespace. Use the Microsoft.UI
+  exports, such as `DispatchingDispatcherQueuePriority` and
+  `XamlMediaCompositionTarget`, with local aliases where appropriate.
+- Closed generic interfaces use qualified type names and a signature suffix.
+  Import the emitted specialization rather than assuming a short name such
+  as `IReference_Rect`.
+- Control-local types use namespace subpaths, for example
+  `#winapp/bindings/microsoft/ui/xaml/controls/DatePicker`.
+
 Use hot reload after setup:
 
 ```powershell

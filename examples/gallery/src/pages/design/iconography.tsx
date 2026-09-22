@@ -16,7 +16,7 @@ import {
   AutomationLiveSetting,
   Clipboard,
   DataPackage,
-  DispatcherQueuePriority,
+  DispatchingDispatcherQueuePriority as DispatcherQueuePriority,
   HorizontalAlignment,
   ItemsView,
   ItemsViewSelectionMode,
