@@ -13,9 +13,9 @@ import {
   Orientation,
   Rectangle,
   TextWrapping,
-  type CompositionColorBrush,
-  type ContainerVisual,
-  type SpriteVisual,
+  type CompositionCompositionColorBrush as CompositionColorBrush,
+  type CompositionContainerVisual as ContainerVisual,
+  type CompositionSpriteVisual as SpriteVisual,
 } from '#winapp/bindings'
 import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'

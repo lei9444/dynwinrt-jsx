@@ -1,5 +1,5 @@
-import type { DateTime } from '#winapp/bindings/DatePicker'
-import type { TimeSpan } from '#winapp/bindings/TimePicker'
+import type { DateTime } from '#winapp/bindings/microsoft/ui/xaml/controls/DatePicker'
+import type { TimeSpan } from '#winapp/bindings/microsoft/ui/xaml/controls/TimePicker'
 
 const ticksPerMillisecond = 10_000n
 const windowsEpochTicks = 116_444_736_000_000_000n

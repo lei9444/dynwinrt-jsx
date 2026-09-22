@@ -16,7 +16,7 @@ import {
 } from 'dynwinrt-jsx'
 import {
   AutomationLiveSetting,
-  DispatcherQueuePriority,
+  DispatchingDispatcherQueuePriority as DispatcherQueuePriority,
   HorizontalAlignment,
   Orientation,
   Rectangle,

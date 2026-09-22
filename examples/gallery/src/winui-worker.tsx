@@ -16,7 +16,7 @@ import * as WinUIBindings from '#winapp/bindings'
 import {
   ApplicationTheme,
   AppNotificationManager,
-  DispatcherQueuePriority,
+  DispatchingDispatcherQueuePriority as DispatcherQueuePriority,
   StackPanel,
   TextBlock,
   TextWrapping,

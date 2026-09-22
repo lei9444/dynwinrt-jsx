@@ -1,6 +1,7 @@
 import {
   GradientStopCollection,
-  type IObservableVector_GradientStop,
+  type IObservableVector_MicrosoftUIXamlMediaGradientStop_g17577d11a2f3c27a
+    as IObservableVector_GradientStop,
 } from '#winapp/bindings'
 
 export function gradientStopCollection(

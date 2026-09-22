@@ -14,7 +14,7 @@ import {
   type ReadonlySignal,
 } from 'dynwinrt-jsx'
 import {
-  CompositionTarget,
+  XamlMediaCompositionTarget as CompositionTarget,
   ElementCompositionPreview,
   HorizontalAlignment,
   ItemsRepeaterElementClearingEventArgs,

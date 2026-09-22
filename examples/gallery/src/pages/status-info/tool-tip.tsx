@@ -1,6 +1,6 @@
 import { thickness } from 'dynwinrt-jsx'
 import {
-  IReference_Rect,
+  IReference_WindowsFoundationRect_g7d5f48bd5717ecb2 as IReference_Rect,
   PlacementMode,
   PropertyValue,
   TextBlock,
