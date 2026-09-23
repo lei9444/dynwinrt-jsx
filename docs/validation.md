@@ -63,6 +63,14 @@ The release-set step writes:
 
 ## Focused commands
 
+The native selftest runner accepts x64 and ARM64 Node.js 20+. Use a dynwinrt
+addon and Windows App SDK bootstrap DLL matching the selected Node architecture;
+on an ARM64 machine, ARM64 Node exercises the native ARM64 path rather than
+x64 emulation. Pass `-NodePath` to select an installed Node explicitly. Its
+`summary.json` records both the Node and operating-system architectures. The
+native cases include repeated implicit-text replacement and disposal, checking
+that every created text object is released and active counts return to baseline.
+
 ```powershell
 npm run check
 .\scripts\run-native-selftest.ps1

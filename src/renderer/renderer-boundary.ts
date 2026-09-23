@@ -75,11 +75,11 @@ export class RendererBoundaryService {
           setScopeErrorHandler(scope, undefined)
           try {
             current?.dispose()
+            current = undefined
           }
           catch (error) {
             firstError = error
           }
-          current = undefined
           try {
             scope.dispose()
           }

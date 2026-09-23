@@ -618,6 +618,17 @@ test('repository keeps the real WinUI native selftest wired', () => {
   )
 })
 
+test('native selftest accepts both supported Node architectures and records evidence', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'scripts', 'run-native-selftest.ps1'),
+    'utf8',
+  )
+  assert.match(source, /\$metadata\[0\] -in @\("x64", "arm64"\)/)
+  assert.match(source, /\[int\]\$metadata\[1\] -ge 20/)
+  assert.match(source, /architecture = \$nodeArchitecture/)
+  assert.match(source, /osArchitecture = /)
+})
+
 test('repository keeps structured debug automation wired', () => {
   const capturePath = path.join(
     __dirname,

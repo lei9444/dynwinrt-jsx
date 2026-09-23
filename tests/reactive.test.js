@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('node:assert/strict')
+const { spawnSync } = require('node:child_process')
 const test = require('node:test')
 
 const {
@@ -247,4 +248,140 @@ test('throwing effect cleanup still detaches dependencies', () => {
   assert.throws(dispose, /cleanup failed/)
   source.value = 1
   assert.equal(runs, 1)
+})
+
+test('scheduler drains pending work after errors and remains reusable', () => {
+  const result = spawnSync(process.execPath, ['-e', `
+    const assert = require('node:assert/strict')
+    const {
+      afterReactiveFlush, batch, computed, createRoot, effect, signal,
+    } = require(${JSON.stringify(require.resolve('../dist/core/reactive'))})
+
+    for (const kind of ['computed', 'effect', 'cleanup', 'afterFlush']) {
+      createRoot((dispose) => {
+        const source = signal(0)
+        const firstError = new Error(kind + ' failed')
+        const laterError = new Error('later failure')
+        const values = []
+        const recoveredValues = []
+        const fail = () => {
+          if (source.value === 1) throw firstError
+          recoveredValues.push(source.value)
+          return source.value
+        }
+        if (kind === 'computed') computed(fail)
+        if (kind === 'effect') effect(fail)
+        if (kind === 'cleanup') {
+          effect(() => {
+            const previous = source.value
+            recoveredValues.push(previous)
+            return () => {
+              if (previous === 0) throw firstError
+            }
+          })
+        }
+        const doubled = computed(() => source.value * 2)
+        effect(() => values.push(doubled.value))
+        effect(() => {
+          if (source.value === 1 && kind !== 'afterFlush') {
+            throw laterError
+          }
+        })
+        let flushed = 0
+
+        assert.throws(() => batch(() => {
+          if (kind === 'afterFlush') {
+            afterReactiveFlush(() => {
+              source.value = 1
+              throw firstError
+            })
+          } else {
+            source.value = 1
+          }
+          afterReactiveFlush(() => { flushed += 1 })
+        }), (error) => error === firstError)
+
+        assert.deepEqual(values, [0, 2])
+        assert.equal(flushed, 1)
+        source.value = 2
+        assert.deepEqual(values, [0, 2, 4])
+        if (kind !== 'afterFlush') {
+          assert.deepEqual(recoveredValues, [0, 2])
+        }
+        dispose()
+      })
+    }
+  `], {
+    encoding: 'utf8',
+    timeout: 10_000,
+  })
+
+  assert.ifError(result.error)
+  assert.equal(result.status, 0, result.stderr)
+})
+
+test('batched observer queues do not repeatedly scan pending observers', () => {
+  const count = 512
+  createRoot((dispose) => {
+    const sources = Array.from({ length: count }, () => signal(0))
+    const values = []
+    for (const source of sources) {
+      const doubled = computed(() => source.value * 2)
+      effect(() => {
+        if (doubled.value !== 0) values.push(doubled.value)
+      })
+    }
+
+    const originalIterator = Set.prototype[Symbol.iterator]
+    const originalValues = Set.prototype.values
+    let visited = 0
+    const countedValues = function* () {
+      for (const value of originalValues.call(this)) {
+        visited += 1
+        yield value
+      }
+    }
+    try {
+      Set.prototype[Symbol.iterator] = countedValues
+      Set.prototype.values = countedValues
+      batch(() => {
+        for (const source of sources) source.value = 1
+      })
+    }
+    finally {
+      Set.prototype[Symbol.iterator] = originalIterator
+      Set.prototype.values = originalValues
+    }
+
+    assert.equal(values.length, count)
+    assert.ok(values.every((value) => value === 2))
+    assert.ok(visited < count * 20, `Visited ${visited} Set entries`)
+    dispose()
+  })
+})
+
+test('queued effects can dispose and reschedule later work without losing order', () => {
+  createRoot((dispose) => {
+    const first = signal(0)
+    const second = signal(0)
+    const values = []
+    let stopLast = () => {}
+    effect(() => {
+      if (first.value === 1) {
+        stopLast()
+        second.value = second.peek() + 1
+      }
+    })
+    effect(() => { values.push(`second:${second.value}`) })
+    stopLast = effect(() => { values.push(`last:${first.value}`) })
+    values.length = 0
+
+    batch(() => {
+      first.value = 1
+      second.value = 1
+    })
+
+    assert.deepEqual(values, ['second:2'])
+    dispose()
+  })
 })

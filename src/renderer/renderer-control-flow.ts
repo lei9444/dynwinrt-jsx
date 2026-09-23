@@ -86,19 +86,21 @@ export class RendererControlFlowService {
       onNodesChanged,
       () => {
         let firstError: unknown
+        const cleanup = beforeDispose
+        beforeDispose = undefined
         try {
-          beforeDispose?.()
+          cleanup?.()
         }
         catch (error) {
           firstError = error
         }
         try {
           current?.dispose()
+          current = undefined
         }
         catch (error) {
           firstError ??= error
         }
-        current = undefined
         try {
           scope.dispose()
         }
@@ -211,6 +213,12 @@ export class RendererControlFlowService {
           disposeEntries(retiredEntries)
         firstError ??= retiredEntryResult.error
         retiredEntries = retiredEntryResult.retained
+        try {
+          scope.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
         if (
           fallback !== undefined ||
           retiredFallbacks.length > 0 ||
@@ -224,17 +232,10 @@ export class RendererControlFlowService {
           }
           throw firstError
         }
-        try {
-          scope.dispose()
-        }
-        catch (error) {
-          firstError ??= error
-        }
         if (firstError !== undefined) {
           throw firstError
         }
       },
-      true,
     )
 
     const updateNodes = (
@@ -549,12 +550,25 @@ export class RendererControlFlowService {
     const record = new RecordState(
       onNodesChanged,
       () => {
-        controller?.dispose()
-        controller = undefined
-        target = undefined
-        scope.dispose()
+        let firstError: unknown
+        try {
+          controller?.dispose()
+          controller = undefined
+          target = undefined
+        }
+        catch (error) {
+          firstError = error
+        }
+        try {
+          scope.dispose()
+        }
+        catch (error) {
+          firstError ??= error
+        }
+        if (firstError !== undefined) {
+          throw firstError
+        }
       },
-      true,
     )
     record.setNodes([])
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Enabled native WinUI selftests with ARM64 Node and recorded the runtime and
+  operating-system architectures in the selftest summary.
+- Fixed reactive flushes stalling after an observer error while other work
+  remained queued; later work now drains before the first error is reported.
+- Replaced repeated observer-queue scans with stable depth-priority computed
+  scheduling and insertion-ordered effect iteration.
+- Preserved failed native releases through fragments, dynamic branches,
+  boundaries, lists, and portals without repeating successful ref cleanup.
+- Included implicit JSX text objects in renderer ownership, native diagnostics,
+  and retryable release on replacement or disposal.
 - Added progressive `core`, `controls`, `winui`, `diagnostics`, and `native`
   package entry points while preserving the complete compatibility root.
 - Added a task Dashboard tutorial series that grows a generated project from

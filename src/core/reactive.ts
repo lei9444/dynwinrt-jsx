@@ -1,3 +1,5 @@
+import { ComputedQueue } from './observer-queue'
+
 export type Cleanup = () => void
 
 export interface SubscribeOptions {
@@ -269,7 +271,7 @@ const activeObservers: Observer[] = []
 let batchDepth = 0
 let notificationDepth = 0
 let flushing = false
-const pendingComputed = new Set<Observer>()
+const pendingComputed = new ComputedQueue<Observer>()
 const pendingEffects = new Set<Observer>()
 const pendingAfterFlush: Array<() => void> = []
 
@@ -360,47 +362,51 @@ class Observer {
       this.rerunRequested = false
       this.running = true
       try {
-        this.cleanup?.()
-      } catch (error) {
-        if (!this.reportError(error)) {
-          throw error
+        const previousCleanup = this.cleanup
+        this.cleanup = undefined
+        try {
+          previousCleanup?.()
+        } catch (error) {
+          if (!this.reportError(error)) {
+            throw error
+          }
         }
-      }
-      this.cleanup = undefined
 
-      for (const dependency of this.dependencies) {
-        removeDependencyObserver(dependency, this)
-      }
-      this.dependencies.clear()
-
-      const previousObserver = currentObserver
-      const previousScope = currentScope
-      currentObserver = this
-      currentScope = this.scope
-      activeObservers.push(this)
-
-      try {
-        const cleanup = this.callback()
-        if (typeof cleanup === 'function') {
-          this.cleanup = cleanup
+        for (const dependency of this.dependencies) {
+          removeDependencyObserver(dependency, this)
         }
-      } catch (error) {
-        if (!this.reportError(error)) {
-          throw error
+        this.dependencies.clear()
+
+        const previousObserver = currentObserver
+        const previousScope = currentScope
+        currentObserver = this
+        currentScope = this.scope
+        activeObservers.push(this)
+
+        try {
+          const cleanup = this.callback()
+          if (typeof cleanup === 'function') {
+            this.cleanup = cleanup
+          }
+        } catch (error) {
+          if (!this.reportError(error)) {
+            throw error
+          }
+        } finally {
+          activeObservers.pop()
+          currentObserver = previousObserver
+          currentScope = previousScope
+        }
+        if (this.kind === 'computed') {
+          this.depth = 1 + Math.max(
+            0,
+            ...[...this.dependencies].map(
+              (dependency) => dependency.producer?.depth ?? 0,
+            ),
+          )
         }
       } finally {
-        activeObservers.pop()
-        currentObserver = previousObserver
-        currentScope = previousScope
         this.running = false
-      }
-      if (this.kind === 'computed') {
-        this.depth = 1 + Math.max(
-          0,
-          ...[...this.dependencies].map(
-            (dependency) => dependency.producer?.depth ?? 0,
-          ),
-        )
       }
     } while (this.rerunRequested && !this.disposed)
 
@@ -649,24 +655,7 @@ function flushIfReady(): void {
   }
 }
 
-function runQueuedObserver(
-  queue: Set<Observer>,
-  byDepth = false,
-): unknown {
-  let observer: Observer | undefined
-  for (const candidate of queue) {
-    if (
-      !observer ||
-      (byDepth && candidate.depth < observer.depth)
-    ) {
-      observer = candidate
-    }
-  }
-  if (!observer) {
-    return undefined
-  }
-
-  queue.delete(observer)
+function runQueuedObserver(observer: Observer): unknown {
   try {
     observer.run()
     return undefined
@@ -682,6 +671,7 @@ function flushPendingObservers(): void {
 
   flushing = true
   let firstError: unknown
+  const effects = pendingEffects.values()
   try {
     while (
       pendingComputed.size > 0 ||
@@ -689,11 +679,15 @@ function flushPendingObservers(): void {
       pendingAfterFlush.length > 0
     ) {
       while (pendingComputed.size > 0) {
-        firstError ??= runQueuedObserver(pendingComputed, true)
+        const error = runQueuedObserver(pendingComputed.take()!)
+        firstError ??= error
       }
 
       if (pendingEffects.size > 0) {
-        firstError ??= runQueuedObserver(pendingEffects)
+        const observer = effects.next().value!
+        pendingEffects.delete(observer)
+        const error = runQueuedObserver(observer)
+        firstError ??= error
       }
 
       while (

@@ -829,6 +829,7 @@ export class Renderer {
       return this.mountPrimitive(
         String(child),
         onNodesChanged,
+        parentScope,
       )
     }
 
@@ -942,12 +943,53 @@ export class Renderer {
   private mountPrimitive(
     value: string,
     onNodesChanged: (nodes: readonly unknown[]) => void,
+    parentScope: ReactiveScope,
   ): MountedRecord {
-    const nativeValue = this.options.createText
-      ? this.options.createText(value)
-      : value
-    const record = new RecordState(onNodesChanged, () => {})
-    record.setNodes([nativeValue])
+    if (!this.options.createText) {
+      const record = new RecordState(onNodesChanged, () => {})
+      record.setNodes([value])
+      return record
+    }
+
+    let nativeValue: object
+    try {
+      nativeValue = this.options.createText(value)
+    }
+    catch (error) {
+      this.handleError(error, { phase: 'create' }, parentScope)
+      return this.mountEmpty(onNodesChanged)
+    }
+    const scope = createScope(parentScope)
+    const label = describeInspectionTarget(nativeValue)
+    setReactiveScopeInspection(scope, {
+      kind: 'native',
+      label,
+    })
+    const inspectionNode = this.inspection.registerNode(
+      'native',
+      label,
+      scope,
+    )
+    this.counters.nativeCreated += 1
+    this.counters.activeNative += 1
+    const record = new RecordState(onNodesChanged, () => {
+      scope.dispose()
+      this.options.releaseNative?.(nativeValue)
+      this.counters.nativeDisposed += 1
+      this.counters.activeNative -= 1
+      this.inspection.releaseNode(inspectionNode)
+    })
+    try {
+      record.setNodes([nativeValue])
+    }
+    catch (error) {
+      record.dispose()
+      this.handleError(
+        error,
+        { phase: 'render', target: nativeValue },
+        parentScope,
+      )
+    }
     return record
   }
 
@@ -969,6 +1011,7 @@ export class Renderer {
       () => {
         disposed = true
         let firstError: unknown
+        const retained: ChildSlot[] = []
         for (const slot of [...slots].reverse()) {
           try {
             slot.record.dispose()
@@ -976,14 +1019,18 @@ export class Renderer {
           catch (error) {
             firstError ??= error
           }
+          if (!slot.record.disposed) {
+            retained.unshift(slot)
+          }
         }
-        slots.length = 0
+        slots.splice(0, slots.length, ...retained)
         try {
           scope.dispose()
         }
         catch (error) {
           firstError ??= error
         }
+        record.setNodes(slots.flatMap((slot) => [...slot.nodes]))
         if (firstError !== undefined) {
           throw firstError
         }
@@ -1076,7 +1123,6 @@ export class Renderer {
           throw firstError
         }
       },
-      true,
     )
 
     try {
@@ -1174,7 +1220,6 @@ export class Renderer {
           throw firstError
         }
       },
-      true,
     )
 
     try {
@@ -1279,6 +1324,7 @@ export class Renderer {
     const ref = vnode.props.ref as Ref<object> | undefined
     let nativeActive = true
     let nativeReleased = false
+    let refCleared = false
 
     const markDisposed = () => {
       if (!nativeActive) {
@@ -1321,11 +1367,14 @@ export class Renderer {
         if (retainedControllers.length > 0) {
           throw firstError
         }
-        try {
-          setRef(ref, null)
-        }
-        catch (error) {
-          firstError ??= error
+        if (!refCleared) {
+          try {
+            setRef(ref, null)
+            refCleared = true
+          }
+          catch (error) {
+            firstError ??= error
+          }
         }
         if (!nativeReleased) {
           try {
@@ -1341,7 +1390,6 @@ export class Renderer {
         }
         markDisposed()
       },
-      true,
     )
 
     try {

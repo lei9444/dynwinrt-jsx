@@ -39,13 +39,13 @@ function Resolve-Node([string]$RequestedPath) {
         if (
             $LASTEXITCODE -eq 0 -and
             $metadata.Count -eq 2 -and
-            $metadata[0] -eq "x64" -and
+            $metadata[0] -in @("x64", "arm64") -and
             [int]$metadata[1] -ge 20
         ) {
             return [IO.Path]::GetFullPath($candidate)
         }
     }
-    throw "An x64 Node.js 20+ executable is required. Pass -NodePath."
+    throw "An x64 or ARM64 Node.js 20+ executable is required. Pass -NodePath."
 }
 
 function Resolve-TypeScript([string]$RequestedPath) {
@@ -150,6 +150,7 @@ function Invoke-Probe(
 }
 
 $NodePath = Resolve-Node $NodePath
+$nodeArchitecture = (& $NodePath -p "process.arch").Trim()
 $TypeScriptPath = Resolve-TypeScript $TypeScriptPath
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
@@ -163,6 +164,8 @@ $summary = [ordered]@{
     startedAt = [DateTime]::UtcNow.ToString("o")
     passed = $false
     node = (& $NodePath --version).Trim()
+    architecture = $nodeArchitecture
+    osArchitecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
     success = $null
     assertionFailure = $null
     workerFailure = $null
@@ -272,5 +275,5 @@ finally {
     )
 }
 
-Write-Host "Native WinUI selftest passed."
+Write-Host "Native WinUI selftest ($nodeArchitecture) passed."
 Write-Host "Summary: $summaryPath"

@@ -28,6 +28,20 @@ Additional compatible ergonomics:
 The creator keeps `dashboard` as the default and adds
 `--template minimal` for the Counter starter.
 
+## Renderer cleanup and implicit text ownership
+
+Native release failures now remain retryable through every mounted subtree
+shape, including fragments and dynamic branches. A failed `dispose()` retains
+unfinished child records; retry the same handle rather than replacing it.
+Successfully completed cleanup and ref clearing are not repeated.
+
+Objects returned by a custom `RendererOptions.createText()` are owned by the
+renderer and now count toward native diagnostics and inspector snapshots.
+Return a fresh object per call and let `releaseNative()` release it; do not
+also release it from application cleanup. Counts can be higher while primitive
+JSX text is mounted, and return to their prior baseline after disposal. Raw
+primitive children without `createText()` are unchanged.
+
 ## Worker state schemas and protocol
 
 `createStateBridge()`, `createWinUIWorkerRuntime()`, and `defineWinUIHost()`
