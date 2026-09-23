@@ -341,7 +341,7 @@ test('renderer diagnostics return to zero after disposal', () => {
     window,
   )
 
-  assert.equal(nativeRenderer.diagnostics.activeNative, 3)
+  assert.equal(nativeRenderer.diagnostics.activeNative, 4)
   handle.dispose()
   assert.equal(nativeRenderer.diagnostics.activeNative, 0)
   assert.equal(nativeRenderer.diagnostics.activeComponents, 0)

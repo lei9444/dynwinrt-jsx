@@ -5352,7 +5352,7 @@
     },
     {
       "file": "renderer/renderer-lifecycle.d.ts",
-      "sha256": "aa0d8106053c004b894648faba261ef22a80e39cdc387e4a96ed79039115b528"
+      "sha256": "7fabcf0aac9b9b81aff4510d463657a5539d63fcb9aa04576759a6cb4ea47be6"
     },
     {
       "file": "renderer/renderer.d.ts",

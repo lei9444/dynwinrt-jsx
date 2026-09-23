@@ -1402,6 +1402,11 @@ onMount(() => {
 
 Computed observers flush before effects, so effects see a consistent graph. `createRoot()` creates an explicit lifetime outside a rendered component. Cleanup remains idempotent and continues through later cleanup callbacks if one throws.
 
+An unhandled observer error does not stop the remaining queued work: the flush
+drains computed values, effects, and deferred callbacks before reporting the
+first error. Computed work uses a stable depth-priority queue; effects retain
+their scheduling order without rescanning the pending queue for every update.
+
 ### Context
 
 ```tsx
@@ -1670,9 +1675,12 @@ starting the application.
 
 `renderer.render()` returns a handle with `update()`, `dispose()`, `disposed`, `roots`, and `container`. `createHotRoot()` calls the supplied render function again and replaces the root tree on `refresh()`.
 
-If native child detachment fails, `dispose()` throws while the handle remains
-undisposed and reports the retained native roots. Do not call `update()` in
-this state; correct the native failure and retry `dispose()`.
+If native child detachment or release fails, `dispose()` throws while the
+handle remains undisposed. Failed releases remain owned through fragments,
+dynamic branches, boundaries, lists, and portals; successful cleanup is not
+repeated. `roots` reports any native roots still attached to the container.
+Do not call `update()` in this state; correct the native failure and retry
+`dispose()`.
 
 `createHotReloadSession()` adds monotonic version handling, stale reload
 rejection, and error fallback rendering. The generated app polls a version file
@@ -1680,6 +1688,12 @@ from a `DispatcherQueueTimer`, so reload work executes on the WinUI STA while
 the main process and host-owned state remain alive.
 
 Renderer diagnostics expose active native/component counts and cumulative keyed-entry creation/reuse counts for leak checks.
+
+Native text objects returned by `createText()` for primitive JSX children are
+renderer-owned too. They participate in native counts and inspector snapshots,
+and are passed to `releaseNative()` on replacement or disposal. Custom text
+factories must return a fresh owned object for each call. Primitive children
+without a text factory remain plain values and are not released as objects.
 
 Every renderer also exposes a structured runtime inspector:
 

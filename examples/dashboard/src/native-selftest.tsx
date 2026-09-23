@@ -634,6 +634,51 @@ export function createNativeSelfTest(
         }
       })
 
+      runCase(cases, 'implicit-native-text-ownership', () => {
+        const baseline = context.renderer.diagnostics
+        const container = new StackPanel()
+        const value = signal('implicit text 0')
+        const handle = context.renderer.render(value, container)
+        const replacements = 16
+        try {
+          for (let index = 0; index <= replacements; index += 1) {
+            value.value = `implicit text ${index}`
+            const text = handle.roots[0]
+            if (
+              !(text instanceof TextBlock) ||
+              text.text !== value.peek()
+            ) {
+              throw new Error('Implicit native text did not update.')
+            }
+            const current = context.renderer.diagnostics
+            if (
+              current.activeNative !== baseline.activeNative + 1 ||
+              current.nativeCreated !== baseline.nativeCreated + index + 1 ||
+              current.nativeDisposed !== baseline.nativeDisposed + index
+            ) {
+              throw new Error('Implicit text replacement retained native records.')
+            }
+          }
+        }
+        finally {
+          handle.dispose()
+        }
+        handle.dispose()
+        const after = context.renderer.diagnostics
+        if (
+          after.activeNative !== baseline.activeNative ||
+          after.activeComponents !== baseline.activeComponents ||
+          after.nativeDisposed !== baseline.nativeDisposed + replacements + 1
+        ) {
+          throw new Error('Implicit native text cleanup did not return to baseline.')
+        }
+        return {
+          replacements,
+          nativeCreated: after.nativeCreated - baseline.nativeCreated,
+          nativeDisposed: after.nativeDisposed - baseline.nativeDisposed,
+        }
+      })
+
       if (context.failureMode === 'assertion') {
         runCase(cases, 'intentional-assertion-failure', () => {
           throw new Error('Intentional native selftest assertion failure.')

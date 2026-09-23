@@ -27,7 +27,7 @@ Source: `src/index.ts`
 | `AttachedPropertyRegistrations` | type | `import("<repo>/src/winui/winui").AttachedPropertyRegistrations` | `src/winui/winui.ts:59` |
 | `AvailableCapability` | interface | `import("<repo>/src/runtime/capability").AvailableCapability<Value, Details>` | `src/runtime/capability.ts:1` |
 | `BaseStyleRecipe` | interface | `(): import("<repo>/src/winui/style").StyleRecipeResult<Props>` | `src/winui/style.ts:66` |
-| `batch` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1015` |
+| `batch` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1009` |
 | `bind` | value | `{ oneWay: <Value, Property extends PropertyKey>(state: import("<repo>/src/core/reactive").ReadonlySignal<Value>, property: Property) => Record<Property, import("<repo>/src/core/reactive").ReadonlySignal<Value>>; twoWay:…` | `src/core/binding.ts:137` |
 | `BindingEquals` | type | `(expected: Value, actual: Value): boolean` | `src/core/binding.ts:3` |
 | `BitmapIconOptions` | interface | `import("<repo>/src/winui/values").BitmapIconOptions` | `src/winui/values.ts:95` |
@@ -39,7 +39,7 @@ Source: `src/index.ts`
 | `CapabilityOwner` | interface | `import("<repo>/src/runtime/capability").CapabilityOwner<Value, Details>` | `src/runtime/capability.ts:84` |
 | `capabilityUnavailable` | function | `(reason: string): import("<repo>/src/runtime/capability").UnavailableCapability \| <Details>(reason: string, details: Details): import("<repo>/src/runtime/capability").UnavailableCapability<Details>` | `src/runtime/capability.ts:43` |
 | `Child` | type | `import("<repo>/src/core/vnode").Child` | `src/core/vnode.ts:61` |
-| `Cleanup` | type | `(): void` | `src/core/reactive.ts:1` |
+| `Cleanup` | type | `(): void` | `src/core/reactive.ts:3` |
 | `CoalescingScheduler` | type | `(flush: () => void): void \| import("<repo>/src/core/reactive").Cleanup` | `src/core/coalescing.ts:6` |
 | `color` | function | `(r: number, g: number, b: number, a?: number): import("<repo>/src/winui/winui").WinUIColor` | `src/winui/winui.ts:678` |
 | `ComboBoxControlBindings` | interface | `import("<repo>/src/winui/combo-box").ComboBoxControlBindings<Instance>` | `src/winui/combo-box.ts:24` |
@@ -49,7 +49,7 @@ Source: `src/index.ts`
 | `CompositionOwner` | interface | `import("<repo>/src/winui/composition").CompositionOwner` | `src/winui/composition.ts:24` |
 | `CompositionPropertyTarget` | interface | `import("<repo>/src/winui/composition").CompositionPropertyTarget<Animation>` | `src/winui/composition.ts:14` |
 | `CompositionTargetBinding` | interface | `import("<repo>/src/winui/event-coalescing").CompositionTargetBinding<Token>` | `src/winui/event-coalescing.ts:5` |
-| `computed` | function | `<T>(compute: () => T): import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:989` |
+| `computed` | function | `<T>(compute: () => T): import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:983` |
 | `ContentDialogLike` | interface | `import("<repo>/src/winui/dialog").ContentDialogLike<Root, Result>` | `src/winui/dialog.ts:4` |
 | `ContentDialogOptions` | interface | `import("<repo>/src/winui/dialog").ContentDialogOptions<Result>` | `src/winui/dialog.ts:9` |
 | `Context` | interface | `import("<repo>/src/core/context").Context<Value>` | `src/core/context.ts:14` |
@@ -91,13 +91,13 @@ Source: `src/index.ts`
 | `createProjectedValueOwner` | function | `<Value extends object, Result = void>(value: Value, release: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): import("<repo>/src/runtime/projected-owner").ProjectedValueOwner<Valu…` | `src/runtime/projected-owner.ts:33` |
 | `createReferenceBoxing` | function | `<Value, Boxed>(box: (value: Value) => unknown, referenceType: import("<repo>/src/winui/values").ReferenceType<Boxed>): import("<repo>/src/winui/values").ReferenceBoxing<Value, Boxed>` | `src/winui/values.ts:153` |
 | `createRelativeUri` | function | `<Instance>(constructorType: import("<repo>/src/winui/values").RelativeUriConstructor<Instance>, baseUri: string, relativeUri: string): Instance` | `src/winui/values.ts:46` |
-| `createRenderer` | function | `(options?: import("<repo>/src/renderer/renderer").RendererOptions): import("<repo>/src/renderer/renderer").Renderer` | `src/renderer/renderer.ts:1484` |
+| `createRenderer` | function | `(options?: import("<repo>/src/renderer/renderer").RendererOptions): import("<repo>/src/renderer/renderer").Renderer` | `src/renderer/renderer.ts:1532` |
 | `createRendererOwnershipCounts` | function | `(snapshot: import("<repo>/src/renderer/inspector").RendererInspectionSnapshot): import("<repo>/src/runtime/diagnostics").RendererOwnershipCounts` | `src/runtime/diagnostics.ts:503` |
-| `createRoot` | function | `<T>(callback: (dispose: import("<repo>/src/core/reactive").Cleanup) => T): T` | `src/core/reactive.ts:916` |
+| `createRoot` | function | `<T>(callback: (dispose: import("<repo>/src/core/reactive").Cleanup) => T): T` | `src/core/reactive.ts:910` |
 | `createRouter` | function | `<State = unknown, Handle = unknown>(options: import("<repo>/src/core/router").RouterOptions<State, Handle>): import("<repo>/src/core/router").Router<State, Handle>` | `src/core/router.ts:313` |
 | `createRouterNavigationHost` | function | `<State = unknown, Handle = unknown>(router: import("<repo>/src/core/router").Router<State, Handle>, options: import("<repo>/src/winui/router").RouterNavigationHostOptions): import("<repo>/src/winui/navigation").Navigati…` | `src/winui/router.ts:29` |
 | `createRouterNavigationViewShell` | function | `<RouteId extends string, State = unknown, Handle = unknown, Item extends RouterNavigationItemInstance = RouterNavigationItemInstance, Text extends RouterNavigationTextInstance = RouterNavigationTextInstance, ReleaseResu…` | `src/winui/router.ts:205` |
-| `createScope` | function | `(parent?: import("<repo>/src/core/reactive").ReactiveScope \| null): import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:1049` |
+| `createScope` | function | `(parent?: import("<repo>/src/core/reactive").ReactiveScope \| null): import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:1043` |
 | `createScopedLastValueCoalescer` | function | `<T>(schedule: import("<repo>/src/core/coalescing").CoalescingScheduler, callback: (value: T) => void): import("<repo>/src/core/coalescing").LastValueCoalescer<T>` | `src/core/coalescing.ts:79` |
 | `createScrollViewerController` | function | `<Instance extends import("<repo>/src/winui/scroll-viewer").ScrollViewerInstance>(options?: import("<repo>/src/winui/scroll-viewer").ScrollViewerControllerOptions): import("<repo>/src/winui/scroll-viewer").ScrollViewerCo…` | `src/winui/scroll-viewer.ts:95` |
 | `createSecondaryWindowManager` | function | `<Window extends import("<repo>/src/winui/windowing").SecondaryXamlWindowInstance<AppWindow>, AppWindow extends import("<repo>/src/winui/windowing").SecondaryAppWindowInstance>(options: import("<repo>/src/winui/windowing…` | `src/winui/windowing.ts:220` |
@@ -153,8 +153,8 @@ Source: `src/index.ts`
 | `DiagnosticRouteTrigger` | type | `import("<repo>/src/runtime/diagnostics").DiagnosticRouteTrigger` | `src/runtime/diagnostics.ts:138` |
 | `DiagnosticSnapshotEvent` | interface | `import("<repo>/src/runtime/diagnostics").DiagnosticSnapshotEvent` | `src/runtime/diagnostics.ts:185` |
 | `DynamicNode` | interface | `import("<repo>/src/core/vnode").DynamicNode` | `src/core/vnode.ts:24` |
-| `effect` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup, options?: import("<repo>/src/core/reactive").EffectOptions): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:993` |
-| `EffectOptions` | interface | `import("<repo>/src/core/reactive").EffectOptions` | `src/core/reactive.ts:7` |
+| `effect` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup, options?: import("<repo>/src/core/reactive").EffectOptions): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:987` |
+| `EffectOptions` | interface | `import("<repo>/src/core/reactive").EffectOptions` | `src/core/reactive.ts:9` |
 | `ErrorBoundary` | function | `(props: import("<repo>/src/core/control-flow").ErrorBoundaryProps): import("<repo>/src/core/vnode").Child` | `src/core/control-flow.ts:106` |
 | `ErrorBoundaryNode` | interface | `import("<repo>/src/core/vnode").ErrorBoundaryNode` | `src/core/vnode.ts:45` |
 | `ErrorBoundaryProps` | interface | `import("<repo>/src/core/control-flow").ErrorBoundaryProps` | `src/core/control-flow.ts:31` |
@@ -184,7 +184,7 @@ Source: `src/index.ts`
 | `HotReloadSession` | interface | `import("<repo>/src/renderer/hot").HotReloadSession` | `src/renderer/hot.ts:17` |
 | `HotRoot` | interface | `import("<repo>/src/renderer/hot").HotRoot` | `src/renderer/hot.ts:7` |
 | `isDiagnosticProtocolRecord` | function | `(value: unknown): value is import("<repo>/src/runtime/diagnostics").DiagnosticProtocolRecord` | `src/runtime/diagnostics.ts:807` |
-| `isSignal` | function | `<T = unknown>(value: unknown): value is import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:1037` |
+| `isSignal` | function | `<T = unknown>(value: unknown): value is import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:1031` |
 | `isThemeResourceReference` | function | `(value: unknown): value is import("<repo>/src/winui/resource").ThemeResourceReference` | `src/winui/resource.ts:85` |
 | `ItemsRepeaterControlBindings` | interface | `import("<repo>/src/winui/items-repeater").ItemsRepeaterControlBindings<Instance, Host>` | `src/winui/items-repeater.ts:242` |
 | `ItemsRepeaterInstance` | interface | `import("<repo>/src/winui/items-repeater").ItemsRepeaterInstance` | `src/winui/items-repeater.ts:235` |
@@ -203,7 +203,7 @@ Source: `src/index.ts`
 | `ListViewScrollTarget` | interface | `import("<repo>/src/winui/list-view").ListViewScrollTarget<Instance>` | `src/winui/list-view.ts:201` |
 | `ListViewSelectionProps` | interface | `import("<repo>/src/winui/list-view").ListViewSelectionProps<Instance>` | `src/winui/list-view.ts:54` |
 | `mapCapability` | function | `<Value, Result, Details>(capability: import("<repo>/src/runtime/capability").Capability<Value, Details>, map: (value: Value) => Result): import("<repo>/src/runtime/capability").Capability<Result, Details>` | `src/runtime/capability.ts:67` |
-| `MaybeSignal` | type | `import("<repo>/src/core/reactive").MaybeSignal<T>` | `src/core/reactive.ts:24` |
+| `MaybeSignal` | type | `import("<repo>/src/core/reactive").MaybeSignal<T>` | `src/core/reactive.ts:26` |
 | `MenuFlyoutLike` | interface | `import("<repo>/src/winui/overlays").MenuFlyoutLike<Target, ClosedArgs>` | `src/winui/overlays.ts:199` |
 | `MenuFlyoutOptions` | interface | `import("<repo>/src/winui/overlays").MenuFlyoutOptions<ClosedArgs>` | `src/winui/overlays.ts:204` |
 | `MessageEndpoint` | interface | `import("<repo>/src/runtime/bridge").MessageEndpoint` | `src/runtime/bridge.ts:13` |
@@ -240,9 +240,9 @@ Source: `src/index.ts`
 | `NavigationItemOptions` | interface | `import("<repo>/src/winui/navigation").NavigationItemOptions<Icon>` | `src/winui/navigation.ts:423` |
 | `NavigationViewCollectionProps` | interface | `import("<repo>/src/winui/navigation").NavigationViewCollectionProps<Item>` | `src/winui/navigation.ts:21` |
 | `NavigationViewControlBindings` | interface | `import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>` | `src/winui/navigation.ts:31` |
-| `onCleanup` | function | `(cleanup: import("<repo>/src/core/reactive").Cleanup): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:1067` |
+| `onCleanup` | function | `(cleanup: import("<repo>/src/core/reactive").Cleanup): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:1061` |
 | `oneWay` | function | `<Value, Property extends PropertyKey>(state: import("<repo>/src/core/reactive").ReadonlySignal<Value>, property: Property): Record<Property, import("<repo>/src/core/reactive").ReadonlySignal<Value>>` | `src/core/binding.ts:76` |
-| `onMount` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup): void` | `src/core/reactive.ts:929` |
+| `onMount` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup): void` | `src/core/reactive.ts:923` |
 | `OpenSecondaryAppWindowOptions` | interface | `import("<repo>/src/winui/windowing").OpenSecondaryAppWindowOptions<AppWindow>` | `src/winui/windowing.ts:69` |
 | `OpenSecondaryXamlWindowOptions` | interface | `import("<repo>/src/winui/windowing").OpenSecondaryXamlWindowOptions<Window, AppWindow>` | `src/winui/windowing.ts:55` |
 | `Outlet` | function | `(props?: import("<repo>/src/core/router").OutletProps): import("<repo>/src/core/vnode").Child` | `src/core/router.ts:1028` |
@@ -261,13 +261,13 @@ Source: `src/index.ts`
 | `PrimitiveChild` | type | `import("<repo>/src/core/vnode").PrimitiveChild` | `src/core/vnode.ts:4` |
 | `ProjectedOwnership` | interface | `import("<repo>/src/runtime/projected-owner").ProjectedOwnership` | `src/runtime/projected-owner.ts:9` |
 | `ProjectedValueOwner` | interface | `import("<repo>/src/runtime/projected-owner").ProjectedValueOwner<Value>` | `src/runtime/projected-owner.ts:3` |
-| `ReactiveDependencyInspection` | interface | `import("<repo>/src/core/reactive").ReactiveDependencyInspection` | `src/core/reactive.ts:70` |
-| `ReactiveGraphInspection` | interface | `import("<repo>/src/core/reactive").ReactiveGraphInspection` | `src/core/reactive.ts:77` |
-| `ReactiveObserverInspection` | interface | `import("<repo>/src/core/reactive").ReactiveObserverInspection` | `src/core/reactive.ts:59` |
-| `ReactiveScope` | interface | `import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:261` |
-| `ReactiveScopeInspection` | interface | `import("<repo>/src/core/reactive").ReactiveScopeInspection` | `src/core/reactive.ts:45` |
-| `ReadonlySignal` | interface | `import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:11` |
-| `readSignal` | function | `<T>(value: import("<repo>/src/core/reactive").MaybeSignal<T>): T` | `src/core/reactive.ts:1045` |
+| `ReactiveDependencyInspection` | interface | `import("<repo>/src/core/reactive").ReactiveDependencyInspection` | `src/core/reactive.ts:72` |
+| `ReactiveGraphInspection` | interface | `import("<repo>/src/core/reactive").ReactiveGraphInspection` | `src/core/reactive.ts:79` |
+| `ReactiveObserverInspection` | interface | `import("<repo>/src/core/reactive").ReactiveObserverInspection` | `src/core/reactive.ts:61` |
+| `ReactiveScope` | interface | `import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:263` |
+| `ReactiveScopeInspection` | interface | `import("<repo>/src/core/reactive").ReactiveScopeInspection` | `src/core/reactive.ts:47` |
+| `ReadonlySignal` | interface | `import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:13` |
+| `readSignal` | function | `<T>(value: import("<repo>/src/core/reactive").MaybeSignal<T>): T` | `src/core/reactive.ts:1039` |
 | `Ref` | type | `import("<repo>/src/renderer/native").Ref<Value>` | `src/renderer/native.ts:54` |
 | `ReferenceBoxing` | interface | `import("<repo>/src/winui/values").ReferenceBoxing<Value, Boxed>` | `src/winui/values.ts:147` |
 | `ReferenceType` | interface | `import("<repo>/src/winui/values").ReferenceType<Boxed>` | `src/winui/values.ts:143` |
@@ -324,7 +324,7 @@ Source: `src/index.ts`
 | `RouterQueryValue` | type | `import("<repo>/src/core/router").RouterQueryValue` | `src/core/router.ts:47` |
 | `RouterTarget` | type | `import("<repo>/src/core/router").RouterTarget` | `src/core/router.ts:134` |
 | `RouterUpOptions` | interface | `import("<repo>/src/core/router").RouterUpOptions` | `src/core/router.ts:142` |
-| `runInScope` | function | `<T>(scope: import("<repo>/src/core/reactive").ReactiveScope, callback: () => T): T` | `src/core/reactive.ts:1053` |
+| `runInScope` | function | `<T>(scope: import("<repo>/src/core/reactive").ReactiveScope, callback: () => T): T` | `src/core/reactive.ts:1047` |
 | `ScrollViewerController` | interface | `import("<repo>/src/winui/scroll-viewer").ScrollViewerController<Instance>` | `src/winui/scroll-viewer.ts:40` |
 | `ScrollViewerControllerOptions` | interface | `import("<repo>/src/winui/scroll-viewer").ScrollViewerControllerOptions` | `src/winui/scroll-viewer.ts:79` |
 | `ScrollViewerInstance` | interface | `import("<repo>/src/winui/scroll-viewer").ScrollViewerInstance` | `src/winui/scroll-viewer.ts:13` |
@@ -349,8 +349,8 @@ Source: `src/index.ts`
 | `showMenuFlyout` | function | `<Native extends import("<repo>/src/winui/overlays").MenuFlyoutLike<Target, ClosedArgs>, Target, ClosedArgs = unknown>(renderer: import("<repo>/src/renderer/renderer").Renderer, menuFlyout: Native, target: Target, items:…` | `src/winui/overlays.ts:212` |
 | `showPopup` | function | `<Native extends import("<repo>/src/winui/overlays").PopupLike<ClosedArgs>, ClosedArgs = unknown>(renderer: import("<repo>/src/renderer/renderer").Renderer, popup: Native, content: import("<repo>/src/core/vnode").Child, …` | `src/winui/overlays.ts:263` |
 | `ShowProps` | interface | `import("<repo>/src/core/control-flow").ShowProps<Value>` | `src/core/control-flow.ts:18` |
-| `signal` | function | `<T>(initialValue: T): import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:985` |
-| `Signal` | interface | `import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:18` |
+| `signal` | function | `<T>(initialValue: T): import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:979` |
+| `Signal` | interface | `import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:20` |
 | `SolidColorBrushConstructor` | interface | `import("<repo>/src/winui/values").SolidColorBrushConstructor<Instance>` | `src/winui/values.ts:128` |
 | `StateBridge` | interface | `import("<repo>/src/runtime/bridge").StateBridge<State, Patch, Command, Event>` | `src/runtime/bridge.ts:259` |
 | `StateBridgeCommandOptions` | interface | `import("<repo>/src/runtime/bridge").StateBridgeCommandOptions<Command>` | `src/runtime/bridge.ts:192` |
@@ -371,7 +371,7 @@ Source: `src/index.ts`
 | `StyleValues` | type | `import("<repo>/src/winui/style").StyleValues<Props>` | `src/winui/style.ts:17` |
 | `StyleVariantDefinitions` | type | `import("<repo>/src/winui/style").StyleVariantDefinitions<Props>` | `src/winui/style.ts:21` |
 | `StyleVariantSelection` | type | `import("<repo>/src/winui/style").StyleVariantSelection<Variants>` | `src/winui/style.ts:26` |
-| `SubscribeOptions` | interface | `import("<repo>/src/core/reactive").SubscribeOptions` | `src/core/reactive.ts:3` |
+| `SubscribeOptions` | interface | `import("<repo>/src/core/reactive").SubscribeOptions` | `src/core/reactive.ts:5` |
 | `summarizeDiagnosticProtocolRecord` | function | `(record: import("<repo>/src/runtime/diagnostics").DiagnosticProtocolRecord): import("<repo>/src/runtime/diagnostic-evidence").DiagnosticProtocolRecordSummary` | `src/runtime/diagnostic-evidence.ts:204` |
 | `summarizeRendererInspectionIdle` | function | `(snapshot: import("<repo>/src/renderer/inspector").RendererInspectionSnapshot): import("<repo>/src/runtime/diagnostic-evidence").RendererInspectionIdleSummary` | `src/runtime/diagnostic-evidence.ts:245` |
 | `TeachingTipController` | interface | `import("<repo>/src/winui/overlays").TeachingTipController<Native>` | `src/winui/overlays.ts:351` |
@@ -385,7 +385,7 @@ Source: `src/index.ts`
 | `twoWay` | function | `<Value, Property extends PropertyKey, Event extends `on${string}`, Sender extends Record<Property, Value> = Record<Property, Value>>(state: import("<repo>/src/core/reactive").Signal<Value>, property: Property, event: Ev…` | `src/core/binding.ts:88` |
 | `UnavailableCapability` | interface | `import("<repo>/src/runtime/capability").UnavailableCapability<Details>` | `src/runtime/capability.ts:10` |
 | `unboxReference` | function | `<Value>(reference: { readonly value: Value; } \| null \| undefined): Value \| null` | `src/winui/values.ts:170` |
-| `untrack` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1027` |
+| `untrack` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1021` |
 | `UriConstructor` | interface | `import("<repo>/src/winui/values").UriConstructor<Instance>` | `src/winui/values.ts:30` |
 | `useContext` | function | `<Value>(context: import("<repo>/src/core/context").Context<Value>): Value` | `src/core/context.ts:41` |
 | `useRoute` | function | `<State = unknown, Handle = unknown>(): import("<repo>/src/core/router").RouteRenderContext<State, Handle>` | `src/core/router.ts:1002` |
@@ -438,44 +438,44 @@ Source: `src/core.ts`
 | `AsyncState` | interface | `import("<repo>/src/core/async").AsyncState<Value>` | `src/core/async.ts:55` |
 | `AsyncView` | function | `<Value>(props: import("<repo>/src/core/async").AsyncViewProps<Value>): import("<repo>/src/core/vnode").Child` | `src/core/async.ts:441` |
 | `AsyncViewProps` | interface | `import("<repo>/src/core/async").AsyncViewProps<Value>` | `src/core/async.ts:431` |
-| `batch` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1015` |
+| `batch` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1009` |
 | `bind` | value | `{ oneWay: <Value, Property extends PropertyKey>(state: import("<repo>/src/core/reactive").ReadonlySignal<Value>, property: Property) => Record<Property, import("<repo>/src/core/reactive").ReadonlySignal<Value>>; twoWay:…` | `src/core/binding.ts:137` |
 | `BindingEquals` | type | `(expected: Value, actual: Value): boolean` | `src/core/binding.ts:3` |
 | `BoundaryErrorContext` | interface | `import("<repo>/src/core/vnode").BoundaryErrorContext` | `src/core/vnode.ts:39` |
 | `Child` | type | `import("<repo>/src/core/vnode").Child` | `src/core/vnode.ts:61` |
-| `Cleanup` | type | `(): void` | `src/core/reactive.ts:1` |
+| `Cleanup` | type | `(): void` | `src/core/reactive.ts:3` |
 | `CoalescingScheduler` | type | `(flush: () => void): void \| import("<repo>/src/core/reactive").Cleanup` | `src/core/coalescing.ts:6` |
 | `Component` | type | `(props: Props): import("<repo>/src/core/vnode").Child` | `src/core/vnode.ts:13` |
-| `computed` | function | `<T>(compute: () => T): import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:989` |
+| `computed` | function | `<T>(compute: () => T): import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:983` |
 | `Context` | interface | `import("<repo>/src/core/context").Context<Value>` | `src/core/context.ts:14` |
 | `ContextProviderProps` | interface | `import("<repo>/src/core/context").ContextProviderProps<Value>` | `src/core/context.ts:9` |
 | `createAsyncAction` | function | `<Input = void, Value = void>(operation: import("<repo>/src/core/async").AsyncActionOperation<Input, Value>, options?: import("<repo>/src/core/async").AsyncActionOptions<Value>): import("<repo>/src/core/async").AsyncActi…` | `src/core/async.ts:144` |
 | `createContext` | function | `<Value>(defaultValue: Value): import("<repo>/src/core/context").Context<Value>` | `src/core/context.ts:24` |
 | `createLastValueCoalescer` | function | `<T>(schedule: import("<repo>/src/core/coalescing").CoalescingScheduler, callback: (value: T) => void): import("<repo>/src/core/coalescing").LastValueCoalescer<T>` | `src/core/coalescing.ts:18` |
 | `createLazyComponent` | function | `<Props extends object>(load: import("<repo>/src/core/lazy").LazyComponentLoader<Props>): import("<repo>/src/core/vnode").Component<Props>` | `src/core/lazy.ts:10` |
-| `createRoot` | function | `<T>(callback: (dispose: import("<repo>/src/core/reactive").Cleanup) => T): T` | `src/core/reactive.ts:916` |
+| `createRoot` | function | `<T>(callback: (dispose: import("<repo>/src/core/reactive").Cleanup) => T): T` | `src/core/reactive.ts:910` |
 | `createRouter` | function | `<State = unknown, Handle = unknown>(options: import("<repo>/src/core/router").RouterOptions<State, Handle>): import("<repo>/src/core/router").Router<State, Handle>` | `src/core/router.ts:313` |
-| `createScope` | function | `(parent?: import("<repo>/src/core/reactive").ReactiveScope \| null): import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:1049` |
+| `createScope` | function | `(parent?: import("<repo>/src/core/reactive").ReactiveScope \| null): import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:1043` |
 | `createScopedLastValueCoalescer` | function | `<T>(schedule: import("<repo>/src/core/coalescing").CoalescingScheduler, callback: (value: T) => void): import("<repo>/src/core/coalescing").LastValueCoalescer<T>` | `src/core/coalescing.ts:79` |
 | `defineRouteRegistry` | function | `<State = unknown, Handle = unknown, const Definitions extends import("<repo>/src/core/router-registry").RouteRegistryDefinitionMap<State, Handle> = Readonly<Record<string, import("<repo>/src/core/router-registry").Route…` | `src/core/router-registry.ts:120` |
 | `DynamicNode` | interface | `import("<repo>/src/core/vnode").DynamicNode` | `src/core/vnode.ts:24` |
-| `effect` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup, options?: import("<repo>/src/core/reactive").EffectOptions): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:993` |
-| `EffectOptions` | interface | `import("<repo>/src/core/reactive").EffectOptions` | `src/core/reactive.ts:7` |
+| `effect` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup, options?: import("<repo>/src/core/reactive").EffectOptions): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:987` |
+| `EffectOptions` | interface | `import("<repo>/src/core/reactive").EffectOptions` | `src/core/reactive.ts:9` |
 | `ErrorBoundary` | function | `(props: import("<repo>/src/core/control-flow").ErrorBoundaryProps): import("<repo>/src/core/vnode").Child` | `src/core/control-flow.ts:106` |
 | `ErrorBoundaryNode` | interface | `import("<repo>/src/core/vnode").ErrorBoundaryNode` | `src/core/vnode.ts:45` |
 | `ErrorBoundaryProps` | interface | `import("<repo>/src/core/control-flow").ErrorBoundaryProps` | `src/core/control-flow.ts:31` |
 | `For` | function | `<Item>(props: import("<repo>/src/core/control-flow").ForProps<Item>): import("<repo>/src/core/vnode").ListNode<Item>` | `src/core/control-flow.ts:76` |
 | `ForProps` | interface | `import("<repo>/src/core/control-flow").ForProps<Item>` | `src/core/control-flow.ts:24` |
 | `Fragment` | value | `typeof import("<repo>/src/core/vnode").Fragment` | `src/core/vnode.ts:6` |
-| `isSignal` | function | `<T = unknown>(value: unknown): value is import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:1037` |
+| `isSignal` | function | `<T = unknown>(value: unknown): value is import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:1031` |
 | `Key` | type | `import("<repo>/src/core/vnode").Key` | `src/core/vnode.ts:3` |
 | `LastValueCoalescer` | interface | `import("<repo>/src/core/coalescing").LastValueCoalescer<T>` | `src/core/coalescing.ts:10` |
 | `LazyComponentLoader` | type | `(): import("<repo>/src/core/vnode").Component<Props>` | `src/core/lazy.ts:7` |
 | `ListNode` | interface | `import("<repo>/src/core/vnode").ListNode<Item>` | `src/core/vnode.ts:30` |
-| `MaybeSignal` | type | `import("<repo>/src/core/reactive").MaybeSignal<T>` | `src/core/reactive.ts:24` |
-| `onCleanup` | function | `(cleanup: import("<repo>/src/core/reactive").Cleanup): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:1067` |
+| `MaybeSignal` | type | `import("<repo>/src/core/reactive").MaybeSignal<T>` | `src/core/reactive.ts:26` |
+| `onCleanup` | function | `(cleanup: import("<repo>/src/core/reactive").Cleanup): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:1061` |
 | `oneWay` | function | `<Value, Property extends PropertyKey>(state: import("<repo>/src/core/reactive").ReadonlySignal<Value>, property: Property): Record<Property, import("<repo>/src/core/reactive").ReadonlySignal<Value>>` | `src/core/binding.ts:76` |
-| `onMount` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup): void` | `src/core/reactive.ts:929` |
+| `onMount` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup): void` | `src/core/reactive.ts:923` |
 | `Outlet` | function | `(props?: import("<repo>/src/core/router").OutletProps): import("<repo>/src/core/vnode").Child` | `src/core/router.ts:1028` |
 | `OutletProps` | interface | `import("<repo>/src/core/router").OutletProps` | `src/core/router.ts:220` |
 | `parseRouterQuery` | function | `(search: string): import("<repo>/src/core/router").RouterQuery` | `src/core/router-path.ts:66` |
@@ -483,9 +483,9 @@ Source: `src/core.ts`
 | `PortalNode` | interface | `import("<repo>/src/core/vnode").PortalNode` | `src/core/vnode.ts:55` |
 | `PortalProps` | interface | `import("<repo>/src/core/control-flow").PortalProps` | `src/core/control-flow.ts:39` |
 | `PrimitiveChild` | type | `import("<repo>/src/core/vnode").PrimitiveChild` | `src/core/vnode.ts:4` |
-| `ReactiveScope` | interface | `import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:261` |
-| `ReadonlySignal` | interface | `import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:11` |
-| `readSignal` | function | `<T>(value: import("<repo>/src/core/reactive").MaybeSignal<T>): T` | `src/core/reactive.ts:1045` |
+| `ReactiveScope` | interface | `import("<repo>/src/core/reactive").ReactiveScope` | `src/core/reactive.ts:263` |
+| `ReadonlySignal` | interface | `import("<repo>/src/core/reactive").ReadonlySignal<T>` | `src/core/reactive.ts:13` |
+| `readSignal` | function | `<T>(value: import("<repo>/src/core/reactive").MaybeSignal<T>): T` | `src/core/reactive.ts:1039` |
 | `RouteDefinition` | interface | `import("<repo>/src/core/router").RouteDefinition<State, Handle>` | `src/core/router.ts:78` |
 | `RouteMatch` | interface | `import("<repo>/src/core/router").RouteMatch<State, Handle>` | `src/core/router.ts:94` |
 | `RouteParamsForPath` | type | `import("<repo>/src/core/router-registry").RouteParamsForPath<Path>` | `src/core/router-registry.ts:22` |
@@ -510,15 +510,15 @@ Source: `src/core.ts`
 | `RouterQueryValue` | type | `import("<repo>/src/core/router").RouterQueryValue` | `src/core/router.ts:47` |
 | `RouterTarget` | type | `import("<repo>/src/core/router").RouterTarget` | `src/core/router.ts:134` |
 | `RouterUpOptions` | interface | `import("<repo>/src/core/router").RouterUpOptions` | `src/core/router.ts:142` |
-| `runInScope` | function | `<T>(scope: import("<repo>/src/core/reactive").ReactiveScope, callback: () => T): T` | `src/core/reactive.ts:1053` |
+| `runInScope` | function | `<T>(scope: import("<repo>/src/core/reactive").ReactiveScope, callback: () => T): T` | `src/core/reactive.ts:1047` |
 | `Show` | function | `<Value>(props: import("<repo>/src/core/control-flow").ShowProps<Value>): import("<repo>/src/core/vnode").Child` | `src/core/control-flow.ts:59` |
 | `ShowProps` | interface | `import("<repo>/src/core/control-flow").ShowProps<Value>` | `src/core/control-flow.ts:18` |
-| `signal` | function | `<T>(initialValue: T): import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:985` |
-| `Signal` | interface | `import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:18` |
+| `signal` | function | `<T>(initialValue: T): import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:979` |
+| `Signal` | interface | `import("<repo>/src/core/reactive").Signal<T>` | `src/core/reactive.ts:20` |
 | `stringifyRouterQuery` | function | `(query?: import("<repo>/src/core/router").RouterQueryInput): string` | `src/core/router-path.ts:116` |
-| `SubscribeOptions` | interface | `import("<repo>/src/core/reactive").SubscribeOptions` | `src/core/reactive.ts:3` |
+| `SubscribeOptions` | interface | `import("<repo>/src/core/reactive").SubscribeOptions` | `src/core/reactive.ts:5` |
 | `twoWay` | function | `<Value, Property extends PropertyKey, Event extends `on${string}`, Sender extends Record<Property, Value> = Record<Property, Value>>(state: import("<repo>/src/core/reactive").Signal<Value>, property: Property, event: Ev…` | `src/core/binding.ts:88` |
-| `untrack` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1027` |
+| `untrack` | function | `<T>(callback: () => T): T` | `src/core/reactive.ts:1021` |
 | `useContext` | function | `<Value>(context: import("<repo>/src/core/context").Context<Value>): Value` | `src/core/context.ts:41` |
 | `useRoute` | function | `<State = unknown, Handle = unknown>(): import("<repo>/src/core/router").RouteRenderContext<State, Handle>` | `src/core/router.ts:1002` |
 | `useRouteParams` | function | `(): import("<repo>/src/core/reactive").ReadonlySignal<import("<repo>/src/core/router").RouterParams>` | `src/core/router.ts:1015` |
@@ -740,7 +740,7 @@ Source: `src/native.ts`
 | `createNativeResourceOwner` | function | `(options?: import("<repo>/src/runtime/native-resource").NativeResourceOwnerOptions): import("<repo>/src/runtime/native-resource").NativeResourceOwner` | `src/runtime/native-resource.ts:36` |
 | `createProjectedOwnership` | function | `<Result = void>(release: Extract<Result, PromiseLike<unknown>> extends never ? (value: object) => Result : never): import("<repo>/src/runtime/projected-owner").ProjectedOwnership` | `src/runtime/projected-owner.ts:134` |
 | `createProjectedValueOwner` | function | `<Value extends object, Result = void>(value: Value, release: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): import("<repo>/src/runtime/projected-owner").ProjectedValueOwner<Valu…` | `src/runtime/projected-owner.ts:33` |
-| `createRenderer` | function | `(options?: import("<repo>/src/renderer/renderer").RendererOptions): import("<repo>/src/renderer/renderer").Renderer` | `src/renderer/renderer.ts:1484` |
+| `createRenderer` | function | `(options?: import("<repo>/src/renderer/renderer").RendererOptions): import("<repo>/src/renderer/renderer").Renderer` | `src/renderer/renderer.ts:1532` |
 | `createWinUIAttachedPropertyRegistrations` | function | `(bindings: import("<repo>/src/winui/winui").WinUIBindings): import("<repo>/src/winui/winui").AttachedPropertyRegistrations` | `src/winui/winui.ts:257` |
 | `createWinUIPropertyConverters` | function | `(bindings: import("<repo>/src/winui/winui").WinUIBindings): Record<string, import("<repo>/src/renderer/renderer").NativePropertyConverter>` | `src/winui/winui.ts:461` |
 | `createWinUIRenderer` | function | `(bindings: import("<repo>/src/winui/winui").WinUIBindings, options?: import("<repo>/src/winui/winui").WinUIRendererOptions): import("<repo>/src/renderer/renderer").Renderer` | `src/winui/winui.ts:687` |
@@ -843,10 +843,10 @@ Source: `src/diagnostics.ts`
 | `hasActiveRendererInspection` | function | `(snapshot: import("<repo>/src/renderer/inspector").RendererInspectionSnapshot): boolean` | `src/runtime/diagnostic-evidence.ts:264` |
 | `hasActiveRendererRecords` | function | `(diagnostics: import("<repo>/src/renderer/renderer").RendererDiagnostics): boolean` | `src/runtime/diagnostics.ts:1033` |
 | `isDiagnosticProtocolRecord` | function | `(value: unknown): value is import("<repo>/src/runtime/diagnostics").DiagnosticProtocolRecord` | `src/runtime/diagnostics.ts:807` |
-| `ReactiveDependencyInspection` | interface | `import("<repo>/src/core/reactive").ReactiveDependencyInspection` | `src/core/reactive.ts:70` |
-| `ReactiveGraphInspection` | interface | `import("<repo>/src/core/reactive").ReactiveGraphInspection` | `src/core/reactive.ts:77` |
-| `ReactiveObserverInspection` | interface | `import("<repo>/src/core/reactive").ReactiveObserverInspection` | `src/core/reactive.ts:59` |
-| `ReactiveScopeInspection` | interface | `import("<repo>/src/core/reactive").ReactiveScopeInspection` | `src/core/reactive.ts:45` |
+| `ReactiveDependencyInspection` | interface | `import("<repo>/src/core/reactive").ReactiveDependencyInspection` | `src/core/reactive.ts:72` |
+| `ReactiveGraphInspection` | interface | `import("<repo>/src/core/reactive").ReactiveGraphInspection` | `src/core/reactive.ts:79` |
+| `ReactiveObserverInspection` | interface | `import("<repo>/src/core/reactive").ReactiveObserverInspection` | `src/core/reactive.ts:61` |
+| `ReactiveScopeInspection` | interface | `import("<repo>/src/core/reactive").ReactiveScopeInspection` | `src/core/reactive.ts:47` |
 | `RendererDiagnostics` | interface | `import("<repo>/src/renderer/renderer").RendererDiagnostics` | `src/renderer/renderer.ts:149` |
 | `RendererInspectionIdleSummary` | interface | `import("<repo>/src/runtime/diagnostic-evidence").RendererInspectionIdleSummary` | `src/runtime/diagnostic-evidence.ts:58` |
 | `RendererInspectionNode` | interface | `import("<repo>/src/renderer/inspector").RendererInspectionNode` | `src/renderer/inspector.ts:63` |
