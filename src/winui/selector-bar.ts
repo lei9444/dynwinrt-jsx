@@ -16,26 +16,31 @@ import {
   type MaybeSignal,
 } from '../core/reactive'
 import type { NativeCollection } from '../renderer/renderer'
+import { requireNativeCollection } from '../renderer/native-collection'
 import { coerceSelectedIndex } from './selector'
 import type { Child, Component } from '../core/vnode'
 
-export interface SelectorBarInstance<Item extends object> {
-  readonly items: NativeCollection
+interface ProjectedSelectorBar<Item extends object> {
+  readonly items: NativeCollection | null
   selectedItem: Item | null
   onSelectionChanged(
     callback: (...args: unknown[]) => void,
   ): () => void
 }
 
+export interface SelectorBarInstance<Item extends object> extends ProjectedSelectorBar<Item> {
+  readonly items: NativeCollection
+}
+
 export interface SelectorBarControlBindings<
-  Instance extends SelectorBarInstance<Item>,
+  Instance extends ProjectedSelectorBar<Item>,
   Item extends object,
 > {
   readonly SelectorBar: NativeConstructor<Instance>
 }
 
 interface SelectorBarAdapterProps<
-  Instance extends SelectorBarInstance<Item>,
+  Instance extends ProjectedSelectorBar<Item>,
   Item extends object,
 > {
   readonly selectedIndex?: MaybeSignal<number>
@@ -45,7 +50,7 @@ interface SelectorBarAdapterProps<
 }
 
 export type SelectorBarProps<
-  Instance extends SelectorBarInstance<Item>,
+  Instance extends ProjectedSelectorBar<Item>,
   Item extends object,
 > =
   & Omit<
@@ -82,23 +87,24 @@ function requireItemAt<Item extends object>(
 }
 
 function selectedIndexOf<Item extends object>(
-  instance: SelectorBarInstance<Item>,
+  instance: ProjectedSelectorBar<Item>,
 ): number {
   const selected = instance.selectedItem
   if (selected === null) {
     return -1
   }
+  const items = requireNativeCollection(instance.items, 'SelectorBar.items')
   const indexOf = (
-    instance.items as NativeCollection & {
+    items as NativeCollection & {
       indexOf?(value: Item): number
     }
   ).indexOf
   if (indexOf) {
-    return indexOf.call(instance.items, selected)
+    return indexOf.call(items, selected)
   }
-  const size = requireCollectionSize(instance.items)
+  const size = requireCollectionSize(items)
   for (let index = 0; index < size; index += 1) {
-    if (requireItemAt<Item>(instance.items, index) === selected) {
+    if (requireItemAt<Item>(items, index) === selected) {
       return index
     }
   }
@@ -106,7 +112,7 @@ function selectedIndexOf<Item extends object>(
 }
 
 export function createSelectorBarControl<
-  Instance extends SelectorBarInstance<Item>,
+  Instance extends ProjectedSelectorBar<Item>,
   Item extends object,
 >(
   bindings: SelectorBarControlBindings<Instance, Item>,
@@ -140,7 +146,8 @@ export function createSelectorBarControl<
       }
       return
     }
-    const size = requireCollectionSize(instance.items)
+    const items = requireNativeCollection(instance.items, 'SelectorBar.items')
+    const size = requireCollectionSize(items)
     if (size === 0) {
       return
     }
@@ -152,7 +159,7 @@ export function createSelectorBarControl<
     applyingSelection.add(instance)
     try {
       instance.selectedItem =
-        requireItemAt<Item>(instance.items, desired)
+        requireItemAt<Item>(items, desired)
     }
     finally {
       applyingSelection.delete(instance)
@@ -223,7 +230,8 @@ export function createSelectorBarControl<
       }
       return
     }
-    const size = requireCollectionSize(instance.items)
+    const items = requireNativeCollection(instance.items, 'SelectorBar.items')
+    const size = requireCollectionSize(items)
     if (size === 0) {
       return
     }
@@ -240,7 +248,7 @@ export function createSelectorBarControl<
     displayName: 'SelectorBar',
     children:
       adapter.collectionSlot<
-        SelectorBarInstance<Item>
+        ProjectedSelectorBar<Item>
       >('items', {
         beforeSync: (instance) => {
           mutatingItems.add(instance as Instance)

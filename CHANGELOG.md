@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Migrated the Gallery to the published dynwinrt runtime/codegen
+  `0.1.0-preview.24`. Its samples handle nullable native collections and
+  no longer need a sibling Rust build or a generated Rect specialization
+  to position a ToolTip.
 - Enabled native WinUI selftests with ARM64 Node and recorded the runtime and
   operating-system architectures in the selftest summary.
 - Fixed reactive flushes stalling after an observer error while other work

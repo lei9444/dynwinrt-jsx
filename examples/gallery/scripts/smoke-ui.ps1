@@ -6,6 +6,7 @@ param(
     [int]$TimeoutMilliseconds = 10000,
     [switch]$SkipKeyboardInput,
     [switch]$RouterOnly,
+    [switch]$CameraNavigationOnly,
     [switch]$ClipboardOnly,
     [switch]$SystemOnly,
     [switch]$ShellOnly,
@@ -88,8 +89,6 @@ function Set-GalleryWindowEffectiveSize(
 }
 
 $galleryRoot = Split-Path $PSScriptRoot -Parent
-$repoRoot = Split-Path (Split-Path $galleryRoot -Parent) -Parent
-$workRoot = Split-Path $repoRoot -Parent
 if (
     $PackagedShellPositivePath -and
     [string]::IsNullOrWhiteSpace($PackagedGalleryLaunchCommand)
@@ -97,7 +96,11 @@ if (
     throw "-PackagedShellPositivePath requires -PackagedGalleryLaunchCommand pointing to an identity-enabled Gallery executable. The unpackaged 'node main.js' launch is not a packaged positive path."
 }
 if (-not $WinAppPath) {
-    $WinAppPath = Join-Path $workRoot "winappCli\src\winapp-npm\bin\win-x64\winapp.exe"
+    $architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+    $WinAppPath = Join-Path $galleryRoot "node_modules\@microsoft\winappcli\bin\win-$architecture\winapp.exe"
+}
+if ($CameraNavigationOnly -and $PackagedShellPositivePath) {
+    throw "The camera navigation probe needs its own unpackaged test process."
 }
 if (-not (Test-Path $WinAppPath)) {
     throw "winapp.exe was not found at '$WinAppPath'."
@@ -497,10 +500,6 @@ $env:DYNWINRT_JSX_HEARTBEAT_PATH = $heartbeatEvidencePath
 $env:DYNWINRT_JSX_INSPECTOR_EXPORT_PATH = $inspectorExportPath
 
 if (-not $SkipBuild) {
-    & npm.cmd --prefix $galleryRoot run build:dynwinrt
-    if ($LASTEXITCODE -ne 0) {
-        throw "Gallery dynwinrt preparation failed."
-    }
     & npm.cmd --prefix $galleryRoot run build
     if ($LASTEXITCODE -ne 0) {
         throw "Gallery build failed."
@@ -519,9 +518,14 @@ if ($PackagedShellPositivePath) {
 }
 else {
     $nodePath = (Get-Command node -ErrorAction Stop).Source
+    $launchArguments = if ($CameraNavigationOnly) {
+        @("--require", ".\tests\fixtures\camera-start-failure.cjs", "main.js", "--gallery-route=capture-element-preview")
+    } else {
+        @("main.js")
+    }
     $appProcess = Start-Process `
         -FilePath $nodePath `
-        -ArgumentList "main.js" `
+        -ArgumentList $launchArguments `
         -WorkingDirectory $galleryRoot `
         -RedirectStandardOutput $stdoutPath `
         -RedirectStandardError $stderrPath `
@@ -532,6 +536,29 @@ $windowHandle = $null
 try {
     $window = Wait-ForGalleryWindow $appProcess.Id
     $windowHandle = [int64]$window.hwnd
+    if ($CameraNavigationOnly) {
+        Invoke-WinApp @("ui", "wait-for", "GalleryMediaCameraStart", "-w", "$windowHandle", "--timeout", "$TimeoutMilliseconds")
+        if (-not (Select-String -Quiet -SimpleMatch -Path $stdoutPath -Pattern "Camera startup failure probe armed.")) {
+            throw "Refusing to start the camera without the failure fixture."
+        }
+        Invoke-WinApp @("ui", "invoke", "GalleryMediaCameraStart", "-w", "$windowHandle")
+        Invoke-WinApp @(
+            "ui", "wait-for", "GalleryMediaCameraStatus", "-w", "$windowHandle",
+            "--value", "Camera startup probe: 0x8001010E", "--contains", "--timeout", "$TimeoutMilliseconds"
+        )
+        Invoke-GalleryRoute $windowHandle "GalleryHomeNavItem" "GalleryHomeHeading"
+        Invoke-GalleryRoute $windowHandle "GalleryAllControlsNavItem" "AllControlsPageHeading"
+        Invoke-WinApp @("ui", "invoke", "Close", "-w", "$windowHandle")
+        if (-not $appProcess.WaitForExit($TimeoutMilliseconds) -or $appProcess.ExitCode -ne 0) {
+            throw "Gallery did not close normally after leaving Camera Preview."
+        }
+        $windowHandle = 0
+        if (-not (Select-String -Quiet -SimpleMatch -Path $stdoutPath -Pattern "renderer disposed cleanly")) {
+            throw "Gallery did not report clean renderer disposal after leaving Camera Preview."
+        }
+        Write-Host "Gallery camera navigation smoke passed. Evidence: $evidenceRoot"
+        return
+    }
     Start-Sleep -Milliseconds 200
     $migratedState = Get-Content $smokeStatePath -Raw |
         ConvertFrom-Json
@@ -896,16 +923,37 @@ try {
                 "SemanticZoom native update"
             }
             "tree-view" {
+                $card = "GalleryCollectionsTreeViewSelectionSample"
                 Invoke-WinApp @(
-                "ui", "wait-for", "TreeViewPageHeading",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
+                    "ui", "wait-for", $card, "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
                 )
                 Invoke-WinApp @(
-                "ui", "wait-for",
-                "GalleryCollectionsTreeViewSelectionControl",
-                "-w", "$windowHandle",
-                "--timeout", "$TimeoutMilliseconds"
+                    "ui", "scroll-into-view", $card, "-w", "$windowHandle"
+                )
+                # The native TreeItem's InvokePattern invokes but does not select it.
+                Add-Type -AssemblyName UIAutomationClient
+                $root = [Windows.Automation.AutomationElement]::FromHandle([IntPtr]$windowHandle)
+                $scope = [Windows.Automation.TreeScope]::Descendants
+                $sample = $root.FindFirst($scope, [Windows.Automation.PropertyCondition]::new(
+                    [Windows.Automation.AutomationElement]::AutomationIdProperty, $card
+                ))
+                if (-not $sample) { throw "The multiple-selection sample is unavailable." }
+                $leaf = $sample.FindFirst($scope, [Windows.Automation.AndCondition]::new(
+                    [Windows.Automation.PropertyCondition]::new(
+                        [Windows.Automation.AutomationElement]::ControlTypeProperty,
+                        [Windows.Automation.ControlType]::TreeItem
+                    ),
+                    [Windows.Automation.PropertyCondition]::new(
+                        [Windows.Automation.AutomationElement]::NameProperty, "XYZ Functional Spec"
+                    )
+                ))
+                if (-not $leaf) { throw "The multiple-selection sample did not expose its TreeItem." }
+                $leaf.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                Invoke-WinApp @(
+                    "ui", "wait-for", "GalleryTreeViewSelectionStatus",
+                    "--value", "Selected nodes: 1", "-w", "$windowHandle",
+                    "--timeout", "$TimeoutMilliseconds"
                 )
             }
         }

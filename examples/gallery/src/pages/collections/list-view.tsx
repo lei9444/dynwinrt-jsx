@@ -38,6 +38,7 @@ import {
   SampleCard,
 } from '../../components/gallery-components'
 import { loadGalleryBitmap } from '../../gallery-assets'
+import { requireCollection } from '../../native-collection'
 
 interface Contact {
   readonly id: number
@@ -57,7 +58,9 @@ function ContextMenuRow(props: {
     () => new MenuFlyoutItem(),
   )
   deleteItem.text = 'Delete'
-  const menuItems = props.context.ownProjected(menu.items)
+  const menuItems = props.context.ownProjected(
+    requireCollection(menu.items, 'MenuFlyout.items'),
+  )
   menuItems.append(deleteItem)
   const contextFlyout = props.context.ownProjected(
     projectAs(menu, FlyoutBase),
@@ -326,7 +329,7 @@ export function ListViewPage(context: AppContext) {
   selectionMode={selectionMode}
   ref={selectionList}
   onSelectionChanged={() => {
-    selectedCount.value = selectionList.current?.selectedItems.size ?? 0
+    selectedCount.value = selectionList.current?.selectedItems?.size ?? 0
   }}
 >
   <For each={contacts} key={(contact) => contact.id}>
@@ -366,7 +369,7 @@ export function ListViewPage(context: AppContext) {
           )}
           onSelectionChanged={() => {
             selectionStatus.value =
-              `Selected items: ${selectionList.current?.selectedItems.size ?? 0}`
+              `Selected items: ${selectionList.current?.selectedItems?.size ?? 0}`
             context.model.recordInteraction()
           }}
         >

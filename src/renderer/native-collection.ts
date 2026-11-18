@@ -1,5 +1,15 @@
 import type { NativeCollection } from './renderer'
 
+export function requireNativeCollection(
+  collection: NativeCollection | null,
+  property: string,
+): NativeCollection {
+  if (collection === null) {
+    throw new TypeError(`${property} returned no collection.`)
+  }
+  return collection
+}
+
 export function requireNativeArray(
   value: unknown,
   property: string,

@@ -17,6 +17,7 @@ import {
   type Child,
 } from '../core/vnode'
 import type { NativeCollection } from '../renderer/renderer'
+import { requireNativeCollection } from '../renderer/native-collection'
 
 export interface NavigationViewCollectionProps<Item> {
   menuItems?: MaybeSignal<readonly Item[]>
@@ -24,8 +25,8 @@ export interface NavigationViewCollectionProps<Item> {
 }
 
 interface NavigationViewInstance {
-  readonly menuItems: NativeCollection
-  readonly footerMenuItems: NativeCollection
+  readonly menuItems: NativeCollection | null
+  readonly footerMenuItems: NativeCollection | null
 }
 
 export interface NavigationViewControlBindings<
@@ -50,11 +51,17 @@ export function createNavigationViewControl<
     displayName: 'NavigationView',
     adapters: {
       menuItems: adapter.collection<NavigationView>({
-        get: (instance) => instance.menuItems,
+        get: (instance) => requireNativeCollection(
+          instance.menuItems,
+          'NavigationView.menuItems',
+        ),
         label: 'NavigationView menuItems',
       }),
       footerMenuItems: adapter.collection<NavigationView>({
-        get: (instance) => instance.footerMenuItems,
+        get: (instance) => requireNativeCollection(
+          instance.footerMenuItems,
+          'NavigationView.footerMenuItems',
+        ),
         label: 'NavigationView footerMenuItems',
       }),
     },

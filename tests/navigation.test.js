@@ -797,6 +797,22 @@ test('NavigationView validates collections before mutation', () => {
   handle.dispose()
 })
 
+test('NavigationView only requires native collections used by JSX', () => {
+  class NoFooter extends TestNavigationView {
+    footerMenuItems = null
+  }
+  const Navigation = createNavigationViewControl({ NavigationView: NoFooter })
+  const root = new TestPanel()
+  const handle = renderer().render(Navigation({ menuItems: [] }), root)
+  handle.dispose()
+
+  assert.throws(
+    () => renderer().render(Navigation({ footerMenuItems: [] }), root),
+    /NavigationView\.footerMenuItems returned no collection/,
+  )
+  assert.equal(root.children.size, 0)
+})
+
 test('navigation item factory creates typed native content and metadata', () => {
   const automation = []
   const icon = { symbol: 1 }

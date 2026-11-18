@@ -182,12 +182,11 @@ export function CalendarViewPage(context: AppContext) {
           language={language}
           calendarIdentifier={calendarIdentifier}
           onSelectedDatesChanged={(sender, args) => {
-            const added = args.addedDates.toArray()
-            const removed = args.removedDates.toArray()
-            const lastAdded = added.at(-1)
+            const lastAdded = args.addedDates?.toArray().at(-1)
+            const count = sender.selectedDates?.length ?? 0
             selectionStatus.value = lastAdded
-              ? `${sender.selectedDates.length} selected; added ${formatDateTime(lastAdded)}.`
-              : `${sender.selectedDates.length} selected; removed ${removed.length} date(s).`
+              ? `${count} selected; added ${formatDateTime(lastAdded)}.`
+              : `${count} selected; removed ${args.removedDates?.length ?? 0} date(s).`
             context.model.recordInteraction()
           }}
         />

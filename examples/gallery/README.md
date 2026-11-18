@@ -70,11 +70,24 @@ The Home header and Design guidance pages reuse MIT-licensed WinUI Gallery
 artwork and icon data; its license is included at
 `Assets/WinUI-Gallery-LICENSE.txt`.
 
+The Gallery uses the JSX runtime from this checkout and the matching
+`@microsoft/dynwinrt` and `@microsoft/dynwinrt-codegen` **0.1.0-preview.24**
+npm packages. A sibling dynwinrt checkout and Rust build are not required.
+From the repository root:
+
 ```powershell
-npm install
+npm ci
+npm run build
+cd examples\gallery
+npm ci
 npm run setup
 npm start
 ```
+
+`setup` restores the SDK versions in `winapp.yaml`, then generates the
+bindings. To restore with an already installed Windows App CLI, pass
+`npm run setup -- --winapp <path-to-winapp.exe>`. Binding generation still
+uses the versions from the Gallery lockfile.
 
 When updating the dynwinrt runtime/codegen pair, regenerate bindings with
 `npm run setup` or `npm run generate` before building. Generated bindings are
@@ -83,9 +96,12 @@ not checked in. Match imports to the generated declarations:
 - Root exports disambiguate shared names by namespace. Use the Microsoft.UI
   exports, such as `DispatchingDispatcherQueuePriority` and
   `XamlMediaCompositionTarget`, with local aliases where appropriate.
-- Closed generic interfaces use qualified type names and a signature suffix.
-  Import the emitted specialization rather than assuming a short name such
-  as `IReference_Rect`.
+- For nullable value properties, use the value or `null` accepted by the
+  generated setter when supported by the native control. On ARM64 the
+  preview.24 `ToolTip.placementRect` setter rejects a plain Rect, so the
+  ToolTip sample uses `setValue(ToolTip.placementRectProperty, ...)` with
+  `PropertyValue.createRect()`. An `Object` item source is also distinct:
+  the virtualized samples still box their integer item keys.
 - Control-local types use namespace subpaths, for example
   `#winapp/bindings/microsoft/ui/xaml/controls/DatePicker`.
 
@@ -100,6 +116,10 @@ Run the real WinUI navigation smoke test:
 ```powershell
 npm run smoke:ui
 ```
+
+`npm run smoke:ui -- -CameraNavigationOnly` simulates a failed camera startup,
+then selects Home and All from the sidebar. The error stays on the camera
+page; the probe does not access camera hardware.
 
 Run only the Shell capability paths:
 

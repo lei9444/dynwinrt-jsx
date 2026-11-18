@@ -53,7 +53,7 @@ export function ClipboardPage(context: AppContext) {
 
   const describeFormats = () => {
     try {
-      const formats = Clipboard.getContent().availableFormats.toArray()
+      const formats = Clipboard.getContent().availableFormats?.toArray() ?? []
       operationsStatus.value = formats.length > 0
         ? `Available formats: ${formats.join(', ')}`
         : 'The system Clipboard is empty.'
@@ -250,7 +250,7 @@ if (accepted) Clipboard.flush()`}
         title="Formats, clear, and ContentChanged"
         description="Inspect the formats Windows currently exposes, clear the Clipboard, or own a ContentChanged subscription until this page unmounts."
         code={`const content = Clipboard.getContent()
-const formats = content.availableFormats.toArray()
+const formats = content.availableFormats?.toArray() ?? []
 
 const token = Clipboard.add_ContentChanged(onChanged)
 Clipboard.remove_ContentChanged(token)`}

@@ -1,8 +1,8 @@
 import {
+  computed,
   signal,
   theme,
   thickness,
-  type RefObject,
 } from 'dynwinrt-jsx'
 import {
   HorizontalAlignment,
@@ -13,7 +13,6 @@ import {
   releaseProjected,
   StackPanel,
   TextBlock,
-  TreeView,
   TreeViewNode,
   TreeViewSelectionMode,
 } from '#winapp/bindings'
@@ -27,6 +26,7 @@ import {
   SampleCard,
 } from '../../components/gallery-components'
 import { loadGalleryBitmap } from '../../gallery-assets'
+import { requireCollection } from '../../native-collection'
 
 function createTreeNodeFactory(context: AppContext) {
   const labelByNativeIdentity = new Map<string, string>()
@@ -51,8 +51,9 @@ function createTreeNodeFactory(context: AppContext) {
         label,
       )
     }
-    for (const child of children) {
-      node.children.append(child)
+    if (children.length > 0) {
+      const nodes = requireCollection(node.children, 'TreeViewNode.children')
+      for (const child of children) nodes.append(child)
     }
     return node
   }
@@ -97,8 +98,7 @@ export function TreeViewPage(context: AppContext) {
     readInvokedNodeLabel,
   } = createTreeNodeFactory(context)
   const invokedStatus = signal('Invoke or move a node.')
-  const selectionStatus = signal('Selected nodes: 0')
-  const multiTree: RefObject<TreeView> = { current: null }
+  const selectedCount = signal(0)
   const multiRoots = createExplorerRoots()
   const dataRoots = createExplorerRoots()
   const folderSource = loadGalleryBitmap(
@@ -188,7 +188,9 @@ export function TreeViewPage(context: AppContext) {
         code={`
 const root = new TreeViewNode()
 root.content = PropertyValue.createString('Documents')
-root.children.append(projectsNode)
+const children = root.children
+if (!children) throw new Error('TreeViewNode.children is unavailable.')
+children.append(projectsNode)
 
 <GalleryTreeView
   rootNodes={[root]}
@@ -225,12 +227,18 @@ root.children.append(projectsNode)
         automationId="GalleryCollectionsTreeViewSelectionSample"
         title="Multiple selection"
         description="Multiple selection adds native selection affordances and exposes the selected node collection."
+        output={
+          <UI.TextBlock
+            automationId="GalleryTreeViewSelectionStatus"
+            text={computed(() => `Selected nodes: ${selectedCount.value}`)}
+          />
+        }
         code={`
 <GalleryTreeView
   rootNodes={roots}
   selectionMode={TreeViewSelectionMode.Multiple}
   onSelectionChanged={(sender) => {
-    count.value = sender.selectedNodes.size
+    selectedCount.value = sender.selectedNodes?.size ?? 0
   }}
 />
         `}
@@ -241,7 +249,6 @@ root.children.append(projectsNode)
           borderThickness={thickness(1)}
         >
           <GalleryTreeView
-            ref={multiTree}
             automationId="GalleryCollectionsTreeViewSelectionControl"
             minWidth={345}
             maxHeight={400}
@@ -250,8 +257,7 @@ root.children.append(projectsNode)
             rootNodes={multiRoots}
             selectionMode={TreeViewSelectionMode.Multiple}
             onSelectionChanged={(sender) => {
-              selectionStatus.value =
-                `Selected nodes: ${sender.selectedNodes.size}`
+              selectedCount.value = sender.selectedNodes?.size ?? 0
               context.model.recordInteraction()
             }}
           />

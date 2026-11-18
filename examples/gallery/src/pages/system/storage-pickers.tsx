@@ -19,6 +19,7 @@ import {
   UI,
 } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
+import { requireCollection } from '../../native-collection'
 
 type PickerAbortSignal = NonNullable<
   Parameters<FileOpenPicker['pickSingleFileAsync']>[0]
@@ -71,7 +72,8 @@ export function StoragePickersPage(context: AppContext) {
 
   const configureOpenPicker = () => {
     const picker = new FileOpenPicker(context.window.appWindow.id)
-    picker.fileTypeFilter.append('*')
+    const filters = requireCollection(picker.fileTypeFilter, 'FileOpenPicker.fileTypeFilter')
+    filters.append('*')
     picker.commitButtonText = 'Pick file'
     picker.suggestedStartLocation = PickerLocationId.DocumentsLibrary
     picker.viewMode = PickerViewMode.List
@@ -84,8 +86,9 @@ export function StoragePickersPage(context: AppContext) {
       const open = new FileOpenPicker(windowId)
       const save = new FileSavePicker(windowId)
       const folder = new FolderPicker(windowId)
-      open.fileTypeFilter.append('*')
-      save.fileTypeChoices.insert('Text files', ['.txt'])
+      requireCollection(open.fileTypeFilter, 'FileOpenPicker.fileTypeFilter').append('*')
+      const choices = requireCollection(save.fileTypeChoices, 'FileSavePicker.fileTypeChoices')
+      choices.insert('Text files', ['.txt'])
       folder.suggestedStartLocation = PickerLocationId.DocumentsLibrary
       capability.value =
         `Native storage pickers are available for the main window (WindowId ${windowId.value}).`
@@ -140,7 +143,9 @@ new FolderPicker(windowId)`}
         title="Open files"
         description="Pick one file or multiple files with a real FileOpenPicker."
         code={`const picker = new FileOpenPicker(context.window.appWindow.id)
-picker.fileTypeFilter.append('*')
+const filters = picker.fileTypeFilter
+if (!filters) throw new Error('File type filter unavailable.')
+filters.append('*')
 const file = await picker.pickSingleFileAsync(signal)`}
         output={
           <UI.TextBlock
@@ -170,7 +175,7 @@ const file = await picker.pickSingleFileAsync(signal)`}
             onClick={() => runPicker(async (abortSignal) => {
               const files = await configureOpenPicker()
                 .pickMultipleFilesAsync(abortSignal)
-              const paths = files.toArray().map((file) => file.path)
+              const paths = files?.toArray().map((file) => file.path) ?? []
               return paths.length > 0
                 ? `Picked files: ${paths.join('; ')}`
                 : 'File selection canceled.'
@@ -186,7 +191,9 @@ const file = await picker.pickSingleFileAsync(signal)`}
         title="Save a file"
         description="FileSavePicker chooses the path; Node writes the requested text only after a non-empty native result."
         code={`const picker = new FileSavePicker(context.window.appWindow.id)
-picker.fileTypeChoices.insert('Text files', ['.txt'])
+const choices = picker.fileTypeChoices
+if (!choices) throw new Error('File type choices unavailable.')
+choices.insert('Text files', ['.txt'])
 const file = await picker.pickSaveFileAsync(signal)
 if (file?.path) await fs.writeFile(file.path, content, 'utf8')`}
       >
@@ -209,7 +216,10 @@ if (file?.path) await fs.writeFile(file.path, content, 'utf8')`}
               const picker = new FileSavePicker(
                 context.window.appWindow.id,
               )
-              picker.fileTypeChoices.insert(
+              requireCollection(
+                picker.fileTypeChoices,
+                'FileSavePicker.fileTypeChoices',
+              ).insert(
                 'Text files',
                 ['.txt'],
               )

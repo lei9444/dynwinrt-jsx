@@ -26,8 +26,8 @@ interface ResourceDictionaryVector {
 }
 
 interface ResourceDictionary extends ResourceMap {
-  readonly mergedDictionaries?: ResourceDictionaryVector
-  readonly themeDictionaries?: ResourceMap
+  readonly mergedDictionaries?: ResourceDictionaryVector | null
+  readonly themeDictionaries?: ResourceMap | null
   as?(interfaceType: unknown): ResourceMap
 }
 

@@ -13,6 +13,7 @@ import {
 import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
 import { createGalleryAssetUri } from '../../gallery-assets'
+import { requireCollection } from '../../native-collection'
 
 export function MediaPlayerElementPage(context: AppContext) {
   const player1: RefObject<MediaPlayerElement> = { current: null }
@@ -34,9 +35,8 @@ export function MediaPlayerElementPage(context: AppContext) {
     status.value = 'Opening the native media file picker...'
     try {
       const picker = new FileOpenPicker(context.window.appWindow.id)
-      picker.fileTypeFilter.append('.wmv')
-      picker.fileTypeFilter.append('.mp4')
-      picker.fileTypeFilter.append('.mp3')
+      const filters = requireCollection(picker.fileTypeFilter, 'FileOpenPicker.fileTypeFilter')
+      for (const extension of ['.wmv', '.mp4', '.mp3']) filters.append(extension)
       const result = await picker.pickSingleFileAsync()
       if (!result || disposed) {
         status.value = disposed

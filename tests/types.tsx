@@ -171,8 +171,8 @@ class TypeGrid extends TypePanel {
 }
 
 class TypeNavigationView {
-  readonly menuItems = new TypeVector()
-  readonly footerMenuItems = new TypeVector()
+  readonly menuItems: TypeVector | null = new TypeVector()
+  readonly footerMenuItems: TypeVector | null = new TypeVector()
   content: unknown = null
   selectedItem: TypeNavigationItem | null = null
   settingsItem: TypeNavigationItem | null = null
@@ -188,7 +188,7 @@ class TypeNavigationView {
 }
 
 class TypeNavigationItem {
-  readonly menuItems = new TypeVector()
+  readonly menuItems: TypeVector | null = new TypeVector()
   name = ''
   content: unknown = null
   icon: TypeSymbolIcon | null = null
@@ -329,7 +329,7 @@ class TypeSelectorBarItem {
 }
 
 class TypeSelectorBar {
-  readonly items = new TypeVector()
+  readonly items: TypeVector | null = new TypeVector()
   selectedItem: TypeSelectorBarItem | null = null
 
   onSelectionChanged(
@@ -1531,10 +1531,8 @@ export const typeCheckedTree = (
     <SelectorBar
       selectedIndex={signal(0)}
       onSelectedIndexChange={(index, sender) => {
-        sender.selectedItem =
-          sender.items.getAt?.(index) as
-            | TypeSelectorBarItem
-            | null
+        const item = sender.items?.getAt(index)
+        sender.selectedItem = item instanceof TypeSelectorBarItem ? item : null
       }}
     >
       <UI.SelectorBarItem text="Recent" />

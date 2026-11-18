@@ -6,7 +6,6 @@ import {
 } from 'dynwinrt-jsx'
 import {
   Geopoint,
-  IVector_MicrosoftUIXamlControlsMapElement_g323823bd1813091a as IVector_MapElement,
   MapControl,
   MapElementsLayer,
   MapIcon,
@@ -16,6 +15,7 @@ import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
 import { loadGalleryBitmap } from '../../gallery-assets'
 import { detectPackageIdentity } from '../shell/shared'
+import { requireCollection } from '../../native-collection'
 
 export function MapControlPage(context: AppContext) {
   const identity = detectPackageIdentity()
@@ -49,10 +49,10 @@ export function MapControlPage(context: AppContext) {
     const icon = new MapIcon()
     icon.location = location
     const layer = new MapElementsLayer()
-    layer.mapElements = IVector_MapElement.create([icon])
+    layer.mapElements = [icon]
     current.center = center
     current.zoomLevel = 1
-    current.layers.append(layer)
+    requireCollection(current.layers, 'MapControl.layers').append(layer)
   }
   const applyToken = () => {
     const currentMap = map.current
@@ -92,8 +92,10 @@ export function MapControlPage(context: AppContext) {
         code={`const icon = new MapIcon()
 icon.location = new Geopoint(position)
 const layer = new MapElementsLayer()
-layer.mapElements = IVector_MapElement.create([icon])
-map.layers.append(layer)`}
+layer.mapElements = [icon]
+const layers = map.layers
+if (!layers) throw new Error('MapControl.layers is unavailable.')
+layers.append(layer)`}
         output={
           <UI.TextBlock
             automationId="GalleryMediaMapStatus"

@@ -237,9 +237,9 @@ export function AppNotificationsPage(context: AppContext) {
       const notifications = await context.appNotifications.getAllAsync(
         controller.signal,
       )
-      const observed = notifications.toArray().some((item) =>
+      const observed = notifications?.toArray().some((item) =>
         item.tag === probeTag &&
-        item.group === context.appNotifications.group)
+        item.group === context.appNotifications.group) ?? false
       await context.appNotifications.remove(
         probeTag,
         controller.signal,

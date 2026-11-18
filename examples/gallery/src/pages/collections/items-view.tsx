@@ -616,7 +616,7 @@ export function ItemsViewPage(context: AppContext) {
             }}
             onSelectionChanged={(sender) => {
               selectionOutput.value =
-                `You have selected ${sender.selectedItems.size} item(s).`
+                `You have selected ${sender.selectedItems?.size ?? 0} item(s).`
               context.model.recordInteraction()
             }}
           >

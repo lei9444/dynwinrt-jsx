@@ -588,7 +588,7 @@ export function GridViewPage(context: AppContext) {
           }}
           onSelectionChanged={() => {
             selectionStatus.value =
-              `You have selected ${contentGrid.current?.selectedItems.size ?? 0} item(s).`
+              `You have selected ${contentGrid.current?.selectedItems?.size ?? 0} item(s).`
             context.model.recordInteraction()
           }}
         >

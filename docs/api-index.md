@@ -83,9 +83,9 @@ Source: `src/index.ts`
 | `createListViewScrollTarget` | function | `<Instance extends import("<repo>/src/winui/list-view").ListViewInstance>(): import("<repo>/src/winui/list-view").ListViewScrollTarget<Instance>` | `src/winui/list-view.ts:206` |
 | `createMessageTransport` | function | `(endpoint: import("<repo>/src/runtime/bridge").MessageEndpoint): import("<repo>/src/runtime/bridge").MessageTransport` | `src/runtime/bridge.ts:32` |
 | `createNativeResourceOwner` | function | `(options?: import("<repo>/src/runtime/native-resource").NativeResourceOwnerOptions): import("<repo>/src/runtime/native-resource").NativeResourceOwner` | `src/runtime/native-resource.ts:36` |
-| `createNavigationHost` | function | `<Route>(options: import("<repo>/src/winui/navigation").NavigationHostOptions<Route>): import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:82` |
-| `createNavigationItem` | function | `<Item extends NavigationItemInstance, Text extends TextInstance>(bindings: import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>, options: import("<repo>/src/winui/navigation").NavigationItemOptions<I…` | `src/winui/navigation.ts:505` |
-| `createNavigationViewControl` | function | `<NavigationView extends NavigationViewInstance, Item = unknown>(bindings: import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>): import("<repo>/src/renderer/native").NativeComponent<Naviga…` | `src/winui/navigation.ts:37` |
+| `createNavigationHost` | function | `<Route>(options: import("<repo>/src/winui/navigation").NavigationHostOptions<Route>): import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:89` |
+| `createNavigationItem` | function | `<Item extends NavigationItemInstance, Text extends TextInstance>(bindings: import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>, options: import("<repo>/src/winui/navigation").NavigationItemOptions<I…` | `src/winui/navigation.ts:512` |
+| `createNavigationViewControl` | function | `<NavigationView extends NavigationViewInstance, Item = unknown>(bindings: import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>): import("<repo>/src/renderer/native").NativeComponent<Naviga…` | `src/winui/navigation.ts:38` |
 | `createPivotControl` | function | `<Instance extends import("<repo>/src/winui/pivot").PivotInstance>(bindings: import("<repo>/src/winui/pivot").PivotControlBindings<Instance>): import("<repo>/src/core/vnode").Component<import("<repo>/src/winui/pivot").Pi…` | `src/winui/pivot.ts:50` |
 | `createProjectedOwnership` | function | `<Result = void>(release: Extract<Result, PromiseLike<unknown>> extends never ? (value: object) => Result : never): import("<repo>/src/runtime/projected-owner").ProjectedOwnership` | `src/runtime/projected-owner.ts:134` |
 | `createProjectedValueOwner` | function | `<Value extends object, Result = void>(value: Value, release: Extract<Result, PromiseLike<unknown>> extends never ? (value: Value) => Result : never): import("<repo>/src/runtime/projected-owner").ProjectedValueOwner<Valu…` | `src/runtime/projected-owner.ts:33` |
@@ -101,7 +101,7 @@ Source: `src/index.ts`
 | `createScopedLastValueCoalescer` | function | `<T>(schedule: import("<repo>/src/core/coalescing").CoalescingScheduler, callback: (value: T) => void): import("<repo>/src/core/coalescing").LastValueCoalescer<T>` | `src/core/coalescing.ts:79` |
 | `createScrollViewerController` | function | `<Instance extends import("<repo>/src/winui/scroll-viewer").ScrollViewerInstance>(options?: import("<repo>/src/winui/scroll-viewer").ScrollViewerControllerOptions): import("<repo>/src/winui/scroll-viewer").ScrollViewerCo…` | `src/winui/scroll-viewer.ts:95` |
 | `createSecondaryWindowManager` | function | `<Window extends import("<repo>/src/winui/windowing").SecondaryXamlWindowInstance<AppWindow>, AppWindow extends import("<repo>/src/winui/windowing").SecondaryAppWindowInstance>(options: import("<repo>/src/winui/windowing…` | `src/winui/windowing.ts:220` |
-| `createSelectorBarControl` | function | `<Instance extends import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>, Item extends object>(bindings: import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>): import("<repo>/src…` | `src/winui/selector-bar.ts:108` |
+| `createSelectorBarControl` | function | `<Instance extends ProjectedSelectorBar<Item>, Item extends object>(bindings: import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>): import("<repo>/src/core/vnode").Component<import("<repo>/…` | `src/winui/selector-bar.ts:114` |
 | `createSolidColorBrush` | function | `<Instance>(constructorType: import("<repo>/src/winui/values").SolidColorBrushConstructor<Instance>, color: import("<repo>/src/winui/winui").WinUIColor): Instance` | `src/winui/values.ts:132` |
 | `createStateBridge` | function | `<State, Patch = never, Command = never, Event = never>(transport: import("<repo>/src/runtime/bridge").MessageTransport, options: import("<repo>/src/runtime/bridge").StateBridgeOptions<State, Patch, Command, Event>): imp…` | `src/runtime/bridge.ts:286` |
 | `createStyleRecipe` | function | `<Props extends object>(definition: { readonly base: import("<repo>/src/winui/style").StyleValues<Props>; readonly variants?: undefined; readonly defaultVariants?: undefined; }): import("<repo>/src/winui/style").BaseStyl…` | `src/winui/style.ts:78` |
@@ -234,12 +234,12 @@ Source: `src/index.ts`
 | `NativeSlotAdapter` | type | `import("<repo>/src/renderer/adapters").NativeSlotAdapter<Instance>` | `src/renderer/adapters.ts:96` |
 | `NativeValue` | type | `import("<repo>/src/renderer/native").NativeValue<Value>` | `src/renderer/native.ts:56` |
 | `NativeValueForProperty` | type | `import("<repo>/src/renderer/native").NativeValueForProperty<Key, Value>` | `src/renderer/native.ts:58` |
-| `NavigationHost` | interface | `import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:73` |
-| `NavigationHostOptions` | interface | `import("<repo>/src/winui/navigation").NavigationHostOptions<Route>` | `src/winui/navigation.ts:64` |
-| `NavigationItemBindings` | interface | `import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>` | `src/winui/navigation.ts:414` |
-| `NavigationItemOptions` | interface | `import("<repo>/src/winui/navigation").NavigationItemOptions<Icon>` | `src/winui/navigation.ts:423` |
-| `NavigationViewCollectionProps` | interface | `import("<repo>/src/winui/navigation").NavigationViewCollectionProps<Item>` | `src/winui/navigation.ts:21` |
-| `NavigationViewControlBindings` | interface | `import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>` | `src/winui/navigation.ts:31` |
+| `NavigationHost` | interface | `import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:80` |
+| `NavigationHostOptions` | interface | `import("<repo>/src/winui/navigation").NavigationHostOptions<Route>` | `src/winui/navigation.ts:71` |
+| `NavigationItemBindings` | interface | `import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>` | `src/winui/navigation.ts:421` |
+| `NavigationItemOptions` | interface | `import("<repo>/src/winui/navigation").NavigationItemOptions<Icon>` | `src/winui/navigation.ts:430` |
+| `NavigationViewCollectionProps` | interface | `import("<repo>/src/winui/navigation").NavigationViewCollectionProps<Item>` | `src/winui/navigation.ts:22` |
+| `NavigationViewControlBindings` | interface | `import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>` | `src/winui/navigation.ts:32` |
 | `onCleanup` | function | `(cleanup: import("<repo>/src/core/reactive").Cleanup): import("<repo>/src/core/reactive").Cleanup` | `src/core/reactive.ts:1061` |
 | `oneWay` | function | `<Value, Property extends PropertyKey>(state: import("<repo>/src/core/reactive").ReadonlySignal<Value>, property: Property): Record<Property, import("<repo>/src/core/reactive").ReadonlySignal<Value>>` | `src/core/binding.ts:76` |
 | `onMount` | function | `(callback: () => void \| import("<repo>/src/core/reactive").Cleanup): void` | `src/core/reactive.ts:923` |
@@ -339,9 +339,9 @@ Source: `src/index.ts`
 | `SecondaryWindowSize` | interface | `import("<repo>/src/winui/windowing").SecondaryWindowSize` | `src/winui/windowing.ts:11` |
 | `SecondaryXamlWindowHandle` | interface | `import("<repo>/src/winui/windowing").SecondaryXamlWindowHandle<Window, AppWindow>` | `src/winui/windowing.ts:83` |
 | `SecondaryXamlWindowInstance` | interface | `import("<repo>/src/winui/windowing").SecondaryXamlWindowInstance<AppWindow>` | `src/winui/windowing.ts:34` |
-| `SelectorBarControlBindings` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>` | `src/winui/selector-bar.ts:30` |
-| `SelectorBarInstance` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>` | `src/winui/selector-bar.ts:22` |
-| `SelectorBarProps` | type | `import("<repo>/src/winui/selector-bar").SelectorBarProps<Instance, Item>` | `src/winui/selector-bar.ts:47` |
+| `SelectorBarControlBindings` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>` | `src/winui/selector-bar.ts:35` |
+| `SelectorBarInstance` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>` | `src/winui/selector-bar.ts:31` |
+| `SelectorBarProps` | type | `import("<repo>/src/winui/selector-bar").SelectorBarProps<Instance, Item>` | `src/winui/selector-bar.ts:52` |
 | `Show` | function | `<Value>(props: import("<repo>/src/core/control-flow").ShowProps<Value>): import("<repo>/src/core/vnode").Child` | `src/core/control-flow.ts:59` |
 | `showContentDialog` | function | `<Root, Result>(options: import("<repo>/src/winui/dialog").ShowContentDialogOptions<Root, Result>): Promise<Result> \| <Root, Result>(renderer: import("<repo>/src/renderer/renderer").Renderer, dialog: import("<repo>/src/w…` | `src/winui/dialog.ts:22` |
 | `ShowContentDialogOptions` | interface | `import("<repo>/src/winui/dialog").ShowContentDialogOptions<Root, Result>` | `src/winui/dialog.ts:14` |
@@ -548,15 +548,15 @@ Source: `src/controls.ts`
 | `createItemsRepeaterControl` | function | `<Instance extends import("<repo>/src/winui/items-repeater").ItemsRepeaterInstance, Host extends import("<repo>/src/winui/items-repeater").ItemsRepeaterItemHost>(bindings: import("<repo>/src/winui/items-repeater").ItemsR…` | `src/winui/items-repeater.ts:264` |
 | `createListViewControl` | function | `<Instance extends import("<repo>/src/winui/list-view").ListViewInstance>(bindings: import("<repo>/src/winui/list-view").ListViewControlBindings<Instance>): import("<repo>/src/core").Component<import("<repo>/src/winui/li…` | `src/winui/list-view.ts:100` |
 | `createListViewScrollTarget` | function | `<Instance extends import("<repo>/src/winui/list-view").ListViewInstance>(): import("<repo>/src/winui/list-view").ListViewScrollTarget<Instance>` | `src/winui/list-view.ts:206` |
-| `createNavigationHost` | function | `<Route>(options: import("<repo>/src/winui/navigation").NavigationHostOptions<Route>): import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:82` |
-| `createNavigationItem` | function | `<Item extends NavigationItemInstance, Text extends TextInstance>(bindings: import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>, options: import("<repo>/src/winui/navigation").NavigationItemOptions<I…` | `src/winui/navigation.ts:505` |
-| `createNavigationViewControl` | function | `<NavigationView extends NavigationViewInstance, Item = unknown>(bindings: import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>): import("<repo>/src/renderer/native").NativeComponent<Naviga…` | `src/winui/navigation.ts:37` |
+| `createNavigationHost` | function | `<Route>(options: import("<repo>/src/winui/navigation").NavigationHostOptions<Route>): import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:89` |
+| `createNavigationItem` | function | `<Item extends NavigationItemInstance, Text extends TextInstance>(bindings: import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>, options: import("<repo>/src/winui/navigation").NavigationItemOptions<I…` | `src/winui/navigation.ts:512` |
+| `createNavigationViewControl` | function | `<NavigationView extends NavigationViewInstance, Item = unknown>(bindings: import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>): import("<repo>/src/renderer/native").NativeComponent<Naviga…` | `src/winui/navigation.ts:38` |
 | `createPivotControl` | function | `<Instance extends import("<repo>/src/winui/pivot").PivotInstance>(bindings: import("<repo>/src/winui/pivot").PivotControlBindings<Instance>): import("<repo>/src/core").Component<import("<repo>/src/winui/pivot").PivotPro…` | `src/winui/pivot.ts:50` |
 | `createRouterNavigationHost` | function | `<State = unknown, Handle = unknown>(router: import("<repo>/src/core").Router<State, Handle>, options: import("<repo>/src/winui/router").RouterNavigationHostOptions): import("<repo>/src/winui/navigation").NavigationHost<…` | `src/winui/router.ts:29` |
 | `createRouterNavigationViewShell` | function | `<RouteId extends string, State = unknown, Handle = unknown, Item extends RouterNavigationItemInstance = RouterNavigationItemInstance, Text extends RouterNavigationTextInstance = RouterNavigationTextInstance, ReleaseResu…` | `src/winui/router.ts:205` |
 | `createScrollViewerController` | function | `<Instance extends import("<repo>/src/winui/scroll-viewer").ScrollViewerInstance>(options?: import("<repo>/src/winui/scroll-viewer").ScrollViewerControllerOptions): import("<repo>/src/winui/scroll-viewer").ScrollViewerCo…` | `src/winui/scroll-viewer.ts:95` |
 | `createSecondaryWindowManager` | function | `<Window extends import("<repo>/src/winui/windowing").SecondaryXamlWindowInstance<AppWindow>, AppWindow extends import("<repo>/src/winui/windowing").SecondaryAppWindowInstance>(options: import("<repo>/src/winui/windowing…` | `src/winui/windowing.ts:220` |
-| `createSelectorBarControl` | function | `<Instance extends import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>, Item extends object>(bindings: import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>): import("<repo>/src…` | `src/winui/selector-bar.ts:108` |
+| `createSelectorBarControl` | function | `<Instance extends ProjectedSelectorBar<Item>, Item extends object>(bindings: import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>): import("<repo>/src/core").Component<import("<repo>/src/wi…` | `src/winui/selector-bar.ts:114` |
 | `createSymbolIcon` | function | `<Icon>(constructorType: new (symbol: number) => Icon, symbol: number): Icon` | `src/winui/icons.ts:3` |
 | `createTeachingTip` | function | `<Native extends import("<repo>/src/winui/overlays").TeachingTipLike<ClosedArgs>, ClosedArgs = unknown>(renderer: import("<repo>/src/index").Renderer, teachingTip: Native, options?: import("<repo>/src/winui/overlays").Te…` | `src/winui/overlays.ts:360` |
 | `createVirtualizedItemsControl` | function | `<Instance extends import("<repo>/src/winui/items-repeater").VirtualizedItemsInstance, Host extends object, MountHost extends import("<repo>/src/winui/items-repeater").VirtualizedItemsMountHost = Extract<Host, import("<r…` | `src/winui/items-repeater.ts:120` |
@@ -594,12 +594,12 @@ Source: `src/controls.ts`
 | `NativeProps` | type | `import("<repo>/src/renderer/native").NativeProps<Value>` | `src/renderer/native.ts:123` |
 | `NativeValue` | type | `import("<repo>/src/renderer/native").NativeValue<Value>` | `src/renderer/native.ts:56` |
 | `NativeValueForProperty` | type | `import("<repo>/src/renderer/native").NativeValueForProperty<Key, Value>` | `src/renderer/native.ts:58` |
-| `NavigationHost` | interface | `import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:73` |
-| `NavigationHostOptions` | interface | `import("<repo>/src/winui/navigation").NavigationHostOptions<Route>` | `src/winui/navigation.ts:64` |
-| `NavigationItemBindings` | interface | `import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>` | `src/winui/navigation.ts:414` |
-| `NavigationItemOptions` | interface | `import("<repo>/src/winui/navigation").NavigationItemOptions<Icon>` | `src/winui/navigation.ts:423` |
-| `NavigationViewCollectionProps` | interface | `import("<repo>/src/winui/navigation").NavigationViewCollectionProps<Item>` | `src/winui/navigation.ts:21` |
-| `NavigationViewControlBindings` | interface | `import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>` | `src/winui/navigation.ts:31` |
+| `NavigationHost` | interface | `import("<repo>/src/winui/navigation").NavigationHost<Route>` | `src/winui/navigation.ts:80` |
+| `NavigationHostOptions` | interface | `import("<repo>/src/winui/navigation").NavigationHostOptions<Route>` | `src/winui/navigation.ts:71` |
+| `NavigationItemBindings` | interface | `import("<repo>/src/winui/navigation").NavigationItemBindings<Item, Text>` | `src/winui/navigation.ts:421` |
+| `NavigationItemOptions` | interface | `import("<repo>/src/winui/navigation").NavigationItemOptions<Icon>` | `src/winui/navigation.ts:430` |
+| `NavigationViewCollectionProps` | interface | `import("<repo>/src/winui/navigation").NavigationViewCollectionProps<Item>` | `src/winui/navigation.ts:22` |
+| `NavigationViewControlBindings` | interface | `import("<repo>/src/winui/navigation").NavigationViewControlBindings<NavigationView>` | `src/winui/navigation.ts:32` |
 | `OpenSecondaryAppWindowOptions` | interface | `import("<repo>/src/winui/windowing").OpenSecondaryAppWindowOptions<AppWindow>` | `src/winui/windowing.ts:69` |
 | `OpenSecondaryXamlWindowOptions` | interface | `import("<repo>/src/winui/windowing").OpenSecondaryXamlWindowOptions<Window, AppWindow>` | `src/winui/windowing.ts:55` |
 | `PivotControlBindings` | interface | `import("<repo>/src/winui/pivot").PivotControlBindings<Instance>` | `src/winui/pivot.ts:20` |
@@ -633,9 +633,9 @@ Source: `src/controls.ts`
 | `SecondaryWindowSize` | interface | `import("<repo>/src/winui/windowing").SecondaryWindowSize` | `src/winui/windowing.ts:11` |
 | `SecondaryXamlWindowHandle` | interface | `import("<repo>/src/winui/windowing").SecondaryXamlWindowHandle<Window, AppWindow>` | `src/winui/windowing.ts:83` |
 | `SecondaryXamlWindowInstance` | interface | `import("<repo>/src/winui/windowing").SecondaryXamlWindowInstance<AppWindow>` | `src/winui/windowing.ts:34` |
-| `SelectorBarControlBindings` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>` | `src/winui/selector-bar.ts:30` |
-| `SelectorBarInstance` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>` | `src/winui/selector-bar.ts:22` |
-| `SelectorBarProps` | type | `import("<repo>/src/winui/selector-bar").SelectorBarProps<Instance, Item>` | `src/winui/selector-bar.ts:47` |
+| `SelectorBarControlBindings` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarControlBindings<Instance, Item>` | `src/winui/selector-bar.ts:35` |
+| `SelectorBarInstance` | interface | `import("<repo>/src/winui/selector-bar").SelectorBarInstance<Item>` | `src/winui/selector-bar.ts:31` |
+| `SelectorBarProps` | type | `import("<repo>/src/winui/selector-bar").SelectorBarProps<Instance, Item>` | `src/winui/selector-bar.ts:52` |
 | `showContentDialog` | function | `<Root, Result>(options: import("<repo>/src/winui/dialog").ShowContentDialogOptions<Root, Result>): Promise<Result> \| <Root, Result>(renderer: import("<repo>/src/index").Renderer, dialog: import("<repo>/src/winui/dialog"…` | `src/winui/dialog.ts:22` |
 | `ShowContentDialogOptions` | interface | `import("<repo>/src/winui/dialog").ShowContentDialogOptions<Root, Result>` | `src/winui/dialog.ts:14` |
 | `showFlyout` | function | `<Native extends import("<repo>/src/winui/overlays").FlyoutLike<Target, ShowOptions, ClosedArgs>, Target, ShowOptions = unknown, ClosedArgs = unknown>(renderer: import("<repo>/src/index").Renderer, flyout: Native, target…` | `src/winui/overlays.ts:161` |

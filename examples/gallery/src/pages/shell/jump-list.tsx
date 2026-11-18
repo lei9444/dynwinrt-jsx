@@ -12,6 +12,7 @@ import {
 } from '#winapp/bindings'
 import { type AppContext, UI } from '../../gallery-ui'
 import { Page, SampleCard } from '../../components/gallery-components'
+import { requireCollection } from '../../native-collection'
 import {
   detectPackageIdentity,
   formatNativeError,
@@ -120,6 +121,7 @@ export function JumpListPage(context: AppContext) {
   }
 
   const addTasks = () => run(async (jumpList, abortSignal) => {
+    const items = requireCollection(jumpList.items, 'JumpList.items')
     const notifications = JumpListItem.createWithArguments(
       '--gallery-route=app-notifications',
       'App notifications',
@@ -130,13 +132,14 @@ export function JumpListPage(context: AppContext) {
       'Search taskbar samples',
     )
     search.description = 'Search the Gallery for taskbar and shell samples'
-    jumpList.items.append(notifications)
-    jumpList.items.append(search)
+    items.append(notifications)
+    items.append(search)
     await jumpList.saveAsync(abortSignal)
     return 'Two handled Gallery JumpList tasks were saved.'
   })
 
   const addCustomGroup = () => run(async (jumpList, abortSignal) => {
+    const items = requireCollection(jumpList.items, 'JumpList.items')
     const alpha = JumpListItem.createWithArguments(
       '--gallery-route=badge-notifications',
       'Badge notifications',
@@ -149,43 +152,44 @@ export function JumpListPage(context: AppContext) {
     )
     beta.groupName = 'Shell samples'
     beta.description = 'Open the JumpList Gallery page'
-    jumpList.items.append(alpha)
-    jumpList.items.append(beta)
+    items.append(alpha)
+    items.append(beta)
     await jumpList.saveAsync(abortSignal)
     return 'The Shell samples custom JumpList group was saved.'
   })
 
   const clear = () => run(async (jumpList, abortSignal) => {
-    jumpList.items.clear()
+    requireCollection(jumpList.items, 'JumpList.items').clear()
     jumpList.systemGroupKind = JumpListSystemGroupKind.None
     await jumpList.saveAsync(abortSignal)
     return 'All application JumpList items were cleared.'
   })
 
   const probe = () => run(async (jumpList, abortSignal) => {
+    const items = requireCollection(jumpList.items, 'JumpList.items')
     const item = JumpListItem.createWithArguments(
       probeArguments,
       'dynwinrt-jsx capability probe',
     )
     item.description = 'Temporary JumpList capability probe'
-    jumpList.items.append(item)
+    items.append(item)
     try {
       await jumpList.saveAsync(abortSignal)
-      const index = jumpList.items.indexOf(item)
+      const index = items.indexOf(item)
       if (index < 0) {
         throw new Error(
           'The temporary JumpList task was not present after SaveAsync.',
         )
       }
-      jumpList.items.removeAt(index)
+      items.removeAt(index)
       await jumpList.saveAsync(abortSignal)
       return 'JumpList path verified: a temporary task was saved and removed.'
     }
     catch (error) {
       try {
-        const index = jumpList.items.indexOf(item)
+        const index = items.indexOf(item)
         if (index >= 0) {
-          jumpList.items.removeAt(index)
+          items.removeAt(index)
         }
         await jumpList.saveAsync()
       }
@@ -251,7 +255,9 @@ export function JumpListPage(context: AppContext) {
   '--gallery-route=app-notifications',
   'App notifications',
 )
-jumpList.items.append(item)
+const items = jumpList.items
+if (!items) throw new Error('JumpList.items is unavailable.')
+items.append(item)
 await jumpList.saveAsync(signal)`}
       >
         <UI.StackPanel orientation={Orientation.Horizontal} spacing={8}>
@@ -278,7 +284,9 @@ await jumpList.saveAsync(signal)`}
         title="Custom group"
         description="Add handled Badge notifications and JumpList page tasks under a custom Shell samples group."
         code={`item.groupName = 'Shell samples'
-jumpList.items.append(item)
+const items = jumpList.items
+if (!items) throw new Error('JumpList.items is unavailable.')
+items.append(item)
 await jumpList.saveAsync(signal)`}
       >
         <UI.Button

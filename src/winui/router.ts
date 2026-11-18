@@ -61,7 +61,7 @@ export function createRouterNavigationHost<
 }
 
 interface RouterNavigationItemInstance {
-  readonly menuItems?: NativeCollection
+  readonly menuItems?: NativeCollection | null
   name: string
   content: unknown
   icon: unknown
@@ -510,13 +510,14 @@ export function createRouterNavigationViewShell<
       nameRoutes.set(name, definition.routeId)
     }
     if (children.length > 0) {
-      if (!item.menuItems) {
+      const menuItems = item.menuItems
+      if (!menuItems) {
         throw new Error(
           `Router navigation item '${name}' has children but does not expose menuItems.`,
         )
       }
       for (const child of createItems(children, item)) {
-        item.menuItems.append(child)
+        menuItems.append(child)
       }
     }
     return item

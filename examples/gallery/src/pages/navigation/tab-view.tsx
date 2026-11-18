@@ -308,7 +308,7 @@ const tabSource = IObservableVector_Object.create(initialTabs)
           )}
           onAddTabButtonClick={addTab}
           onTabItemsChanged={(sender) => {
-            nativeTabCount.value = sender.tabItems.size
+            nativeTabCount.value = sender.tabItems?.size ?? 0
           }}
           onSelectionChanged={() => {
             selectionEvents += 1

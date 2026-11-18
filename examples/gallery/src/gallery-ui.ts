@@ -138,6 +138,7 @@ import {
 } from '#winapp/bindings'
 import type { AppModel } from './app-model'
 import type { AppNotificationOwner } from './app-notification-owner'
+import { requireCollection } from './native-collection'
 import type {
   GallerySecondaryWindowManager,
 } from './secondary-window-manager'
@@ -343,7 +344,10 @@ export const GalleryAnnotatedScrollBar = native<
   displayName: 'AnnotatedScrollBar',
   adapters: {
     labelItems: adapter.collection({
-      get: (instance) => instance.labels,
+      get: (instance) => requireCollection(
+        instance.labels,
+        'AnnotatedScrollBar.labels',
+      ),
       label: 'AnnotatedScrollBar labels',
     }),
   },
@@ -476,7 +480,7 @@ export const GalleryTreeView = native<
   displayName: 'TreeView',
   adapters: {
     rootNodes: adapter.collection({
-      get: (instance) => instance.rootNodes,
+      get: (instance) => requireCollection(instance.rootNodes, 'TreeView.rootNodes'),
       label: 'TreeView rootNodes',
     }),
   },

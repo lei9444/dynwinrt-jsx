@@ -778,64 +778,18 @@ test('Gallery uses the signal-native router', () => {
   }
 })
 
-test('Gallery keeps local dynwinrt runtime and codegen aligned', () => {
-  const manifest = readManifest(path.join(
-    __dirname,
-    '..',
-    'examples',
-    'gallery',
-  ))
-  const buildScript = fs.readFileSync(
-    path.join(
-      __dirname,
-      '..',
-      'examples',
-      'gallery',
-      'scripts',
-      'build-local-dynwinrt.js',
-    ),
-    'utf8',
-  )
-  const codegenWrapper = fs.readFileSync(
-    path.join(
-      __dirname,
-      '..',
-      'examples',
-      'gallery',
-      'tools',
-      'local-codegen',
-      'cli.js',
-    ),
-    'utf8',
-  )
-
-  assert.match(
-    manifest.scripts.generate,
-    /build:dynwinrt/,
-  )
-  assert.match(
-    manifest.scripts.dev,
-    /build:dynwinrt/,
-  )
-  assert.match(
-    manifest.scripts.start,
-    /build:dynwinrt/,
-  )
-  assert.match(
-    buildScript,
-    /\[npmCli,\s*'run',\s*'build',\s*'--silent'\]/,
-  )
-  assert.match(buildScript, /-p',\s*'dynwinrt-codegen'/)
-  assert.match(
-    buildScript,
-    /dynwinrt\.win32-x64-msvc\.node/,
-  )
-  assert.match(buildScript, /winrt\.js/)
-  assert.match(buildScript, /com\.js/)
-  assert.match(
-    codegenWrapper,
-    /\.winapp[\s\S]*tools[\s\S]*dynwinrt-codegen\.exe/,
-  )
+test('Gallery locks the published runtime and codegen to the same exact release', () => {
+  const directory = path.join(__dirname, '..', 'examples', 'gallery')
+  const manifest = readManifest(directory)
+  const lock = JSON.parse(fs.readFileSync(path.join(directory, 'package-lock.json'), 'utf8'))
+  const runtime = manifest.dependencies['@microsoft/dynwinrt']
+  assert.match(runtime, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
+  assert.equal(manifest.devDependencies['@microsoft/dynwinrt-codegen'], runtime)
+  for (const name of ['@microsoft/dynwinrt', '@microsoft/dynwinrt-codegen']) {
+    const entry = lock.packages[`node_modules/${name}`]
+    assert.equal(entry.version, runtime)
+    assert.ok(entry.integrity)
+  }
 })
 
 test('CI covers pinned Windows and ARM64 source matrices', () => {

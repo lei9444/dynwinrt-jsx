@@ -63,9 +63,7 @@ export function CaptureElementPreviewPage(context: AppContext) {
   const abort = new AbortController()
   const mirrorTransform = new ScaleTransform()
   mirrorTransform.scaleX = -1
-  let mountedPreview: MediaPlayerElement | null = null
-  let mediaCapture: MediaCapture | null = null
-  let mediaSource: MediaSource | null = null
+  let activePreview: { source: MediaSource; capture: MediaCapture } | null = null
   let disposed = false
   const setCameraCapability = (
     capability: Capability<string>,
@@ -79,7 +77,7 @@ export function CaptureElementPreviewPage(context: AppContext) {
     if (starting.value || ready.value) {
       return
     }
-    const host = mountedPreview
+    const host = preview.current
     if (!host) {
       throw new Error('Camera preview host is not mounted.')
     }
@@ -90,11 +88,17 @@ export function CaptureElementPreviewPage(context: AppContext) {
       const groups = await MediaFrameSourceGroup.findAllAsync(
         abort.signal,
       )
-      if (disposed) {
+      if (disposed || preview.current !== host) {
+        return
+      }
+      if (!groups) {
+        setCameraCapability(capabilityUnavailable(
+          'Camera source groups are unavailable.',
+        ))
         return
       }
       const sources = groups.toArray().flatMap((group) =>
-        group.sourceInfos.toArray().map((info) => ({ group, info })),
+        (group.sourceInfos?.toArray() ?? []).map((info) => ({ group, info })),
       )
       const selected = sources.find(({ info }) =>
         info.sourceKind === MediaFrameSourceKind.Color &&
@@ -119,10 +123,10 @@ export function CaptureElementPreviewPage(context: AppContext) {
       settings.streamingCaptureMode = StreamingCaptureMode.Video
       settings.memoryPreference = MediaCaptureMemoryPreference.Cpu
       await pendingCapture.initializeAsync(settings, abort.signal)
-      if (disposed) {
+      if (disposed || preview.current !== host) {
         return
       }
-      const frameSource = pendingCapture.frameSources.get(sourceInfo.id)
+      const frameSource = pendingCapture.frameSources?.get(sourceInfo.id)
       if (!frameSource) {
         setCameraCapability(capabilityUnavailable(
           'The selected camera frame source is unavailable.',
@@ -137,9 +141,8 @@ export function CaptureElementPreviewPage(context: AppContext) {
         source.close()
         throw error
       }
-      mediaCapture = pendingCapture
+      activePreview = { source, capture: pendingCapture }
       pendingCapture = null
-      mediaSource = source
       ready.value = true
       setCameraCapability(
         capabilityAvailable(group.displayName),
@@ -165,7 +168,7 @@ export function CaptureElementPreviewPage(context: AppContext) {
   }
   const setMirrored = (value: boolean) => {
     mirrored.value = value
-    const host = mountedPreview
+    const host = preview.current
     if (host) {
       if (value) {
         host.renderTransform = mirrorTransform
@@ -178,7 +181,7 @@ export function CaptureElementPreviewPage(context: AppContext) {
     context.model.recordInteraction()
   }
   const capturePhoto = async () => {
-    const capture = mediaCapture
+    const capture = activePreview?.capture
     if (!capture) {
       status.value = 'Start the camera preview before capturing a photo.'
       return
@@ -190,6 +193,7 @@ export function CaptureElementPreviewPage(context: AppContext) {
         stream,
         abort.signal,
       )
+      if (disposed || activePreview?.capture !== capture) return
       stream.seek(0n)
       const image = new BitmapImage()
       image.decodePixelWidth = 192
@@ -209,47 +213,42 @@ export function CaptureElementPreviewPage(context: AppContext) {
       stream.close()
     }
   }
-  onCleanup(() => {
-    disposed = true
-    abort.abort()
+  const setPreviewHost = (next: MediaPlayerElement | null) => {
+    const host = preview.current
+    preview.current = next
+    if (!host || host === next || !activePreview) return
+
+    // ref(null) runs before the renderer releases the host; page cleanup may run later.
+    const { source, capture } = activePreview
+    activePreview = null
     let firstError: unknown
-    let detached = mountedPreview === null
     try {
-      if (mountedPreview) {
-        mountedPreview.mediaPlayer.pause()
-      }
+      host.mediaPlayer?.pause()
     }
     catch (error: unknown) {
       firstError = error
     }
     try {
-      if (mountedPreview) {
-        mountedPreview.setValue(MediaPlayerElement.sourceProperty, null)
+      host.setValue(MediaPlayerElement.sourceProperty, null)
+      for (const resource of [source, capture]) {
+        try {
+          resource.close()
+        }
+        catch (error: unknown) {
+          firstError ??= error
+        }
       }
-      detached = true
     }
     catch (error: unknown) {
       firstError ??= error
     }
-    if (detached) {
-      try {
-        mediaSource?.close()
-        mediaSource = null
-      }
-      catch (error: unknown) {
-        firstError ??= error
-      }
-      try {
-        mediaCapture?.close()
-        mediaCapture = null
-      }
-      catch (error: unknown) {
-        firstError ??= error
-      }
-    }
     if (firstError !== undefined) {
       throw firstError
     }
+  }
+  onCleanup(() => {
+    disposed = true
+    abort.abort()
   })
 
   return (
@@ -358,12 +357,7 @@ preview.source = MediaSource.createFromMediaFrameSource(frameSource)`}
             verticalAlignment={1}
           />
           <UI.MediaPlayerElement
-            ref={(value) => {
-              preview.current = value
-              if (value) {
-                mountedPreview = value
-              }
-            }}
+            ref={setPreviewHost}
             automationId="GalleryMediaCameraPreview"
             gridRow={1}
             autoPlay

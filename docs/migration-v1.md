@@ -154,7 +154,11 @@ const Navigation = native<
 >(NavigationView, {
   adapters: {
     menuItems: adapter.collection({
-      get: (instance) => instance.menuItems,
+      get: (instance) => {
+        const items = instance.menuItems
+        if (!items) throw new Error('NavigationView.menuItems is unavailable.')
+        return items
+      },
     }),
   },
 })
@@ -163,6 +167,10 @@ const Navigation = native<
 Available descriptors classify one-way, initial-only, controlled, coercing,
 reference, collection, single-slot, and collection-slot behavior. Adapter-owned
 slots now dispose their child scopes with the native control.
+
+With preview.24 bindings, a collection getter may return `null`. Treat an
+absent selection as empty when displaying a count, but require the collection
+before mutating it. A missing collection must not silently drop a write.
 
 Property descriptors can opt into `afterChildren` or `afterMount` application
 with `adapter.withPhase()`. The default remains `beforeChildren`. Selection

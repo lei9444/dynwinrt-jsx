@@ -121,6 +121,17 @@ test('SelectorBar owns items before applying selectedIndex', () => {
   assert.equal(selector.listeners.size, 0)
 })
 
+test('SelectorBar reports a missing native collection for indexed selection', () => {
+  class NoItems extends FakeSelectorBar {
+    items = null
+  }
+  const SelectorBar = createSelectorBarControl({ SelectorBar: NoItems })
+  assert.throws(
+    () => renderer().render(jsx(SelectorBar, { selectedIndex: 0 }), new FakeWindow()),
+    /SelectorBar\.items returned no collection/,
+  )
+})
+
 test('SelectorBar accepts native selection and reasserts rejected changes', () => {
   const SelectorBar = createSelectorBar()
   const selectedIndex = signal(0)

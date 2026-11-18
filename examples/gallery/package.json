@@ -6,15 +6,13 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "setup": "npm run build:dynwinrt && node scripts/setup.js",
-    "generate": "npm run build:dynwinrt && winapp node generate-bindings",
+    "setup": "node scripts/setup.js",
+    "generate": "winapp node generate-bindings",
     "build": "tsc -p tsconfig.json",
-    "dev": "npm run build:dynwinrt && node dev.js",
-    "start": "npm run build:dynwinrt && npm run build && node main.js",
+    "dev": "node dev.js",
+    "start": "npm run build && node main.js",
     "smoke:ui": "pwsh -NoProfile -File scripts/smoke-ui.ps1",
-    "test:lifecycle": "npm run build && node --test tests/*.test.js",
-    "build:dynwinrt": "node scripts/build-local-dynwinrt.js",
-    "build:codegen": "npm run build:dynwinrt"
+    "test:lifecycle": "npm run build && node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=20"
@@ -31,11 +29,11 @@
     }
   },
   "dependencies": {
-    "@microsoft/dynwinrt": "file:../../../dynwinrt/bindings/js",
+    "@microsoft/dynwinrt": "0.1.0-preview.24",
     "dynwinrt-jsx": "file:../.."
   },
   "devDependencies": {
-    "@microsoft/dynwinrt-codegen": "file:tools/local-codegen",
+    "@microsoft/dynwinrt-codegen": "0.1.0-preview.24",
     "@microsoft/winappcli": "0.5.0",
     "typescript": "5.9.2"
   },

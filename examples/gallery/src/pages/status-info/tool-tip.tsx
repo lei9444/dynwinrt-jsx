@@ -1,6 +1,5 @@
 import { thickness } from 'dynwinrt-jsx'
 import {
-  IReference_WindowsFoundationRect_g7d5f48bd5717ecb2 as IReference_Rect,
   PlacementMode,
   PropertyValue,
   TextBlock,
@@ -32,13 +31,10 @@ export function ToolTipPage(context: AppContext) {
   const imageToolTip = createToolTip(
     'Non-occluding ToolTip.',
     (toolTip) => {
-      toolTip.placementRect = IReference_Rect.from(
-        PropertyValue.createRect({
-        x: 0,
-        y: 0,
-        width: 400,
-        height: 266,
-        }),
+      // The preview.24 direct Rect setter fails on ARM64; WinUI accepts the boxed dependency property.
+      toolTip.setValue(
+        ToolTip.placementRectProperty,
+        PropertyValue.createRect({ x: 0, y: 0, width: 400, height: 266 }),
       )
       toolTip.placement = PlacementMode.Right
     },
@@ -94,7 +90,8 @@ toolTip.verticalOffset = -80
         title="A non-occluding image ToolTip"
         description="Use PlacementRect and right-side placement so the tooltip does not cover the image."
         code={`
-toolTip.placementRect = IReference_Rect.from(
+toolTip.setValue(
+  ToolTip.placementRectProperty,
   PropertyValue.createRect({ x: 0, y: 0, width: 400, height: 266 }),
 )
 toolTip.placement = PlacementMode.Right
